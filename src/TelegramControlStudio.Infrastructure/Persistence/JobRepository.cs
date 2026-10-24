@@ -98,4 +98,22 @@ public sealed class JobRepository(string databasePath)
                 jobs.Add(id);
         return jobs;
     }
+
+    public async Task<int> PauseRunningJobsAsync(
+        long accountId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE jobs
+            SET status = 'Paused',
+                last_error = 'Paused during safe startup recovery'
+            WHERE account_id = $account_id
+              AND status = 'Running';
+            """;
+        command.Parameters.AddWithValue("$account_id", accountId);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
 }
