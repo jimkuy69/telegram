@@ -29,7 +29,7 @@ public static class ContactCsvImporter
                 errors.Add($"ROW_{index + 1}_DUPLICATE");
                 continue;
             }
-            if (!bool.TryParse(fields[5], out var consent) || !bool.TryParse(fields[6], out var optedOut))
+            if (!TryParseBoolean(fields[5], out var consent) || !TryParseBoolean(fields[6], out var optedOut))
             {
                 errors.Add($"ROW_{index + 1}_BOOLEAN_INVALID");
                 continue;
@@ -71,6 +71,15 @@ public static class ContactCsvImporter
         }
         fields.Add(current.ToString());
         return [.. fields];
+    }
+
+    private static bool TryParseBoolean(string value, out bool result)
+    {
+        if (bool.TryParse(value.Trim(), out result)) return true;
+        if (value.Trim() == "1") { result = true; return true; }
+        if (value.Trim() == "0") { result = false; return true; }
+        result = false;
+        return false;
     }
 }
 
