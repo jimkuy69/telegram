@@ -27,12 +27,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             _activeAccount = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(ActiveAccountStatus));
             OnPropertyChanged(nameof(CanCreateJob));
             CreateJobCommand?.Refresh();
         }
     }
 
     private string _dataSourceNotice = "ข้อมูลตัวอย่างในเครื่องเท่านั้น • ยังไม่ได้ Sync Telegram";
+    public string ActiveAccountStatus => ActiveAccount is null
+        ? "ยังไม่ได้เลือกบัญชี"
+        : $"{ActiveAccount.DisplayName} • {ActiveAccount.Status}";
     public string DataSourceNotice
     {
         get => _dataSourceNotice;
