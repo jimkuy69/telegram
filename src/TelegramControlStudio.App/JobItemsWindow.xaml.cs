@@ -12,6 +12,7 @@ public partial class JobItemsWindow : Window
         if (SelectedItem is null || !string.Equals(SelectedItem.Status, "Failed", StringComparison.OrdinalIgnoreCase)) return;
         if (await new JobItemRepository(_databasePath).UpdateStatusAsync(_jobId, SelectedItem.TargetId, "Queued", null, true))
         {
+            await new JobAggregateSynchronizer(_databasePath).SynchronizeAsync(_jobId);
             await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(SelectedItem.AccountId, _jobId, "Info", "JobItemRetry", $"Target {SelectedItem.TargetId} manually queued for retry.", DateTimeOffset.UtcNow));
             Items.Clear(); foreach (var item in await new JobItemRepository(_databasePath).ListAsync(_jobId)) Items.Add(item);
         }
