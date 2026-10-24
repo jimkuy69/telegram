@@ -18,7 +18,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     ];
 
     public ObservableCollection<Account> Accounts { get; } = [];
-    public Account? ActiveAccount { get; set; }
+    private Account? _activeAccount;
+    public Account? ActiveAccount
+    {
+        get => _activeAccount;
+        set
+        {
+            _activeAccount = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CanCreateJob));
+            CreateJobCommand?.Refresh();
+        }
+    }
 
     private string _dataSourceNotice = "ข้อมูลตัวอย่างในเครื่องเท่านั้น • ยังไม่ได้ Sync Telegram";
     public string DataSourceNotice
@@ -29,7 +40,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public int ConsentCount => Contacts.Count(contact => contact.Selected && contact.Consent == "ได้รับความยินยอม");
 
-    public bool CanCreateJob => ConsentCount > 0;
+    public bool CanCreateJob => ActiveAccount is not null && ConsentCount > 0;
 
     public RelayCommand CreateJobCommand { get; }
 
@@ -61,6 +72,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             Accounts.Add(account);
         ActiveAccount = Accounts.FirstOrDefault();
         OnPropertyChanged(nameof(ActiveAccount));
+        OnPropertyChanged(nameof(CanCreateJob));
+        CreateJobCommand?.Refresh();
     }
 
     public MainWindowViewModel()
