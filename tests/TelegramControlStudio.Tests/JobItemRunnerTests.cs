@@ -38,6 +38,23 @@ public sealed class JobItemRunnerTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
 
+    [Fact]
+    public async Task RetryableNetworkFailureReturnsItemToQueue()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-runner-{Guid.NewGuid():N}.db");
+        try
+        {
+            var (job, accountId) = await CreateJobAsync(path);
+            await new JobItemRunner(path).RunAsync(job, (_, _) => throw new InvalidOperationException("network timeout"));
+            var savedJob = (await new JobRepository(path).ListAsync(accountId)).Single();
+            var item = (await new JobItemRepository(path).ListAsync(job.Id)).Single();
+            Assert.Equal(JobStatus.Queued, savedJob.Status);
+            Assert.Equal("Queued", item.Status);
+            Assert.Equal(1, item.RetryCount);
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
     private static async Task<(Job Job, long AccountId)> CreateJobAsync(string path)
     {
         await new SqliteDatabase(path).InitializeAsync();
