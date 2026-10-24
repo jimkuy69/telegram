@@ -20,5 +20,22 @@ public sealed class EncryptedBackupServiceTests
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
+
+    [Fact]
+    public async Task InvalidBackupDoesNotReplaceExistingDatabase()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"tcs-backup-{Guid.NewGuid():N}"); Directory.CreateDirectory(root);
+        var database = Path.Combine(root, "database.db"); var backup = Path.Combine(root, "invalid.tcs");
+        try
+        {
+            var original = System.Text.Encoding.UTF8.GetBytes("keep this database");
+            await File.WriteAllBytesAsync(database, original);
+            await File.WriteAllBytesAsync(backup, System.Text.Encoding.UTF8.GetBytes("not encrypted"));
+            await Assert.ThrowsAsync<InvalidDataException>(() => new EncryptedBackupService().RestoreAsync(backup, database));
+            Assert.Equal(original, await File.ReadAllBytesAsync(database));
+            Assert.False(File.Exists(database + ".restore.tmp"));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
 }
 
