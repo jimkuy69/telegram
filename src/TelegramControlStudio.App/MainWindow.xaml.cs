@@ -3,6 +3,7 @@ using System.IO;
 using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.App.ViewModels;
 using TelegramControlStudio.Infrastructure.Persistence;
+using TelegramControlStudio.Core.Export;
 
 namespace TelegramControlStudio.App;
 
@@ -106,6 +107,28 @@ public partial class MainWindow : Window
         }
         var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
         new ContactImportWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
+    }
+
+    private async void ExportContacts_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "CSV files (*.csv)|*.csv", FileName = "telegram-contacts.csv" };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+            var contacts = await new ContactRepository(databasePath).ListAsync(viewModel.ActiveAccount.Id);
+            await File.WriteAllTextAsync(dialog.FileName, CsvExporter.ContactsForImport(contacts));
+            MessageBox.Show($"ส่งออก Contacts {contacts.Count} รายการแล้ว", "Export สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show($"ส่งออกไม่สำเร็จ\n{exception.Message}", "Export ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void TemplateEditor_Click(object sender, RoutedEventArgs e)
