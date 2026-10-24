@@ -55,4 +55,31 @@ public sealed class AccountRepository(string databasePath)
         command.Parameters.AddWithValue("$updated_at", session.UpdatedAt.ToString("O"));
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Account>> ListAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, display_name, phone_number, status, created_at, last_sync_at
+            FROM accounts
+            ORDER BY created_at DESC;
+            """;
+
+        var accounts = new List<Account>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            accounts.Add(new Account(
+                reader.GetInt64(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                DateTimeOffset.Parse(reader.GetString(4)),
+                reader.IsDBNull(5) ? null : DateTimeOffset.Parse(reader.GetString(5))));
+        }
+
+        return accounts;
+    }
 }
