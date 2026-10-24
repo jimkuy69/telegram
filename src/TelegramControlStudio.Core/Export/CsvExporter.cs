@@ -5,6 +5,15 @@ namespace TelegramControlStudio.Core.Export;
 
 public static class CsvExporter
 {
+    public static string ContactsForImport(IEnumerable<Contact> contacts)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out");
+        foreach (var contact in contacts)
+            builder.AppendLine(string.Join(",", contact.TelegramUserId, Escape(contact.FirstName), Escape(contact.LastName), Escape(contact.Username), Escape(contact.PhoneNumber), contact.HasConsent, contact.IsOptedOut));
+        return builder.ToString();
+    }
+
     public static string Contacts(IEnumerable<Contact> contacts)
     {
         var builder = new StringBuilder();
