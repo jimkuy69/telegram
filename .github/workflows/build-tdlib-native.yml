@@ -1,0 +1,69 @@
+name: Build TDLib native Windows x64
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tdlib-native:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Checkout official TDLib source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git clone --recursive https://github.com/tdlib/td.git td-src
+          git -C td-src checkout bc9c263e2bfee06aaab41e82db51a103376030bc
+          git -C td-src submodule update --init --recursive
+
+      - name: Prepare vcpkg dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git clone https://github.com/microsoft/vcpkg.git vcpkg
+          .\vcpkg\bootstrap-vcpkg.bat
+          .\vcpkg\vcpkg.exe install gperf:x64-windows openssl:x64-windows zlib:x64-windows
+
+      - name: Configure TDLib
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force td-src\build | Out-Null
+          cmake -S td-src -B td-src\build -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$pwd\vcpkg\scripts\buildsystems\vcpkg.cmake
+
+      - name: Build tdjson
+        shell: pwsh
+        run: cmake --build td-src\build --config Release --target tdjson --parallel
+
+      - name: Verify and package native artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $binary = Get-ChildItem -Path td-src\build -Recurse -Filter tdjson.dll | Select-Object -First 1
+          if (-not $binary) { throw 'tdjson.dll was not produced.' }
+          New-Item -ItemType Directory -Force artifacts\tdlib | Out-Null
+          Copy-Item $binary.FullName artifacts\tdlib\tdjson.dll
+          $hash = (Get-FileHash artifacts\tdlib\tdjson.dll -Algorithm SHA256).Hash.ToLowerInvariant()
+          $manifest = [ordered]@{
+            sourceUrl = 'https://github.com/tdlib/td/tree/bc9c263e2bfee06aaab41e82db51a103376030bc'
+            version = '1.8.67'
+            license = 'Boost Software License 1.0'
+            architecture = 'win-x64'
+            sha256 = $hash
+          } | ConvertTo-Json
+          Set-Content -Path artifacts\tdlib\tdjson.manifest.json -Value $manifest -Encoding utf8
+          & $pwd\scripts\verify-tdlib-native.ps1 -Root $pwd\artifacts -BinaryRelativePath 'tdlib\tdjson.dll' -ManifestRelativePath 'tdlib\tdjson.manifest.json'
+
+      - name: Upload TDLib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TelegramControlStudio-tdlib-win-x64-1.8.67
+          path: artifacts/tdlib/*
