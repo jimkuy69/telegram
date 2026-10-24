@@ -11,7 +11,7 @@ public sealed class TdLibInviteLinkService(string databasePath)
         ArgumentNullException.ThrowIfNull(client);
         var request = TdLibInviteRequests.RevokeChatInviteLink(chatId, inviteUrl, confirmed, canInvite);
         var response = await client.SendAsync(request.Function, request.Parameters, cancellationToken);
-        if (!response.Contains(""@type":"ok"", StringComparison.Ordinal))
+        if (!response.Contains("\"@type\":\"ok\"", StringComparison.Ordinal))
             throw new InvalidOperationException("TDLib did not confirm invite link revocation.");
         if (!await new InviteLinkRepository(databasePath).MarkRevokedAsync(accountId, inviteUrl, DateTimeOffset.UtcNow, cancellationToken))
             throw new InvalidOperationException("Invite link was not found or was already revoked.");
