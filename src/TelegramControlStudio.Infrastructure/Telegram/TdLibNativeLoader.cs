@@ -9,10 +9,13 @@ public sealed class TdLibNativeLoader
     {
         if (string.IsNullOrWhiteSpace(expectedSha256))
             throw new ArgumentException("A trusted SHA-256 hash is required.", nameof(expectedSha256));
+        var normalizedExpectedHash = expectedSha256.Replace("-", string.Empty, StringComparison.Ordinal).Trim();
+        if (normalizedExpectedHash.Length != 64 || !normalizedExpectedHash.All(Uri.IsHexDigit))
+            throw new ArgumentException("The trusted SHA-256 hash must contain 64 hexadecimal characters.", nameof(expectedSha256));
 
         var fullPath = ResolvePath(nativeDirectory);
         var actualSha256 = GetSha256(fullPath);
-        if (!actualSha256.Equals(expectedSha256.Replace("-", string.Empty), StringComparison.OrdinalIgnoreCase))
+        if (!actualSha256.Equals(normalizedExpectedHash, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("TDLib native dependency hash mismatch.");
 
         return NativeLibrary.Load(fullPath);
