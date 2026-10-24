@@ -29,6 +29,21 @@ public sealed class JobRepository(string databasePath)
         var id = Guid.NewGuid();
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
+        await using (var existingCommand = connection.CreateCommand())
+        {
+            existingCommand.CommandText = "SELECT id, account_id, target_type, target_count FROM jobs WHERE idempotency_key = $idempotency_key;";
+            existingCommand.Parameters.AddWithValue("$idempotency_key", idempotencyKey);
+            await using var existingReader = await existingCommand.ExecuteReaderAsync(cancellationToken);
+            if (await existingReader.ReadAsync(cancellationToken))
+            {
+                if (!Guid.TryParse(existingReader.GetString(0), out var existingId) ||
+                    existingReader.GetInt64(1) != accountId ||
+                    !string.Equals(existingReader.GetString(2), targetType, StringComparison.Ordinal) ||
+                    existingReader.GetInt32(3) != targetCount)
+                    throw new InvalidOperationException("Idempotency key belongs to a different job definition.");
+                return existingId;
+            }
+        }
         await using var command = connection.CreateCommand();
         command.CommandText = """
             INSERT INTO jobs
