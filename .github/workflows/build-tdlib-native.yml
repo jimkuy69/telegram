@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   tdlib-native:
+    timeout-minutes: 45
     runs-on: windows-latest
     steps:
       - name: Checkout project
@@ -27,6 +28,15 @@ jobs:
           git -C td-src checkout bc9c263e2bfee06aaab41e82db51a103376030bc
           git -C td-src submodule update --init --recursive
 
+      - name: Cache vcpkg downloads and packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            vcpkg/downloads
+            vcpkg/packages
+          key: tdlib-vcpkg-${{ runner.os }}-${{ hashFiles('.github/workflows/build-tdlib-native.yml') }}
+          restore-keys: |
+            tdlib-vcpkg-${{ runner.os }}-
       - name: Prepare vcpkg dependencies
         shell: pwsh
         run: |
