@@ -6,6 +6,7 @@
 - `dotnet test TelegramControlStudio.sln --no-build --verbosity minimal`
 - `powershell -ExecutionPolicy Bypass -File scripts/publish-win-x64.ps1`
 - `powershell -ExecutionPolicy Bypass -File scripts/verify-release.ps1`
+- `powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1`
 
 ## Package gates
 
