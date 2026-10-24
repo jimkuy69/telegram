@@ -41,7 +41,7 @@ public sealed class TdLibAccountAuthorizationCoordinatorTests
         Assert.Equal("Error", (await accounts.ListAsync()).Single().Status);
     }
 
-    private sealed class FakeClient(string response = "{"@type":"ok"}") : ITdLibClient
+    private sealed class FakeClient(string response = "{\"@type\":\"ok\"}") : ITdLibClient
     {
         public string? LastFunction { get; private set; }
         public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
