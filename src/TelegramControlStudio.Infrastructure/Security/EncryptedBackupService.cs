@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Runtime.Versioning;
+using Microsoft.Data.Sqlite;
 
 namespace TelegramControlStudio.Infrastructure.Security;
 
@@ -34,12 +35,25 @@ public sealed class EncryptedBackupService
         try
         {
             await File.WriteAllBytesAsync(temporaryPath, database, cancellationToken);
+            await ValidateSqliteAsync(temporaryPath, cancellationToken);
             File.Move(temporaryPath, databasePath, true);
         }
         finally
         {
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
         }
+    }
+
+    private static async Task ValidateSqliteAsync(string path, CancellationToken cancellationToken)
+    {
+        var connectionString = new SqliteConnectionStringBuilder { DataSource = path, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString();
+        await using var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA quick_check;";
+        var result = Convert.ToString(await command.ExecuteScalarAsync(cancellationToken));
+        if (!string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Restored SQLite database failed integrity check.");
     }
 
     private static void ValidatePaths(string databasePath, string backupPath)
