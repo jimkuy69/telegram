@@ -13,7 +13,7 @@ public sealed class SqliteDatabaseTests
         try
         {
             await new SqliteDatabase(path).InitializeAsync();
-            await using (var connection = new SqliteConnection($"Data Source={path}"))
+            await using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
             {
                 await connection.OpenAsync();
                 await using var command = connection.CreateCommand();
@@ -23,6 +23,7 @@ public sealed class SqliteDatabaseTests
         }
         finally
         {
+            SqliteConnection.ClearAllPools();
             if (File.Exists(path))
                 File.Delete(path);
         }
