@@ -61,6 +61,13 @@ public partial class TemplateEditorWindow : Window
             var existing = await mediaRepository.FindBySha256Async(_accountId, sha256);
             var mediaId = existing?.Id ?? await mediaRepository.CreateAsync(new MediaFile(0, _accountId, Path.GetFileName(_selectedMediaPath), _selectedMediaPath, sha256, mime, bytes.LongLength, DateTimeOffset.UtcNow, null));
             await new TemplateMediaRepository(_databasePath).LinkAsync(new TemplateMedia(id, mediaId, _accountId, 0));
+            await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(
+                _accountId,
+                null,
+                "Info",
+                "TemplateMediaLinked",
+                $"Media SHA-256 {sha256} linked to template_id={id}.",
+                DateTimeOffset.UtcNow));
         }
         MessageBox.Show($"บันทึก Template แล้ว (ID {id})", "สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
     }
