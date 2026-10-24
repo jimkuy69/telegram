@@ -19,9 +19,7 @@ public sealed class TdLibSessionStateBridgeTests
             var accountId = await new AccountRepository(path).CreateAsync("Test", "+66000000000");
             var machine = new AuthorizationStateMachine();
             var bridge = new TdLibSessionStateBridge(path, accountId, SessionPathPolicy.GetAccountSessionDirectory(accountId), machine);
-
             await bridge.ApplyAsync(AuthorizationState.Ready);
-
             await using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
             await connection.OpenAsync();
             await using var sessionCommand = connection.CreateCommand();
@@ -31,17 +29,31 @@ public sealed class TdLibSessionStateBridgeTests
             Assert.True(await reader.ReadAsync());
             Assert.Equal("Ready", reader.GetString(0));
             Assert.Equal(1, reader.GetInt32(1));
-
             await using var accountCommand = connection.CreateCommand();
             accountCommand.CommandText = "SELECT status FROM accounts WHERE id = $id;";
             accountCommand.Parameters.AddWithValue("$id", accountId);
             Assert.Equal("Ready", await accountCommand.ExecuteScalarAsync());
         }
-        finally
+        finally { SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task RouterUpdatePersistsWaitCodeAndAttachIsIdempotent()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"telegram-bridge-{Guid.NewGuid():N}.db");
+        try
         {
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(path)) File.Delete(path);
+            await new SqliteDatabase(path).InitializeAsync();
+            var accountId = await new AccountRepository(path).CreateAsync("Test", "+66000000001");
+            var machine = new AuthorizationStateMachine();
+            var bridge = new TdLibSessionStateBridge(path, accountId, SessionPathPolicy.GetAccountSessionDirectory(accountId), machine);
+            bridge.Attach(); bridge.Attach();
+            new TdLibUpdateRouter(machine).Route("""{"@type":"updateAuthorizationState","authorization_state":{"@type":"authorizationStateWaitCode"}}""");
+            await Task.Delay(100);
+            var account = Assert.Single(await new AccountRepository(path).ListAsync());
+            Assert.Equal("PendingAuthorization", account.Status);
+            bridge.Detach(); bridge.Detach();
         }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
 }
-
