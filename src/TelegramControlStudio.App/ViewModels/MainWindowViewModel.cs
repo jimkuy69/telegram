@@ -17,6 +17,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         new(true, "ตัวอย่างผู้รับ C", 100000003, "@example_c", "ได้รับความยินยอม")
     ];
 
+    public ObservableCollection<Account> Accounts { get; } = [];
+    public Account? ActiveAccount { get; set; }
+
     private string _dataSourceNotice = "ข้อมูลตัวอย่างในเครื่องเท่านั้น • ยังไม่ได้ Sync Telegram";
     public string DataSourceNotice
     {
@@ -47,6 +50,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ConsentCount));
         OnPropertyChanged(nameof(CanCreateJob));
         CreateJobCommand.Refresh();
+    }
+
+    public async Task LoadAccountsAsync(string databasePath, CancellationToken cancellationToken = default)
+    {
+        var repository = new AccountRepository(databasePath);
+        var accounts = await repository.ListAsync(cancellationToken);
+        Accounts.Clear();
+        foreach (var account in accounts)
+            Accounts.Add(account);
+        ActiveAccount = Accounts.FirstOrDefault();
+        OnPropertyChanged(nameof(ActiveAccount));
     }
 
     public MainWindowViewModel()
