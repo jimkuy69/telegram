@@ -15,11 +15,12 @@ public sealed class EncryptedBackupServiceTests
         try
         {
             await new TelegramControlStudio.Infrastructure.Persistence.SqliteDatabase(database).InitializeAsync();
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             var bytes = await File.ReadAllBytesAsync(database);
             var service = new EncryptedBackupService(); await service.BackupAsync(database, backup); await service.RestoreAsync(backup, restored);
             Assert.Equal(bytes, await File.ReadAllBytesAsync(restored)); Assert.NotEqual(Convert.ToBase64String(bytes), Convert.ToBase64String(await File.ReadAllBytesAsync(backup)));
         }
-        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
 
     [Fact]
@@ -36,7 +37,7 @@ public sealed class EncryptedBackupServiceTests
             Assert.Equal(original, await File.ReadAllBytesAsync(database));
             Assert.False(File.Exists(database + ".restore.tmp"));
         }
-        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
 }
 
