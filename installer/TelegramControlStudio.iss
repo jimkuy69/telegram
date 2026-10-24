@@ -10,7 +10,7 @@ AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 DefaultDirName={autopf}TelegramControlStudio
 DefaultGroupName={#AppName}
-OutputDir=..artifactsinstaller
+OutputDir=..\artifacts\installer
 OutputBaseFilename=TelegramControlStudio-Setup-{#AppVersion}
 ArchitecturesInstallIn64BitMode=x64
 PrivilegesRequired=lowest
@@ -19,13 +19,14 @@ SolidCompression=yes
 UninstallDisplayIcon={app}{#AppExeName}
 
 [Files]
-Source: "..artifactspublishwin-x64*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\artifacts\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Dirs]
-Name: "{localappdata}TelegramControlStudio"
+Name: "{localappdata}\TelegramControlStudio"
 
 [Icons]
 Name: "{group}{#AppName}"; Filename: "{app}{#AppExeName}"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
+
