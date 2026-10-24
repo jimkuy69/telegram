@@ -22,5 +22,14 @@ public sealed class JobItemRepository(string databasePath)
         await using var connection = new SqliteConnection(_connectionString); await connection.OpenAsync(cancellationToken); await using var command = connection.CreateCommand(); command.CommandText = "SELECT job_id,account_id,target_id,status,retry_count,idempotency_key,last_error,updated_at FROM job_items WHERE job_id=$job_id ORDER BY target_id"; command.Parameters.AddWithValue("$job_id", jobId.ToString("D"));
         var result = new List<JobItem>(); await using var reader = await command.ExecuteReaderAsync(cancellationToken); while (await reader.ReadAsync(cancellationToken)) result.Add(new JobItem(Guid.Parse(reader.GetString(0)), reader.GetInt64(1), reader.GetInt64(2), reader.GetString(3), reader.GetInt32(4), reader.GetString(5), reader.IsDBNull(6) ? null : reader.GetString(6), DateTimeOffset.Parse(reader.GetString(7)))); return result;
     }
+
+    public async Task<bool> UpdateStatusAsync(Guid jobId, long targetId, string status, string? lastError = null, bool incrementRetry = false, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(status);
+        await using var connection = new SqliteConnection(_connectionString); await connection.OpenAsync(cancellationToken); await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE job_items SET status=$status, retry_count=retry_count + $increment, last_error=$error, updated_at=$updated_at WHERE job_id=$job_id AND target_id=$target_id AND status NOT IN ('Completed','Cancelled')";
+        command.Parameters.AddWithValue("$status", status); command.Parameters.AddWithValue("$increment", incrementRetry ? 1 : 0); command.Parameters.AddWithValue("$error", (object?)lastError ?? DBNull.Value); command.Parameters.AddWithValue("$updated_at", DateTimeOffset.UtcNow.ToString("O")); command.Parameters.AddWithValue("$job_id", jobId.ToString("D")); command.Parameters.AddWithValue("$target_id", targetId);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
 }
 
