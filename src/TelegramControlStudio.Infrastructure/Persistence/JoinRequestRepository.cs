@@ -65,5 +65,27 @@ public sealed class JoinRequestRepository(string databasePath)
         }
         return changed;
     }
+
+    public async Task<IReadOnlyList<JoinRequest>> ListPendingAsync(long accountId, long? chatId = null, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, chat_id, telegram_user_id, status, requested_at, decision_at, decision_reason
+            FROM join_requests
+            WHERE account_id = $account_id AND status = 'Pending' AND ($chat_id IS NULL OR chat_id = $chat_id)
+            ORDER BY requested_at;
+            """;
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$chat_id", chatId ?? (object)DBNull.Value);
+        var result = new List<JoinRequest>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(new JoinRequest(reader.GetInt64(0), accountId, reader.GetInt64(1), reader.GetInt64(2), reader.GetString(3), DateTimeOffset.Parse(reader.GetString(4)), reader.IsDBNull(5) ? null : DateTimeOffset.Parse(reader.GetString(5)), reader.IsDBNull(6) ? null : reader.GetString(6)));
+        }
+        return result;
+    }
 }
 
