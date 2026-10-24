@@ -31,5 +31,27 @@ public sealed class InviteLinkRepository(string databasePath)
         command.Parameters.AddWithValue("$created_at", link.CreatedAt.ToString("O"));
         return (long)(await command.ExecuteScalarAsync(cancellationToken) ?? throw new InvalidOperationException("Invite link insert did not return an ID."));
     }
-}
 
+    public async Task<IReadOnlyList<InviteLink>> ListAsync(long accountId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, account_id, chat_id, invite_url, expires_at, usage_limit, creates_join_request, created_at, revoked_at
+            FROM invite_links WHERE account_id = $account_id ORDER BY created_at DESC;
+            """;
+        command.Parameters.AddWithValue("$account_id", accountId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var links = new List<InviteLink>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            links.Add(new InviteLink(
+                reader.GetInt64(0), reader.GetInt64(1), reader.GetInt64(2), reader.GetString(3),
+                reader.IsDBNull(4) ? null : DateTimeOffset.Parse(reader.GetString(4)),
+                reader.IsDBNull(5) ? null : reader.GetInt32(5), reader.GetInt32(6) == 1,
+                DateTimeOffset.Parse(reader.GetString(7)), reader.IsDBNull(8) ? null : DateTimeOffset.Parse(reader.GetString(8))));
+        }
+        return links;
+    }
+}
