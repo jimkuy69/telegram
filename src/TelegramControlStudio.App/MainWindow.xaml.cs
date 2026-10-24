@@ -16,6 +16,19 @@ public partial class MainWindow : Window
             "TelegramControlStudio",
             "telegram-control-studio.db");
         _ = LoadContactsAsync(viewModel, databasePath);
+        _ = LoadAccountsAsync(viewModel, databasePath);
+    }
+
+    private static async Task LoadAccountsAsync(MainWindowViewModel viewModel, string databasePath)
+    {
+        try
+        {
+            await viewModel.LoadAccountsAsync(databasePath);
+        }
+        catch
+        {
+            // The dashboard remains usable before the first local account exists.
+        }
     }
 
     private static async Task LoadContactsAsync(MainWindowViewModel viewModel, string databasePath)
