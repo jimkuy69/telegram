@@ -15,6 +15,6 @@ public static partial class FloodWaitParser
             : null;
     }
 
-    [GeneratedRegex(@"(?i)FLOOD_WAIT_(?<seconds>d+)")]
+    [GeneratedRegex(@"(?i)FLOOD_WAIT_(?<seconds>[0-9]+)")]
     private static partial Regex Pattern();
 }
