@@ -25,6 +25,13 @@ public sealed class TdLibContactSyncService(ITdLibClient client, string database
             }
         }
         await new ContactRepository(databasePath).UpsertManyAsync(contacts, cancellationToken);
+        await new ActivityLogRepository(databasePath).AppendAsync(new ActivityLog(
+            accountId,
+            null,
+            "Info",
+            "ContactsSyncedReadOnly",
+            $"Read-only TDLib sync stored {contacts.Count} contact(s).",
+            DateTimeOffset.UtcNow), cancellationToken);
         return contacts;
     }
 }
