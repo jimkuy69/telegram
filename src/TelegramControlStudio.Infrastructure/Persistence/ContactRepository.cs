@@ -115,4 +115,24 @@ public sealed class ContactRepository(string databasePath)
         }
         await transaction.CommitAsync(cancellationToken);
     }
+
+    public async Task<bool> SoftDeleteAsync(long accountId, long telegramUserId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE contacts
+            SET deleted_at = $deleted_at, updated_at = $updated_at
+            WHERE account_id = $account_id
+              AND telegram_user_id = $telegram_user_id
+              AND deleted_at IS NULL;
+            """;
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        command.Parameters.AddWithValue("$deleted_at", now);
+        command.Parameters.AddWithValue("$updated_at", now);
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$telegram_user_id", telegramUserId);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
 }
