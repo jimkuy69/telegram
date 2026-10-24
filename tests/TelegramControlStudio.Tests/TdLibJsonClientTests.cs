@@ -17,5 +17,20 @@ public sealed class TdLibJsonClientTests
         var extra = request.RootElement.GetProperty("@extra").GetString();
         Assert.True(client.HandleResponse($$"""{"@type":"optionValueString","value":"test","@extra":"{{extra}}"}"""));
         Assert.Contains("optionValueString", await pending);
+        Assert.Equal(0, client.PendingRequestCount);
+    }
+
+    [Fact]
+    public async Task CancellationRemovesPendingRequest()
+    {
+        using var writer = new StringWriter();
+        await using var client = new TdLibJsonClient(writer);
+        using var cancellation = new CancellationTokenSource();
+        var pending = client.SendAsync("getOption", new Dictionary<string, object?>(), cancellation.Token);
+        await Task.Delay(10);
+        await cancellation.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await pending);
+        Assert.Equal(0, client.PendingRequestCount);
     }
 }
+
