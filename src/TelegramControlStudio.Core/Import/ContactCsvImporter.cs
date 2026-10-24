@@ -18,7 +18,7 @@ public static class ContactCsvImporter
             return new([], ["HEADER_INVALID"]);
         for (var index = 1; index < lines.Length; index++)
         {
-            var fields = lines[index].Split(',');
+            var fields = ParseLine(lines[index]);
             if (fields.Length != 7 || !long.TryParse(fields[0], out var userId) || userId <= 0)
             {
                 errors.Add($"ROW_{index + 1}_INVALID");
@@ -43,6 +43,34 @@ public static class ContactCsvImporter
             valid.Add(new Contact(accountId, userId, fields[1].Trim(), fields[2].Trim(), string.IsNullOrWhiteSpace(fields[3]) ? null : fields[3].Trim().TrimStart('@'), phone, consent, optedOut, DateTimeOffset.UtcNow));
         }
         return new(valid, errors);
+    }
+
+    private static string[] ParseLine(string line)
+    {
+        var fields = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var quoted = false;
+        for (var index = 0; index < line.Length; index++)
+        {
+            var character = line[index];
+            if (character == '"')
+            {
+                if (quoted && index + 1 < line.Length && line[index + 1] == '"')
+                {
+                    current.Append('"');
+                    index++;
+                }
+                else quoted = !quoted;
+            }
+            else if (character == ',' && !quoted)
+            {
+                fields.Add(current.ToString());
+                current.Clear();
+            }
+            else current.Append(character);
+        }
+        fields.Add(current.ToString());
+        return [.. fields];
     }
 }
 
