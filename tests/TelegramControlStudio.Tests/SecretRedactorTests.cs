@@ -1,3 +1,4 @@
+using Xunit;
 using TelegramControlStudio.Core.Security;
 
 namespace TelegramControlStudio.Tests;
