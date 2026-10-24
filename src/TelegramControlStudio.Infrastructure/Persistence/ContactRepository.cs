@@ -135,4 +135,46 @@ public sealed class ContactRepository(string databasePath)
         command.Parameters.AddWithValue("$telegram_user_id", telegramUserId);
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
+
+    public async Task<IReadOnlyList<Contact>> SearchAsync(long accountId, string? query, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT telegram_user_id, first_name, last_name, username, phone_number,
+                   has_consent, is_opted_out, updated_at
+            FROM contacts
+            WHERE account_id = $account_id
+              AND deleted_at IS NULL
+              AND ($query = '' OR CAST(telegram_user_id AS TEXT) LIKE $pattern
+                   OR first_name LIKE $pattern COLLATE NOCASE
+                   OR last_name LIKE $pattern COLLATE NOCASE
+                   OR COALESCE(username, '') LIKE $pattern COLLATE NOCASE
+                   OR COALESCE(phone_number, '') LIKE $pattern)
+            ORDER BY first_name, last_name, telegram_user_id;
+            """;
+        var normalized = query?.Trim() ?? string.Empty;
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$query", normalized);
+        command.Parameters.AddWithValue("$pattern", $"%{normalized}%");
+
+        var result = new List<Contact>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(new Contact(
+                accountId,
+                reader.GetInt64(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.IsDBNull(3) ? null : reader.GetString(3),
+                reader.IsDBNull(4) ? null : reader.GetString(4),
+                reader.GetInt64(5) == 1,
+                reader.GetInt64(6) == 1,
+                DateTimeOffset.Parse(reader.GetString(7))));
+        }
+
+        return result;
+    }
 }
