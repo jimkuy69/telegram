@@ -68,7 +68,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public async Task LoadContactsAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)
     {
         var repository = new ContactRepository(databasePath);
-        var contacts = await repository.ListAsync(accountId, cancellationToken);
+        ReplaceContacts(repository, await repository.ListAsync(accountId, cancellationToken));
+    }
+
+    public async Task SearchContactsAsync(string databasePath, long accountId, string? query, CancellationToken cancellationToken = default)
+    {
+        var repository = new ContactRepository(databasePath);
+        ReplaceContacts(repository, await repository.SearchAsync(accountId, query, cancellationToken));
+    }
+
+    private void ReplaceContacts(ContactRepository repository, IReadOnlyList<Contact> contacts)
+    {
         Contacts.Clear();
         foreach (var contact in contacts)
         {
@@ -152,4 +162,3 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
-
