@@ -34,7 +34,13 @@ public static class ContactCsvImporter
                 errors.Add($"ROW_{index + 1}_BOOLEAN_INVALID");
                 continue;
             }
-            valid.Add(new Contact(accountId, userId, fields[1], fields[2], string.IsNullOrWhiteSpace(fields[3]) ? null : fields[3], string.IsNullOrWhiteSpace(fields[4]) ? null : fields[4], consent, optedOut, DateTimeOffset.UtcNow));
+            var phone = string.IsNullOrWhiteSpace(fields[4]) ? null : fields[4].Trim();
+            if (!ContactFieldPolicy.IsValidPhone(phone))
+            {
+                errors.Add($"ROW_{index + 1}_PHONE_INVALID");
+                continue;
+            }
+            valid.Add(new Contact(accountId, userId, fields[1].Trim(), fields[2].Trim(), string.IsNullOrWhiteSpace(fields[3]) ? null : fields[3].Trim().TrimStart('@'), phone, consent, optedOut, DateTimeOffset.UtcNow));
         }
         return new(valid, errors);
     }
