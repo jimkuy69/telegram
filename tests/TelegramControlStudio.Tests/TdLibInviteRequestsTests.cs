@@ -18,5 +18,14 @@ public sealed class TdLibInviteRequestsTests
         Assert.Throws<InvalidOperationException>(() => TdLibInviteRequests.CreateChatInviteLink(1, null, 10, true, false, true));
         Assert.Throws<InvalidOperationException>(() => TdLibInviteRequests.CreateChatInviteLink(1, null, 10, true, true, false));
     }
-}
 
+    [Fact]
+    public void BuildsRevokeRequestOnlyAfterConfirmationAndPermission()
+    {
+        var request = TdLibInviteRequests.RevokeChatInviteLink(-100, "https://t.me/+abc", true, true);
+        Assert.Equal("revokeChatInviteLink", request.Function);
+        Assert.Equal("https://t.me/+abc", request.Parameters["invite_link"]);
+        Assert.Throws<InvalidOperationException>(() => TdLibInviteRequests.RevokeChatInviteLink(-100, "https://t.me/+abc", false, true));
+        Assert.Throws<InvalidOperationException>(() => TdLibInviteRequests.RevokeChatInviteLink(-100, "https://t.me/+abc", true, false));
+    }
+}
