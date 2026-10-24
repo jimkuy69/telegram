@@ -10,18 +10,7 @@ public static class CsvExporter
         var builder = new StringBuilder();
         builder.AppendLine("account_id,telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out,updated_at");
         foreach (var contact in contacts)
-        {
-            builder.AppendLine(string.Join(",",
-                contact.AccountId,
-                contact.TelegramUserId,
-                Escape(contact.FirstName),
-                Escape(contact.LastName),
-                Escape(contact.Username),
-                Escape(contact.PhoneNumber),
-                contact.HasConsent,
-                contact.IsOptedOut,
-                Escape(contact.UpdatedAt.ToString("O"))));
-        }
+            builder.AppendLine(string.Join(",", contact.AccountId, contact.TelegramUserId, Escape(contact.FirstName), Escape(contact.LastName), Escape(contact.Username), Escape(contact.PhoneNumber), contact.HasConsent, contact.IsOptedOut, Escape(contact.UpdatedAt.ToString("O"))));
         return builder.ToString();
     }
 
@@ -32,3 +21,4 @@ public static class CsvExporter
         return quote + text.Replace(quote, quote + quote) + quote;
     }
 }
+
