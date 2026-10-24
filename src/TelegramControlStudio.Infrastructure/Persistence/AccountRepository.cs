@@ -82,4 +82,18 @@ public sealed class AccountRepository(string databasePath)
 
         return accounts;
     }
+
+    public async Task<bool> UpdateStatusAsync(long accountId, string status, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(status);
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE accounts SET status = $status, last_sync_at = $updated_at WHERE id = $account_id;";
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$status", status);
+        command.Parameters.AddWithValue("$updated_at", DateTimeOffset.UtcNow.ToString("O"));
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
 }
+
