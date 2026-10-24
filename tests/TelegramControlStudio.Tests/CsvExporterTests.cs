@@ -16,4 +16,17 @@ public sealed class CsvExporterTests
         Assert.Contains(quote + "A, " + quote + quote + "quoted" + quote + quote + quote, csv);
         Assert.Contains("telegram_user_id", csv);
     }
+
+    [Fact]
+    public void ImportCompatibleExportCanBePreviewedAgain()
+    {
+        var contacts = new[] { new Contact(7, 42, "Smith, Jr.", "Family", "@smith", "+66812345678", true, false, DateTimeOffset.UtcNow) };
+        var csv = CsvExporter.ContactsForImport(contacts);
+        var result = TelegramControlStudio.Core.Import.ContactCsvImporter.Preview(csv, 7);
+        Assert.Single(result.Valid);
+        Assert.Empty(result.Errors);
+        Assert.Equal("Smith, Jr.", result.Valid[0].FirstName);
+        Assert.Equal("smith", result.Valid[0].Username);
+    }
 }
+
