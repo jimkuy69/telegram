@@ -38,6 +38,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set { _dataSourceNotice = value; OnPropertyChanged(); }
     }
 
+    private string _queueSummary = "Queue: ยังไม่มีงาน";
+    public string QueueSummary
+    {
+        get => _queueSummary;
+        private set { _queueSummary = value; OnPropertyChanged(); }
+    }
+
     public int ConsentCount => Contacts.Count(contact => contact.Selected && contact.Consent == "ได้รับความยินยอม");
 
     public bool CanCreateJob => ActiveAccount is not null && ConsentCount > 0;
@@ -76,6 +83,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CreateJobCommand?.Refresh();
     }
 
+    public async Task LoadQueueSummaryAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)
+    {
+        var counts = await new JobRepository(databasePath).CountByStatusAsync(accountId, cancellationToken);
+        QueueSummary = $"Queue: {counts.GetValueOrDefault(JobStatus.Queued)} รอคิว • {counts.GetValueOrDefault(JobStatus.Running)} กำลังทำ • {counts.GetValueOrDefault(JobStatus.WaitingForFloodWait)} รอ FloodWait";
+    }
+
     public MainWindowViewModel()
     {
         CreateJobCommand = new RelayCommand(CreateJob, () => CanCreateJob);
@@ -90,3 +103,4 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
+
