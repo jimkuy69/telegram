@@ -20,6 +20,21 @@ public sealed class TdLibInviteLinkServiceTests
         Assert.Single(await new InviteLinkRepository(path).ListAsync(accountId));
     }
 
+    [Fact]
+    public async Task RevokeRequiresTdLibOkAndMarksLinkRevoked()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tcs-revoke-{Guid.NewGuid():N}.db");
+        await new SqliteDatabase(path).InitializeAsync();
+        var accountId = await new AccountRepository(path).CreateAsync("Revoke test", "+10000000001");
+        var url = "https://t.me/+revoke";
+        await new InviteLinkRepository(path).CreateAsync(new TelegramControlStudio.Core.Domain.InviteLink(0, accountId, -100, url, null, 5, true, DateTimeOffset.UtcNow, null));
+        var client = new FakeClient("""{"@type":"ok"}""");
+        await new TdLibInviteLinkService(path).RevokeAsync(client, accountId, -100, url, true, true);
+        var saved = Assert.Single(await new InviteLinkRepository(path).ListAsync(accountId));
+        Assert.NotNull(saved.RevokedAt);
+        Assert.Equal("revokeChatInviteLink", client.Function);
+    }
+
     private sealed class FakeClient(string response) : ITdLibClient
     {
         public string? Function { get; private set; }
