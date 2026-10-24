@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace TelegramControlStudio.Core.Telegram;
 
-public sealed class TdLibUpdateRouter(AuthorizationStateMachine authorizationStateMachine)
+public sealed class TdLibUpdateRouter(AuthorizationStateMachine authorizationStateMachine, Action<AuthorizationState>? onAuthorizationStateChanged = null)
 {
     public void Route(string json)
     {
@@ -15,6 +15,8 @@ public sealed class TdLibUpdateRouter(AuthorizationStateMachine authorizationSta
             state.TryGetProperty("@type", out var stateType))
         {
             authorizationStateMachine.Apply(stateType.GetString() ?? string.Empty);
+            onAuthorizationStateChanged?.Invoke(authorizationStateMachine.Current);
         }
     }
 }
+
