@@ -99,6 +99,17 @@ public partial class MainWindow : Window
         new PendingRequestsWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
+    private void InviteLinks_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        new InviteLinksWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
+    }
+
     private void ImportContacts_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
