@@ -1,17 +1,23 @@
 using TelegramControlStudio.Core.Telegram;
 using TelegramControlStudio.Core.Domain;
+using TelegramControlStudio.Core.Security;
 using TelegramControlStudio.Infrastructure.Persistence;
 
 namespace TelegramControlStudio.Infrastructure.Telegram;
 
-public sealed class TdLibSessionStateBridge(
-    string databasePath,
-    long accountId,
-    string sessionDirectory,
-    AuthorizationStateMachine stateMachine)
+public sealed class TdLibSessionStateBridge
 {
-    private readonly AccountRepository _accounts = new(databasePath);
-    private readonly string _sessionDirectory = sessionDirectory;
+    private readonly AccountRepository _accounts;
+    private readonly string _sessionDirectory;
+    private readonly long _accountId;
+    private readonly AuthorizationStateMachine _stateMachine;
+
+    public TdLibSessionStateBridge(string databasePath, long accountId, string sessionDirectory, AuthorizationStateMachine stateMachine)
+    {
+        if (!SessionPathPolicy.IsWithinSessionRoot(sessionDirectory))
+            throw new ArgumentException("TDLib session directory must be inside the per-account local session root.", nameof(sessionDirectory));
+        _accounts = new AccountRepository(databasePath); _accountId = accountId; _sessionDirectory = sessionDirectory; _stateMachine = stateMachine;
+    }
 
     public Task ApplyAsync(AuthorizationState state, CancellationToken cancellationToken = default) =>
         ApplyCoreAsync(state, cancellationToken);
@@ -20,23 +26,23 @@ public sealed class TdLibSessionStateBridge(
     {
         var authorized = state == AuthorizationState.Ready;
         var session = new AccountSession(
-            accountId,
+            _accountId,
             _sessionDirectory,
             state.ToString(),
             authorized,
             DateTimeOffset.UtcNow);
         await _accounts.SaveSessionAsync(session, cancellationToken);
-        await _accounts.UpdateStatusAsync(accountId, MapAccountStatus(state), cancellationToken);
+        await _accounts.UpdateStatusAsync(_accountId, MapAccountStatus(state), cancellationToken);
     }
 
     public void Attach()
     {
-        stateMachine.StateChanged += OnStateChanged;
+        _stateMachine.StateChanged += OnStateChanged;
     }
 
     public void Detach()
     {
-        stateMachine.StateChanged -= OnStateChanged;
+        _stateMachine.StateChanged -= OnStateChanged;
     }
 
     private void OnStateChanged(object? sender, AuthorizationState state)
