@@ -40,7 +40,9 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force td-src\build | Out-Null
-          cmake -S td-src -B td-src\build -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$pwd\vcpkg\scripts\buildsystems\vcpkg.cmake
+          $toolchain = Join-Path (Get-Location) 'vcpkg\scripts\buildsystems\vcpkg.cmake'
+          if (-not (Test-Path -LiteralPath $toolchain)) { throw "vcpkg toolchain file was not found: $toolchain" }
+          cmake -S td-src -B td-src\build -A x64 -DCMAKE_BUILD_TYPE=Release "-DCMAKE_TOOLCHAIN_FILE=$toolchain"
 
       - name: Build tdjson
         shell: pwsh
