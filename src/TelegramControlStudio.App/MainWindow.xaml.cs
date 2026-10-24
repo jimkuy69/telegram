@@ -1,6 +1,8 @@
 using System.Windows;
 using System.IO;
+using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.App.ViewModels;
+using TelegramControlStudio.Infrastructure.Persistence;
 
 namespace TelegramControlStudio.App;
 
@@ -22,13 +24,36 @@ public partial class MainWindow : Window
     {
         try
         {
+            await new SqliteDatabase(databasePath).InitializeAsync();
             await viewModel.LoadAccountsAsync(databasePath);
+            await RecoverJobsAsync(databasePath, viewModel.Accounts);
             if (viewModel.ActiveAccount is not null)
                 await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
         }
         catch
         {
             // The dashboard remains usable before the first local account exists.
+        }
+    }
+
+    private static async Task RecoverJobsAsync(string databasePath, IEnumerable<Account> accounts)
+    {
+        var jobs = new JobRepository(databasePath);
+        var logs = new ActivityLogRepository(databasePath);
+        foreach (var account in accounts)
+        {
+            await jobs.ResumeEligibleJobsAsync(account.Id, DateTimeOffset.UtcNow);
+            var paused = await jobs.PauseRunningJobsAsync(account.Id);
+            if (paused > 0)
+            {
+                await logs.AppendAsync(new ActivityLog(
+                    account.Id,
+                    null,
+                    "Info",
+                    "SafeStartupRecovery",
+                    $"Paused {paused} running job(s) during startup recovery.",
+                    DateTimeOffset.UtcNow));
+            }
         }
     }
 
@@ -55,3 +80,4 @@ public partial class MainWindow : Window
             Title = "Telegram Control Studio • บันทึกบัญชีแล้ว";
     }
 }
+
