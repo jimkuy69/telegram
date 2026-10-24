@@ -21,6 +21,8 @@ public sealed class CampaignQueueServiceTests
             var counts = await new JobRepository(path).CountByStatusAsync(accountId);
             var items = await new JobItemRepository(path).ListAsync(jobId);
             Assert.NotEqual(Guid.Empty, jobId); Assert.Equal(1, counts[JobStatus.Queued]); Assert.Single(items); Assert.Equal(123, items[0].TargetId); Assert.Equal("Queued", items[0].Status);
+            Assert.True(await new JobItemRepository(path).UpdateStatusAsync(jobId, 123, "Failed", "temporary error", true));
+            var failed = (await new JobItemRepository(path).ListAsync(jobId)).Single(); Assert.Equal("Failed", failed.Status); Assert.Equal(1, failed.RetryCount); Assert.Equal("temporary error", failed.LastError);
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
