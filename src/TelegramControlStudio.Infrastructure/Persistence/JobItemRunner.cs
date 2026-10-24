@@ -38,6 +38,8 @@ public sealed class JobItemRunner(string databasePath)
                 await itemRepository.UpdateStatusAsync(job.Id, item.TargetId, "Failed", exception.Message, incrementRetry: true, cancellationToken: cancellationToken);
                 var decision = await failureHandler.HandleAsync(job, exception.Message, cancellationToken);
                 waitingForFloodWait = decision.NextStatus == JobStatus.WaitingForFloodWait;
+                if (decision.ShouldRetry)
+                    await itemRepository.UpdateStatusAsync(job.Id, item.TargetId, "Queued", exception.Message, cancellationToken: cancellationToken);
                 if (decision.NextStatus == JobStatus.WaitingForFloodWait || !decision.ShouldRetry) break;
             }
         }
