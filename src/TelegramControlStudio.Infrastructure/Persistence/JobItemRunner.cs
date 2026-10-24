@@ -31,6 +31,7 @@ public sealed class JobItemRunner(string databasePath)
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 await itemRepository.UpdateStatusAsync(job.Id, item.TargetId, "Queued", "Cancelled by user", cancellationToken: CancellationToken.None);
+                await new JobRepository(databasePath).UpdateStatusAsync(job.Id, JobStatus.Paused, "Cancelled by user", cancellationToken: CancellationToken.None);
                 throw;
             }
             catch (Exception exception)
