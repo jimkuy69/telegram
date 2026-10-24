@@ -60,4 +60,23 @@ public sealed class CampaignQueueServiceTests
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
+
+    [Fact]
+    public async Task DuplicateIdempotencyKeyReturnsExistingJob()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-idempotency-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            var accountId = await new AccountRepository(path).CreateAsync("Idempotency", "+66000000015");
+            var jobs = new JobRepository(path);
+            var first = await jobs.CreateAsync(accountId, "Message", 1, "same-key");
+            var second = await jobs.CreateAsync(accountId, "Message", 1, "same-key");
+            Assert.Equal(first, second);
+            Assert.Single(await jobs.ListAsync(accountId));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => jobs.CreateAsync(accountId, "Different", 1, "same-key"));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
 }
+
