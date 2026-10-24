@@ -33,6 +33,8 @@ public sealed class TdLibInviteLinkServiceTests
         var saved = Assert.Single(await new InviteLinkRepository(path).ListAsync(accountId));
         Assert.NotNull(saved.RevokedAt);
         Assert.Equal("revokeChatInviteLink", client.Function);
+        var logs = await new ActivityLogRepository(path).ListAsync(accountId);
+        Assert.Contains(logs, item => item.EventType == "InviteLinkRevoked");
     }
 
     private sealed class FakeClient(string response) : ITdLibClient
