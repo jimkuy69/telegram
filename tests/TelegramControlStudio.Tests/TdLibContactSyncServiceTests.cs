@@ -38,6 +38,7 @@ public sealed class TdLibContactSyncServiceTests
             var stored = await new ContactRepository(path).ListAsync(accountId);
             Assert.Equal(2, stored.Count);
             Assert.False(stored.Single(item => item.TelegramUserId == 42).HasConsent);
+            Assert.Contains(await new ActivityLogRepository(path).ListAsync(accountId), log => log.EventType == "ContactsSyncedReadOnly" && log.Message.Contains("stored 2 contact(s)", StringComparison.Ordinal));
         }
         finally { SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
