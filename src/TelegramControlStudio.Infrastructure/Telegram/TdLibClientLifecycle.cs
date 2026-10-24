@@ -5,7 +5,8 @@ namespace TelegramControlStudio.Infrastructure.Telegram;
 public sealed class TdLibClientLifecycle(
     TdLibJsonClient client,
     TdLibUpdateRouter updateRouter,
-    Func<CancellationToken, Task<string?>> receiveAsync)
+    Func<CancellationToken, Task<string?>> receiveAsync,
+    Func<string, CancellationToken, Task>? updateHandler = null)
 {
     private CancellationTokenSource? _stopSource;
     private Task? _receiveTask;
@@ -39,7 +40,11 @@ public sealed class TdLibClientLifecycle(
         {
             var json = await receiveAsync(cancellationToken);
             if (string.IsNullOrWhiteSpace(json)) continue;
-            if (!client.HandleResponse(json)) updateRouter.Route(json);
+            if (!client.HandleResponse(json))
+            {
+                updateRouter.Route(json);
+                if (updateHandler is not null) await updateHandler(json, cancellationToken);
+            }
         }
     }
 }
