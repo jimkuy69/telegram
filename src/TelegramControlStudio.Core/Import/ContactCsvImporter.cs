@@ -12,6 +12,7 @@ public static class ContactCsvImporter
         if (accountId <= 0) throw new ArgumentOutOfRangeException(nameof(accountId));
         var valid = new List<Contact>();
         var errors = new List<string>();
+        var seenUserIds = new HashSet<long>();
         var lines = csv.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
         if (lines.Length == 0 || !lines[0].Equals("telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out", StringComparison.OrdinalIgnoreCase))
             return new([], ["HEADER_INVALID"]);
@@ -21,6 +22,11 @@ public static class ContactCsvImporter
             if (fields.Length != 7 || !long.TryParse(fields[0], out var userId) || userId <= 0)
             {
                 errors.Add($"ROW_{index + 1}_INVALID");
+                continue;
+            }
+            if (!seenUserIds.Add(userId))
+            {
+                errors.Add($"ROW_{index + 1}_DUPLICATE");
                 continue;
             }
             if (!bool.TryParse(fields[5], out var consent) || !bool.TryParse(fields[6], out var optedOut))
