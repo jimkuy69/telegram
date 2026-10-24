@@ -34,6 +34,8 @@ public sealed class SqliteDatabase
             CREATE INDEX IF NOT EXISTS ix_campaign_recipients_status ON campaign_recipients(campaign_id, status);
             CREATE TABLE IF NOT EXISTS media_files (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, file_name TEXT NOT NULL, local_path TEXT NOT NULL, sha256 TEXT NOT NULL, mime_type TEXT NOT NULL, size_bytes INTEGER NOT NULL, created_at TEXT NOT NULL, deleted_at TEXT, FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE UNIQUE INDEX IF NOT EXISTS ux_media_files_account_sha256 ON media_files(account_id, sha256);
+            CREATE TABLE IF NOT EXISTS invite_links (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, chat_id INTEGER NOT NULL, invite_url TEXT NOT NULL, expires_at TEXT, usage_limit INTEGER, creates_join_request INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, revoked_at TEXT, FOREIGN KEY(account_id) REFERENCES accounts(id));
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_invite_links_account_url ON invite_links(account_id, invite_url);
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(1, CURRENT_TIMESTAMP);
             """;
