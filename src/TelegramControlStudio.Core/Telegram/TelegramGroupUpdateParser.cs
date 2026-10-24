@@ -9,7 +9,8 @@ public static class TelegramGroupUpdateParser
     {
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
-        if (!root.TryGetProperty("chat", out var chat) || !chat.TryGetProperty("id", out var id)) return null;
+        var chat = root.TryGetProperty("chat", out var nestedChat) ? nestedChat : root;
+        if (!chat.TryGetProperty("id", out var id)) return null;
         var type = chat.TryGetProperty("type", out var typeElement) ? typeElement.GetProperty("@type").GetString() ?? "unknown" : "unknown";
         var kind = type switch { "chatTypeBasicGroup" => "Group", "chatTypeSupergroup" => "Channel", _ => "Unknown" };
         var title = chat.TryGetProperty("title", out var titleElement) ? titleElement.GetString() ?? "(ไม่มีชื่อ)" : "(ไม่มีชื่อ)";
