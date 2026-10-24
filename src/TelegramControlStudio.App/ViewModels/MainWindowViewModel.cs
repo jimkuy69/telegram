@@ -35,6 +35,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     private string _dataSourceNotice = "ข้อมูลตัวอย่างในเครื่องเท่านั้น • ยังไม่ได้ Sync Telegram";
+    public string SystemStatus => "Local SQLite • TDLib Native ยังไม่ติดตั้ง • การส่งจริงปิดอยู่";
     public string ActiveAccountStatus => ActiveAccount is null
         ? "ยังไม่ได้เลือกบัญชี"
         : $"{ActiveAccount.DisplayName} • {ActiveAccount.Status}";
