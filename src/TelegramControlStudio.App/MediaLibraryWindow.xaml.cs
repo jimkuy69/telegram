@@ -17,7 +17,25 @@ public partial class MediaLibraryWindow : Window
         Loaded += async (_, _) => await LoadAsync();
     }
 
-    private async Task LoadAsync() => MediaGrid.ItemsSource = await new MediaRepository(_databasePath).ListAsync(_accountId);
+    private async Task LoadAsync()
+    {
+        var media = await new MediaRepository(_databasePath).ListAsync(_accountId);
+        ApplyFilter(media);
+    }
+
+    private void ApplyFilter(IReadOnlyList<MediaFile> media)
+    {
+        var query = SearchBox.Text.Trim();
+        var filtered = string.IsNullOrWhiteSpace(query)
+            ? media
+            : media.Where(item => item.FileName.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || item.MimeType.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || item.Sha256.Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
+        MediaGrid.ItemsSource = filtered;
+        CountText.Text = $"แสดง {filtered.Count} จาก {media.Count} ไฟล์";
+    }
+
+    private async void Search_Click(object sender, RoutedEventArgs e) => await LoadAsync();
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await LoadAsync();
 
