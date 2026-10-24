@@ -66,7 +66,7 @@ public partial class MediaLibraryWindow : Window
         MessageBox.Show($"ส่งออก Media {filtered.Count} รายการแล้ว", "Export สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    private static string Csv(string value) => $""{value.Replace(""", """")}"";
+    private static string Csv(string value) => $"\"{value.Replace("\"", "\"\"")}\"";
 
     private async void Delete_Click(object sender, RoutedEventArgs e)
     {
