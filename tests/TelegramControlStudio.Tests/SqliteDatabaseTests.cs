@@ -13,12 +13,13 @@ public sealed class SqliteDatabaseTests
         try
         {
             await new SqliteDatabase(path).InitializeAsync();
-            await using var connection = new SqliteConnection($"Data Source={path}");
-            await connection.OpenAsync();
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT version FROM schema_migrations;";
-
-            Assert.Equal(1L, (long)(await command.ExecuteScalarAsync() ?? 0L));
+            await using (var connection = new SqliteConnection($"Data Source={path}"))
+            {
+                await connection.OpenAsync();
+                await using var command = connection.CreateCommand();
+                command.CommandText = "SELECT version FROM schema_migrations;";
+                Assert.Equal(1L, (long)(await command.ExecuteScalarAsync() ?? 0L));
+            }
         }
         finally
         {
