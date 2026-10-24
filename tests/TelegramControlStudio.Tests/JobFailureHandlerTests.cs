@@ -25,6 +25,8 @@ public sealed class JobFailureHandlerTests
             Assert.Equal(JobStatus.WaitingForFloodWait, decision.NextStatus);
             Assert.Equal(JobStatus.WaitingForFloodWait, saved.Status);
             Assert.InRange(saved.FloodWaitUntil!.Value, DateTimeOffset.UtcNow.AddSeconds(40), DateTimeOffset.UtcNow.AddSeconds(45));
+            var logs = await new ActivityLogRepository(path).ListAsync(accountId);
+            Assert.Contains(logs, entry => entry.EventType == "FloodWait" && entry.JobId == id);
         }
         finally
         {
