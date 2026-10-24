@@ -34,5 +34,30 @@ public sealed class CampaignQueueServiceTests
         try { await new SqliteDatabase(path).InitializeAsync(); await Assert.ThrowsAsync<InvalidOperationException>(() => new CampaignQueueService(path).QueueCampaignAsync(Guid.NewGuid(), 1, false)); }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
-}
 
+    [Fact]
+    public async Task CampaignIncludesOnlyConsentedNonOptedOutContactsFromAccount()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-queue-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            var accountId = await new AccountRepository(path).CreateAsync("Policy", "+66000000013");
+            var otherAccountId = await new AccountRepository(path).CreateAsync("Other", "+66000000014");
+            var templateId = await new TemplateRepository(path).CreateAsync(new MessageTemplate(0, accountId, "Policy", "th", "Hello", null, 1, true, DateTimeOffset.UtcNow));
+            var contacts = new[]
+            {
+                new Contact(accountId, 1, "Allowed", "", null, null, true, false, DateTimeOffset.UtcNow),
+                new Contact(accountId, 2, "Opted", "", null, null, true, true, DateTimeOffset.UtcNow),
+                new Contact(accountId, 3, "NoConsent", "", null, null, false, false, DateTimeOffset.UtcNow),
+                new Contact(otherAccountId, 4, "Other", "", null, null, true, false, DateTimeOffset.UtcNow)
+            };
+
+            var campaignId = await new CampaignBuilder(path).CreateFromConsentedContactsAsync(accountId, templateId, "Policy", "consent", contacts, true);
+            var recipients = await new CampaignRepository(path).ListRecipientsAsync(campaignId);
+            Assert.Single(recipients);
+            Assert.Equal(1, recipients[0].TelegramUserId);
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+}
