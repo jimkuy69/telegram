@@ -49,13 +49,19 @@ public sealed class TdLibJsonClient : ITdLibClient
     // The native receive loop will call this method for every complete TDLib JSON object.
     public bool HandleResponse(string json)
     {
-        using var document = JsonDocument.Parse(json);
-        if (!document.RootElement.TryGetProperty("@extra", out var extraElement))
-            return false;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (!document.RootElement.TryGetProperty("@extra", out var extraElement))
+                return false;
 
-        var extra = extraElement.GetString() ?? extraElement.ToString();
-        return _pending.TryRemove(extra, out var completion) &&
-               completion.TrySetResult(json);
+            var extra = extraElement.GetString() ?? extraElement.ToString();
+            return _pending.TryRemove(extra, out var completion) && completion.TrySetResult(json);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     public ValueTask DisposeAsync()
