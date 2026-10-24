@@ -1,0 +1,9 @@
+<Window x:Class="TelegramControlStudio.App.TemplateEditorWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Template Editor" Width="820" Height="650" Background="#08111F" Foreground="#F4F7FF" WindowStartupLocation="CenterOwner">
+ <Grid Margin="18"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <TextBlock Grid.ColumnSpan="2" Text="Template Editor / Preview" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,14"/>
+  <StackPanel Grid.Row="1" Margin="0,0,12,0"><TextBlock Text="ชื่อ Template"/><TextBox x:Name="NameBox" Padding="9" Margin="0,5,0,12"/><TextBlock Text="ภาษา"/><ComboBox x:Name="LanguageBox" SelectedIndex="0" Margin="0,5,0,12"><ComboBoxItem Content="th"/><ComboBoxItem Content="en"/></ComboBox><TextBlock Text="ข้อความ"/><TextBox x:Name="BodyBox" Height="220" AcceptsReturn="True" TextWrapping="Wrap" Padding="10" Margin="0,5,0,12"/><TextBlock Text="ลิงก์ (ถ้ามี)"/><TextBox x:Name="LinkBox" Padding="9" Margin="0,5,0,0"/></StackPanel>
+  <Border Grid.Row="1" Grid.Column="1" Background="#182943" Padding="14" CornerRadius="8"><StackPanel><TextBlock Text="Preview" FontSize="17" FontWeight="SemiBold"/><TextBlock x:Name="PreviewText" Text="พิมพ์ข้อความเพื่อดู Preview" TextWrapping="Wrap" Margin="0,12,0,0"/><TextBlock x:Name="PreviewLink" Foreground="#60A5FA" TextWrapping="Wrap" Margin="0,12,0,0"/></StackPanel></Border>
+  <DockPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="0,14,0,0"><Button Content="อัปเดต Preview" Click="Preview_Click"/><Button Content="บันทึก Template" Click="Save_Click" Background="#6941E8" Margin="10,0,0,0"/><Button Content="ปิด" Click="Close_Click" HorizontalAlignment="Right" Margin="10,0,0,0"/></DockPanel>
+ </Grid>
+</Window>
+
