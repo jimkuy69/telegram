@@ -55,6 +55,28 @@ public sealed class JobItemRunnerTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
 
+    [Fact]
+    public async Task CancellationPausesJobAndReturnsItemToQueue()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-runner-{Guid.NewGuid():N}.db");
+        try
+        {
+            var (job, accountId) = await CreateJobAsync(path);
+            using var cancellation = new CancellationTokenSource();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                new JobItemRunner(path).RunAsync(job, async (_, _) =>
+                {
+                    await cancellation.CancelAsync();
+                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellation.Token);
+                }, cancellation.Token));
+            var savedJob = (await new JobRepository(path).ListAsync(accountId)).Single();
+            var item = (await new JobItemRepository(path).ListAsync(job.Id)).Single();
+            Assert.Equal(JobStatus.Paused, savedJob.Status);
+            Assert.Equal("Queued", item.Status);
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
     private static async Task<(Job Job, long AccountId)> CreateJobAsync(string path)
     {
         await new SqliteDatabase(path).InitializeAsync();
