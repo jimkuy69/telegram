@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using TelegramControlStudio.Core.Telegram;
+using TelegramControlStudio.Core.Security;
 using TelegramControlStudio.Infrastructure.Persistence;
 using TelegramControlStudio.Infrastructure.Telegram;
 using Xunit;
@@ -17,7 +18,7 @@ public sealed class TdLibSessionStateBridgeTests
             await new SqliteDatabase(path).InitializeAsync();
             var accountId = await new AccountRepository(path).CreateAsync("Test", "+66000000000");
             var machine = new AuthorizationStateMachine();
-            var bridge = new TdLibSessionStateBridge(path, accountId, Path.Combine(Path.GetTempPath(), "tdlib-test"), machine);
+            var bridge = new TdLibSessionStateBridge(path, accountId, SessionPathPolicy.GetAccountSessionDirectory(accountId), machine);
 
             await bridge.ApplyAsync(AuthorizationState.Ready);
 
