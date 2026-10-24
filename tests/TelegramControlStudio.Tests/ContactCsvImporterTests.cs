@@ -36,5 +36,14 @@ public sealed class ContactCsvImporterTests
         Assert.Equal("valid", result.Valid[0].Username);
         Assert.Equal("+66812345678", result.Valid[0].PhoneNumber);
     }
+
+    [Fact]
+    public void SupportsQuotedFieldsContainingCommas()
+    {
+        var header = "telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out";
+        var result = ContactCsvImporter.Preview($"{header}\n42,\"Smith, Jr.\",Family,user,,true,false", 7);
+        Assert.Single(result.Valid);
+        Assert.Equal("Smith, Jr.", result.Valid[0].FirstName);
+    }
 }
 
