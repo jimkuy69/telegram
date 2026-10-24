@@ -75,4 +75,23 @@ public sealed class TemplateRepository(string databasePath)
         }
         return templates;
     }
+
+    public async Task<bool> DeactivateAsync(long accountId, long templateId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE message_templates SET is_active = 0 WHERE account_id = $account_id AND id = $id AND is_active = 1;";
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$id", templateId);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
+
+    public async Task<long> CreateNextVersionAsync(MessageTemplate template, CancellationToken cancellationToken = default)
+    {
+        var active = await ListAsync(template.AccountId, activeOnly: false, cancellationToken);
+        var nextVersion = active.Where(item => item.Name == template.Name).Select(item => item.Version).DefaultIfEmpty(0).Max() + 1;
+        return await CreateAsync(template with { Id = 0, Version = nextVersion, IsActive = true, UpdatedAt = DateTimeOffset.UtcNow }, cancellationToken);
+    }
 }
+
