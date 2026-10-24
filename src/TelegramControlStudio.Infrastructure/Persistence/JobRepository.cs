@@ -74,4 +74,28 @@ public sealed class JobRepository(string databasePath)
         command.Parameters.AddWithValue("$now", now);
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
+
+    public async Task<IReadOnlyList<Guid>> ListRecoverableAsync(
+        long accountId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id
+            FROM jobs
+            WHERE account_id = $account_id
+              AND status IN ('Running', 'WaitingForFloodWait')
+            ORDER BY created_at;
+            """;
+        command.Parameters.AddWithValue("$account_id", accountId);
+
+        var jobs = new List<Guid>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            if (Guid.TryParse(reader.GetString(0), out var id))
+                jobs.Add(id);
+        return jobs;
+    }
 }
