@@ -56,7 +56,7 @@ jobs:
 
       - name: Build tdjson
         shell: pwsh
-        run: cmake --build td-src\build --config Release --target tdjson --parallel
+        run: cmake --build td-src\build --config Release --target tdjson --parallel 2
 
       - name: Verify and package native artifact
         shell: pwsh
