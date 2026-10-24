@@ -1,0 +1,25 @@
+<Window x:Class="TelegramControlStudio.App.AddAccountWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="เพิ่มบัญชี Telegram" Width="560" Height="520"
+        WindowStartupLocation="CenterOwner" Background="#0B1627" Foreground="#F4F7FF">
+    <StackPanel Margin="28">
+        <TextBlock Text="เพิ่มบัญชี Telegram" FontSize="25" FontWeight="SemiBold"/>
+        <TextBlock Text="ขั้นตอน 1 จาก 4 • ข้อมูลบัญชี" Foreground="#9C6CFF" Margin="0,6,0,24"/>
+        <TextBlock Text="ชื่อแสดงผล" Foreground="#AFC3DF"/>
+        <TextBox x:Name="DisplayNameBox" Margin="0,7,0,16" Padding="11"
+                 Background="#101F35" Foreground="#D9E2F2" BorderBrush="#29486E"/>
+        <TextBlock Text="เบอร์โทรศัพท์ Telegram" Foreground="#AFC3DF"/>
+        <TextBox x:Name="PhoneNumberBox" Margin="0,7,0,12" Padding="11"
+                 Background="#101F35" Foreground="#D9E2F2" BorderBrush="#29486E"/>
+        <TextBlock Text="ใช้รูปแบบสากล เช่น +66..." Foreground="#7187A7"/>
+        <Border Background="#182943" CornerRadius="8" Padding="12" Margin="0,22,0,20">
+            <TextBlock Text="ระบบจะไม่บันทึก OTP หรือ 2FA Password ลง Log&#10;การเชื่อมต่อ Telegram จะเริ่มหลังจากยืนยันข้อมูลและติดตั้ง TDLib ที่ตรวจสอบ Hash แล้ว"
+                       Foreground="#FBBF24" TextWrapping="Wrap"/>
+        </Border>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="ยกเลิก" Click="Cancel_Click" Margin="0,0,10,0"/>
+            <Button Content="บันทึกข้อมูลบัญชี" Click="Save_Click" Background="#6941E8" Foreground="White"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
