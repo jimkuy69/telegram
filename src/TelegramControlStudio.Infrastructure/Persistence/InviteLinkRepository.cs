@@ -54,4 +54,17 @@ public sealed class InviteLinkRepository(string databasePath)
         }
         return links;
     }
+
+    public async Task<bool> MarkRevokedAsync(long accountId, string inviteUrl, DateTimeOffset revokedAt, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(inviteUrl);
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE invite_links SET revoked_at = $revoked_at WHERE account_id = $account_id AND invite_url = $invite_url AND revoked_at IS NULL;";
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$invite_url", inviteUrl);
+        command.Parameters.AddWithValue("$revoked_at", revokedAt.ToString("O"));
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
 }
