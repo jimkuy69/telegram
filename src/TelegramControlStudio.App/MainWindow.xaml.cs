@@ -28,6 +28,8 @@ public partial class MainWindow : Window
             await viewModel.LoadAccountsAsync(databasePath);
             await RecoverJobsAsync(databasePath, viewModel.Accounts);
             if (viewModel.ActiveAccount is not null)
+                await viewModel.LoadQueueSummaryAsync(databasePath, viewModel.ActiveAccount.Id);
+            if (viewModel.ActiveAccount is not null)
                 await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
         }
         catch
