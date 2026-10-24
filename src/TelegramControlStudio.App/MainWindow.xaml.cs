@@ -15,7 +15,6 @@ public partial class MainWindow : Window
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "TelegramControlStudio",
             "telegram-control-studio.db");
-        _ = LoadContactsAsync(viewModel, databasePath);
         _ = LoadAccountsAsync(viewModel, databasePath);
     }
 
@@ -24,6 +23,8 @@ public partial class MainWindow : Window
         try
         {
             await viewModel.LoadAccountsAsync(databasePath);
+            if (viewModel.ActiveAccount is not null)
+                await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
         }
         catch
         {
