@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AssemblyName>TelegramControlStudio</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TelegramControlStudio.Core\TelegramControlStudio.Core.csproj" />
+    <ProjectReference Include="..\TelegramControlStudio.Infrastructure\TelegramControlStudio.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
