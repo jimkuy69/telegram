@@ -30,5 +30,40 @@ public sealed class JoinRequestRepository(string databasePath)
         command.Parameters.AddWithValue("$decision_reason", (object?)request.DecisionReason ?? DBNull.Value);
         return (long)(await command.ExecuteScalarAsync(cancellationToken) ?? throw new InvalidOperationException("Join request upsert did not return an ID."));
     }
+
+    public async Task<bool> DecideAsync(
+        long accountId,
+        long chatId,
+        long telegramUserId,
+        string decision,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        if (decision is not ("Approved" or "Rejected")) throw new ArgumentException("Decision must be Approved or Rejected.", nameof(decision));
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE join_requests
+            SET status = $status, decision_at = $decision_at, decision_reason = $reason
+            WHERE account_id = $account_id AND chat_id = $chat_id AND telegram_user_id = $telegram_user_id AND status = 'Pending';
+            """;
+        command.Parameters.AddWithValue("$status", decision);
+        command.Parameters.AddWithValue("$decision_at", DateTimeOffset.UtcNow.ToString("O"));
+        command.Parameters.AddWithValue("$reason", reason);
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$chat_id", chatId);
+        command.Parameters.AddWithValue("$telegram_user_id", telegramUserId);
+        var changed = await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+        if (changed)
+        {
+            await new ActivityLogRepository(databasePath).AppendAsync(new Core.Domain.ActivityLog(
+                accountId, null, "Info", "JoinRequestDecision",
+                $"Join request {decision} for chat {chatId}, user {telegramUserId}. Reason: {reason}",
+                DateTimeOffset.UtcNow), cancellationToken);
+        }
+        return changed;
+    }
 }
 
