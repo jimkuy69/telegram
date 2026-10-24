@@ -6,12 +6,24 @@ public sealed class TdLibUpdateRouter(AuthorizationStateMachine authorizationSta
 {
     public void Route(string json)
     {
-        using var document = JsonDocument.Parse(json);
-        if (!document.RootElement.TryGetProperty("@type", out var type))
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            RouteDocument(document.RootElement);
+        }
+        catch (JsonException)
+        {
+            // A malformed native update must not terminate the receive loop.
+        }
+    }
+
+    private void RouteDocument(JsonElement root)
+    {
+        if (!root.TryGetProperty("@type", out var type))
             return;
 
         if (type.GetString() == "updateAuthorizationState" &&
-            document.RootElement.TryGetProperty("authorization_state", out var state) &&
+            root.TryGetProperty("authorization_state", out var state) &&
             state.TryGetProperty("@type", out var stateType))
         {
             authorizationStateMachine.Apply(stateType.GetString() ?? string.Empty);
