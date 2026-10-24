@@ -46,4 +46,32 @@ public sealed class JobRepository(string databasePath)
         await command.ExecuteNonQueryAsync(cancellationToken);
         return id;
     }
+
+    public async Task<bool> UpdateStatusAsync(
+        Guid jobId,
+        JobStatus status,
+        string? lastError = null,
+        DateTimeOffset? floodWaitUntil = null,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE jobs
+            SET status = $status,
+                last_error = $last_error,
+                flood_wait_until = $flood_wait_until,
+                started_at = CASE WHEN $status = 'Running' AND started_at IS NULL THEN $now ELSE started_at END,
+                completed_at = CASE WHEN $status IN ('Completed', 'PartiallyCompleted', 'Failed', 'Cancelled') THEN $now ELSE completed_at END
+            WHERE id = $id;
+            """;
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        command.Parameters.AddWithValue("$id", jobId.ToString());
+        command.Parameters.AddWithValue("$status", status.ToString());
+        command.Parameters.AddWithValue("$last_error", (object?)lastError ?? DBNull.Value);
+        command.Parameters.AddWithValue("$flood_wait_until", floodWaitUntil?.ToString("O") ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("$now", now);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
 }
