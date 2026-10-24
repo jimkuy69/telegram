@@ -16,4 +16,17 @@ public sealed class AuthorizationStateMachineTests
         machine.Apply(tdlibState);
         Assert.Equal(expected, machine.Current);
     }
+
+    [Fact]
+    public void EmitsStateChangedWithoutExposingCredentials()
+    {
+        var machine = new AuthorizationStateMachine();
+        AuthorizationState? observed = null;
+        machine.StateChanged += (_, state) => observed = state;
+
+        machine.Apply("authorizationStateWaitCode");
+
+        Assert.Equal(AuthorizationState.WaitCode, observed);
+    }
 }
+
