@@ -27,6 +27,8 @@ public sealed class SqliteDatabase
             CREATE INDEX IF NOT EXISTS ix_contacts_account_consent ON contacts(account_id, has_consent, is_opted_out);
             CREATE TABLE IF NOT EXISTS activity_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, job_id TEXT, level TEXT NOT NULL, event_type TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE INDEX IF NOT EXISTS ix_activity_logs_account_created ON activity_logs(account_id, created_at);
+            CREATE TABLE IF NOT EXISTS message_templates (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, name TEXT NOT NULL, language TEXT NOT NULL, body TEXT NOT NULL, link TEXT, version INTEGER NOT NULL, is_active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL, FOREIGN KEY(account_id) REFERENCES accounts(id));
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_message_templates_account_name_version ON message_templates(account_id, name, version);
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(1, CURRENT_TIMESTAMP);
             """;
