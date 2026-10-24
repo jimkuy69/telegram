@@ -1,5 +1,9 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Security.Cryptography;
+using TelegramControlStudio.Core.Import;
+using Microsoft.Win32;
 using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.Infrastructure.Persistence;
 
@@ -9,6 +13,7 @@ public partial class TemplateEditorWindow : Window
 {
     private readonly string _databasePath;
     private readonly long _accountId;
+    private string? _selectedMediaPath;
     public TemplateEditorWindow(string databasePath, long accountId)
     {
         InitializeComponent();
@@ -19,6 +24,19 @@ public partial class TemplateEditorWindow : Window
     }
 
     private void Preview_Click(object sender, RoutedEventArgs e) => UpdatePreview();
+    private void ChooseMedia_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Filter = "Media (*.jpg;*.jpeg;*.png;*.webp;*.pdf)|*.jpg;*.jpeg;*.png;*.webp;*.pdf", CheckFileExists = true };
+        if (dialog.ShowDialog(this) != true) return;
+        var mime = Path.GetExtension(dialog.FileName).ToLowerInvariant() switch { ".jpg" or ".jpeg" => "image/jpeg", ".png" => "image/png", ".webp" => "image/webp", ".pdf" => "application/pdf", _ => "" };
+        var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "media");
+        var validation = MediaFileValidator.Validate(Path.Combine(root, Path.GetFileName(dialog.FileName)), mime, new FileInfo(dialog.FileName).Length, root);
+        if (!validation.IsValid) { MessageBox.Show(validation.ErrorCode, "Media ไม่ผ่านการตรวจ"); return; }
+        Directory.CreateDirectory(root);
+        _selectedMediaPath = Path.Combine(root, Path.GetFileName(dialog.FileName));
+        File.Copy(dialog.FileName, _selectedMediaPath, true);
+        MediaText.Text = $"เลือกแล้ว: {Path.GetFileName(dialog.FileName)}";
+    }
     private void UpdatePreview()
     {
         PreviewText.Text = BodyBox.Text;
@@ -34,6 +52,13 @@ public partial class TemplateEditorWindow : Window
         }
         var template = new MessageTemplate(0, _accountId, NameBox.Text.Trim(), ((ComboBoxItem)LanguageBox.SelectedItem).Content.ToString() ?? "th", BodyBox.Text, string.IsNullOrWhiteSpace(LinkBox.Text) ? null : LinkBox.Text.Trim(), 1, true, DateTimeOffset.UtcNow);
         var id = await new TemplateRepository(_databasePath).CreateNextVersionAsync(template);
+        if (_selectedMediaPath is not null)
+        {
+            var bytes = await File.ReadAllBytesAsync(_selectedMediaPath);
+            var mime = Path.GetExtension(_selectedMediaPath).ToLowerInvariant() switch { ".jpg" or ".jpeg" => "image/jpeg", ".png" => "image/png", ".webp" => "image/webp", ".pdf" => "application/pdf", _ => "application/octet-stream" };
+            var mediaId = await new MediaRepository(_databasePath).CreateAsync(new MediaFile(0, _accountId, Path.GetFileName(_selectedMediaPath), _selectedMediaPath, Convert.ToHexString(SHA256.HashData(bytes)), mime, bytes.LongLength, DateTimeOffset.UtcNow, null));
+            await new TemplateMediaRepository(_databasePath).LinkAsync(new TemplateMedia(id, mediaId, _accountId, 0));
+        }
         MessageBox.Show($"บันทึก Template แล้ว (ID {id})", "สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
