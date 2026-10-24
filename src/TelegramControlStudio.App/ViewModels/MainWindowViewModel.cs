@@ -18,6 +18,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     ];
 
     public ObservableCollection<Account> Accounts { get; } = [];
+    public ObservableCollection<string> ActivityLogs { get; } = [];
     private Account? _activeAccount;
     public Account? ActiveAccount
     {
@@ -87,6 +88,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var counts = await new JobRepository(databasePath).CountByStatusAsync(accountId, cancellationToken);
         QueueSummary = $"Queue: {counts.GetValueOrDefault(JobStatus.Queued)} รอคิว • {counts.GetValueOrDefault(JobStatus.Running)} กำลังทำ • {counts.GetValueOrDefault(JobStatus.WaitingForFloodWait)} รอ FloodWait";
+    }
+
+    public async Task LoadActivityLogsAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)
+    {
+        var entries = await new ActivityLogRepository(databasePath).ListAsync(accountId, limit: 8, cancellationToken: cancellationToken);
+        ActivityLogs.Clear();
+        foreach (var entry in entries)
+            ActivityLogs.Add($"{entry.CreatedAt:HH:mm} • {entry.EventType}: {entry.Message}");
     }
 
     public MainWindowViewModel()
