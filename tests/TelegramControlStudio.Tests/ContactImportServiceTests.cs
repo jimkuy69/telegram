@@ -45,4 +45,29 @@ public sealed class ContactImportServiceTests
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
+
+    [Fact]
+    public async Task SoftDeleteHidesContactButKeepsAuditRow()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"telegram-import-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            var accountId = await new AccountRepository(path).CreateAsync("Delete", "+66000000006");
+            await new ContactRepository(path).UpsertAsync(new TelegramControlStudio.Core.Domain.Contact(accountId, 99, "A", "B", null, null, true, false, DateTimeOffset.UtcNow));
+
+            Assert.True(await new ContactRepository(path).SoftDeleteAsync(accountId, 99));
+            Assert.False(await new ContactRepository(path).SoftDeleteAsync(accountId, 99));
+            Assert.Empty(await new ContactRepository(path).ListAsync(accountId));
+
+            await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path }.ToString());
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM contacts WHERE account_id = $account_id AND telegram_user_id = $user_id AND deleted_at IS NOT NULL";
+            command.Parameters.AddWithValue("$account_id", accountId);
+            command.Parameters.AddWithValue("$user_id", 99);
+            Assert.Equal(1L, (long)(await command.ExecuteScalarAsync())!);
+        }
+        finally { SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
 }
