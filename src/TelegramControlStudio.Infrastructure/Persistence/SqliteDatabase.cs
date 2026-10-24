@@ -32,9 +32,12 @@ public sealed class SqliteDatabase
             CREATE TABLE IF NOT EXISTS campaigns (id TEXT PRIMARY KEY, account_id INTEGER NOT NULL, template_id INTEGER NOT NULL, name TEXT NOT NULL, consent_policy TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY(account_id) REFERENCES accounts(id), FOREIGN KEY(template_id) REFERENCES message_templates(id));
             CREATE TABLE IF NOT EXISTS campaign_recipients (campaign_id TEXT NOT NULL, account_id INTEGER NOT NULL, telegram_user_id INTEGER NOT NULL, status TEXT NOT NULL, retry_count INTEGER NOT NULL DEFAULT 0, idempotency_key TEXT NOT NULL UNIQUE, last_error TEXT, PRIMARY KEY(campaign_id, telegram_user_id), FOREIGN KEY(campaign_id) REFERENCES campaigns(id), FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE INDEX IF NOT EXISTS ix_campaign_recipients_status ON campaign_recipients(campaign_id, status);
+            CREATE TABLE IF NOT EXISTS media_files (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, file_name TEXT NOT NULL, local_path TEXT NOT NULL, sha256 TEXT NOT NULL, mime_type TEXT NOT NULL, size_bytes INTEGER NOT NULL, created_at TEXT NOT NULL, deleted_at TEXT, FOREIGN KEY(account_id) REFERENCES accounts(id));
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_media_files_account_sha256 ON media_files(account_id, sha256);
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(1, CURRENT_TIMESTAMP);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 }
+
