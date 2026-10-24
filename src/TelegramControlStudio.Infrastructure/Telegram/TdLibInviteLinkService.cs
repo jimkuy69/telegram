@@ -6,6 +6,24 @@ namespace TelegramControlStudio.Infrastructure.Telegram;
 
 public sealed class TdLibInviteLinkService(string databasePath)
 {
+    public async Task<InviteLink> CreateAndPersistAsync(
+        ITdLibClient client,
+        long accountId,
+        long chatId,
+        DateTimeOffset? expiresAt,
+        int? usageLimit,
+        bool createsJoinRequest,
+        bool confirmed,
+        bool canInvite,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        var request = TdLibInviteRequests.CreateChatInviteLink(chatId, expiresAt, usageLimit, createsJoinRequest, confirmed, canInvite);
+        var response = await client.SendAsync(request.Function, request.Parameters, cancellationToken);
+        var link = await PersistCreatedLinkAsync(accountId, chatId, response, cancellationToken);
+        return link ?? throw new InvalidOperationException("TDLib did not return a valid invite link response.");
+    }
+
     public async Task<InviteLink?> PersistCreatedLinkAsync(long accountId, long chatId, string tdlibResponse, CancellationToken cancellationToken = default)
     {
         var link = TdLibInviteLinkResponseParser.Parse(tdlibResponse, accountId, chatId);
@@ -14,4 +32,3 @@ public sealed class TdLibInviteLinkService(string databasePath)
         return link;
     }
 }
-
