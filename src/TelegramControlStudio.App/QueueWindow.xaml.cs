@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Input;
 using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.Infrastructure.Persistence;
 namespace TelegramControlStudio.App;
@@ -23,5 +24,6 @@ public partial class QueueWindow : Window
     private async void Resume_Click(object sender, RoutedEventArgs e) => await ChangeAsync(JobStatus.Queued);
     private async void Retry_Click(object sender, RoutedEventArgs e) { if (SelectedJob is not null && await new JobRepository(_databasePath).IncrementRetryAsync(SelectedJob.Id, "Manually retried from queue")) { await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, SelectedJob.Id, "Info", "JobRetry", $"Job {SelectedJob.Id} manually retried from Queue UI.", DateTimeOffset.UtcNow)); await LoadAsync(); } }
     private async void Cancel_Click(object sender, RoutedEventArgs e) => await ChangeAsync(JobStatus.Cancelled);
+    private void Job_DoubleClick(object sender, MouseButtonEventArgs e) { if (SelectedJob is not null) new JobItemsWindow(_databasePath, SelectedJob.Id) { Owner = this }.ShowDialog(); }
 }
 
