@@ -44,4 +44,38 @@ public sealed class ContactRepository(string databasePath)
 
         return result;
     }
+
+    public async Task UpsertAsync(Contact contact, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO contacts
+                (account_id, telegram_user_id, first_name, last_name, username, phone_number,
+                 has_consent, is_opted_out, updated_at, deleted_at)
+            VALUES
+                ($account_id, $telegram_user_id, $first_name, $last_name, $username, $phone_number,
+                 $has_consent, $is_opted_out, $updated_at, NULL)
+            ON CONFLICT(account_id, telegram_user_id) DO UPDATE SET
+                first_name = excluded.first_name,
+                last_name = excluded.last_name,
+                username = excluded.username,
+                phone_number = excluded.phone_number,
+                has_consent = excluded.has_consent,
+                is_opted_out = excluded.is_opted_out,
+                updated_at = excluded.updated_at,
+                deleted_at = NULL;
+            """;
+        command.Parameters.AddWithValue("$account_id", contact.AccountId);
+        command.Parameters.AddWithValue("$telegram_user_id", contact.TelegramUserId);
+        command.Parameters.AddWithValue("$first_name", contact.FirstName);
+        command.Parameters.AddWithValue("$last_name", contact.LastName);
+        command.Parameters.AddWithValue("$username", (object?)contact.Username ?? DBNull.Value);
+        command.Parameters.AddWithValue("$phone_number", (object?)contact.PhoneNumber ?? DBNull.Value);
+        command.Parameters.AddWithValue("$has_consent", contact.HasConsent ? 1 : 0);
+        command.Parameters.AddWithValue("$is_opted_out", contact.IsOptedOut ? 1 : 0);
+        command.Parameters.AddWithValue("$updated_at", contact.UpdatedAt.ToString("O"));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
 }
