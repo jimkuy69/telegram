@@ -50,6 +50,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set { _queueSummary = value; OnPropertyChanged(); }
     }
 
+    private string _pendingRequestsSummary = "คำขอเข้าร่วม: 0 รายการ";
+    public string PendingRequestsSummary
+    {
+        get => _pendingRequestsSummary;
+        private set { _pendingRequestsSummary = value; OnPropertyChanged(); }
+    }
+
     public int ConsentCount => Contacts.Count(contact => contact.Selected && contact.Consent == "ได้รับความยินยอม");
 
     public bool CanCreateJob => ActiveAccount is not null && ConsentCount > 0;
@@ -100,6 +107,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ActivityLogs.Clear();
         foreach (var entry in entries)
             ActivityLogs.Add($"{entry.CreatedAt:HH:mm} • {entry.EventType}: {entry.Message}");
+    }
+
+    public async Task LoadPendingRequestsAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)
+    {
+        var requests = await new JoinRequestRepository(databasePath).ListPendingAsync(accountId, cancellationToken: cancellationToken);
+        PendingRequestsSummary = $"คำขอเข้าร่วม: {requests.Count} รายการรอการตรวจสอบ";
     }
 
     public MainWindowViewModel()
