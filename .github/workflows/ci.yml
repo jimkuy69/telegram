@@ -25,6 +25,8 @@ jobs:
         run: dotnet build TelegramControlStudio.sln --configuration Release --no-restore --verbosity minimal
       - name: Test
         run: dotnet test TelegramControlStudio.sln --configuration Release --no-build --verbosity normal
+      - name: Dependency vulnerability scan
+        run: dotnet list TelegramControlStudio.sln package --vulnerable --include-transitive --format json
       - name: Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
