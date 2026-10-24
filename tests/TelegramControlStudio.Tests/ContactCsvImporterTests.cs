@@ -14,5 +14,15 @@ public sealed class ContactCsvImporterTests
         Assert.Single(result.Errors);
         Assert.Equal(42, result.Valid[0].TelegramUserId);
     }
+
+    [Fact]
+    public void RejectsDuplicateTelegramIds()
+    {
+        var header = "telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out";
+        var csv = $"{header}\n42,A,B,,,true,false\n42,C,D,,,true,false";
+        var result = ContactCsvImporter.Preview(csv, 7);
+        Assert.Single(result.Valid);
+        Assert.Contains("ROW_3_DUPLICATE", result.Errors);
+    }
 }
 
