@@ -70,4 +70,27 @@ public sealed class ContactImportServiceTests
         }
         finally { SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
+
+    [Fact]
+    public async Task SearchFiltersByNameUsernamePhoneAndAccount()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"telegram-import-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            var accountId = await new AccountRepository(path).CreateAsync("Search", "+66000000007");
+            var otherAccountId = await new AccountRepository(path).CreateAsync("Other", "+66000000008");
+            var repository = new ContactRepository(path);
+            await repository.UpsertManyAsync([
+                new TelegramControlStudio.Core.Domain.Contact(accountId, 100, "Alice", "One", "alice", "+66810000000", true, false, DateTimeOffset.UtcNow),
+                new TelegramControlStudio.Core.Domain.Contact(accountId, 101, "Bob", "Two", "bobby", "+66820000000", false, false, DateTimeOffset.UtcNow),
+                new TelegramControlStudio.Core.Domain.Contact(otherAccountId, 100, "Alice", "Other", "alice-other", null, true, false, DateTimeOffset.UtcNow)]);
+
+            Assert.Single(await repository.SearchAsync(accountId, "bobby"));
+            Assert.Single(await repository.SearchAsync(accountId, "66810000000"));
+            Assert.Equal(2, (await repository.SearchAsync(accountId, null)).Count);
+            Assert.DoesNotContain(await repository.SearchAsync(accountId, "Alice"), item => item.AccountId != accountId);
+        }
+        finally { SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
 }
