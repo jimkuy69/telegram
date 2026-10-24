@@ -19,7 +19,8 @@ public sealed class CampaignQueueServiceTests
             var campaignId = await new CampaignBuilder(path).CreateFromConsentedContactsAsync(accountId, templateId, "Consent campaign", "Explicit consent", [contact], true);
             var jobId = await new CampaignQueueService(path).QueueCampaignAsync(campaignId, accountId, true);
             var counts = await new JobRepository(path).CountByStatusAsync(accountId);
-            Assert.NotEqual(Guid.Empty, jobId); Assert.Equal(1, counts[JobStatus.Queued]);
+            var items = await new JobItemRepository(path).ListAsync(jobId);
+            Assert.NotEqual(Guid.Empty, jobId); Assert.Equal(1, counts[JobStatus.Queued]); Assert.Single(items); Assert.Equal(123, items[0].TargetId); Assert.Equal("Queued", items[0].Status);
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
