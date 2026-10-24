@@ -30,6 +30,8 @@ public partial class MainWindow : Window
             if (viewModel.ActiveAccount is not null)
                 await viewModel.LoadQueueSummaryAsync(databasePath, viewModel.ActiveAccount.Id);
             if (viewModel.ActiveAccount is not null)
+                await viewModel.LoadActivityLogsAsync(databasePath, viewModel.ActiveAccount.Id);
+            if (viewModel.ActiveAccount is not null)
                 await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
         }
         catch
