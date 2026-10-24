@@ -145,8 +145,21 @@ public partial class MainWindow : Window
         if (answer != MessageBoxResult.Yes) return;
         var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
         var repository = new ContactRepository(databasePath);
+        var logs = new ActivityLogRepository(databasePath);
         foreach (var contact in selected)
-            await repository.SoftDeleteAsync(viewModel.ActiveAccount.Id, contact.Id);
+        {
+            if (await repository.SoftDeleteAsync(viewModel.ActiveAccount.Id, contact.Id))
+            {
+                await logs.AppendAsync(new ActivityLog(
+                    viewModel.ActiveAccount.Id,
+                    null,
+                    "Info",
+                    "ContactSoftDeleted",
+                    $"Contact soft-deleted for telegram_user_id={contact.Id}.",
+                    DateTimeOffset.UtcNow));
+            }
+        }
+        await viewModel.LoadActivityLogsAsync(databasePath, viewModel.ActiveAccount.Id);
         await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
     }
 
