@@ -99,6 +99,21 @@ public sealed class JobRepository(string databasePath)
         return jobs;
     }
 
+    public async Task<IReadOnlyDictionary<JobStatus, int>> CountByStatusAsync(long accountId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT status, COUNT(*) FROM jobs WHERE account_id = $account_id GROUP BY status;";
+        command.Parameters.AddWithValue("$account_id", accountId);
+        var counts = new Dictionary<JobStatus, int>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            if (Enum.TryParse<JobStatus>(reader.GetString(0), out var status))
+                counts[status] = reader.GetInt32(1);
+        return counts;
+    }
+
     public async Task<int> PauseRunningJobsAsync(
         long accountId,
         CancellationToken cancellationToken = default)
