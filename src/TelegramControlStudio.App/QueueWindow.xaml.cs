@@ -9,7 +9,14 @@ public partial class QueueWindow : Window
     private readonly string _databasePath; private readonly long _accountId;
     public ObservableCollection<Job> Jobs { get; } = []; public Job? SelectedJob { get; set; }
     public QueueWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DataContext = this; Loaded += async (_, _) => await LoadAsync(); }
-    private async Task LoadAsync() { Jobs.Clear(); foreach (var job in await new JobRepository(_databasePath).ListAsync(_accountId)) Jobs.Add(job); }
+    private async Task LoadAsync()
+    {
+        var jobs = await new JobRepository(_databasePath).ListAsync(_accountId);
+        var synchronizer = new JobAggregateSynchronizer(_databasePath);
+        foreach (var job in jobs) await synchronizer.SynchronizeAsync(job.Id);
+        Jobs.Clear();
+        foreach (var job in await new JobRepository(_databasePath).ListAsync(_accountId)) Jobs.Add(job);
+    }
     private async Task ChangeAsync(JobStatus status)
     {
         if (SelectedJob is null) return;
