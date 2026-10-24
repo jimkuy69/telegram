@@ -128,7 +128,7 @@
 - [x] Encrypted Backup/Restore Foundation
 - [x] Path Validation และ SQLite Integrity Check
 - [ ] Gitleaks Scan
-- [ ] Dependency Vulnerability Scan
+- [x] Dependency Vulnerability Scan (NuGet scan clean after SQLite native dependency pin)
 - [ ] Import/Media/Path Traversal Security Review
 - [ ] File Permission Review บน Windows จริง
 
