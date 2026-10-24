@@ -59,6 +59,25 @@ public sealed class MediaRepository(string databasePath)
         return result;
     }
 
+    public async Task<MediaFile?> FindBySha256Async(long accountId, string sha256, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sha256);
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, file_name, local_path, sha256, mime_type, size_bytes, created_at, deleted_at
+            FROM media_files
+            WHERE account_id = $account_id AND sha256 = $sha256 AND deleted_at IS NULL
+            LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$sha256", sha256);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken)) return null;
+        return new MediaFile(reader.GetInt64(0), accountId, reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4), reader.GetInt64(5), DateTimeOffset.Parse(reader.GetString(6)), reader.IsDBNull(7) ? null : DateTimeOffset.Parse(reader.GetString(7)));
+    }
+
     public async Task SoftDeleteAsync(long accountId, long mediaId, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);
@@ -71,4 +90,3 @@ public sealed class MediaRepository(string databasePath)
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 }
-
