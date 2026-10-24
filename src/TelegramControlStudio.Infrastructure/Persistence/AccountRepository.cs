@@ -1,0 +1,58 @@
+using Microsoft.Data.Sqlite;
+using TelegramControlStudio.Core.Domain;
+
+namespace TelegramControlStudio.Infrastructure.Persistence;
+
+public sealed class AccountRepository(string databasePath)
+{
+    private readonly string _connectionString = new SqliteConnectionStringBuilder
+    {
+        DataSource = databasePath,
+        Mode = SqliteOpenMode.ReadWriteCreate,
+        ForeignKeys = true
+    }.ToString();
+
+    public async Task<long> CreateAsync(
+        string displayName,
+        string phoneNumber,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(phoneNumber);
+
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO accounts(display_name, phone_number, status, created_at)
+            VALUES($display_name, $phone_number, 'PendingAuthorization', $created_at);
+            SELECT last_insert_rowid();
+            """;
+        command.Parameters.AddWithValue("$display_name", displayName);
+        command.Parameters.AddWithValue("$phone_number", phoneNumber);
+        command.Parameters.AddWithValue("$created_at", DateTimeOffset.UtcNow.ToString("O"));
+        return (long)(await command.ExecuteScalarAsync(cancellationToken) ?? throw new InvalidOperationException("Account insert did not return an ID."));
+    }
+
+    public async Task SaveSessionAsync(AccountSession session, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO account_sessions(account_id, session_directory, authorization_state, is_authorized, updated_at)
+            VALUES($account_id, $session_directory, $authorization_state, $is_authorized, $updated_at)
+            ON CONFLICT(account_id) DO UPDATE SET
+                session_directory = excluded.session_directory,
+                authorization_state = excluded.authorization_state,
+                is_authorized = excluded.is_authorized,
+                updated_at = excluded.updated_at;
+            """;
+        command.Parameters.AddWithValue("$account_id", session.AccountId);
+        command.Parameters.AddWithValue("$session_directory", session.SessionDirectory);
+        command.Parameters.AddWithValue("$authorization_state", session.AuthorizationState);
+        command.Parameters.AddWithValue("$is_authorized", session.IsAuthorized ? 1 : 0);
+        command.Parameters.AddWithValue("$updated_at", session.UpdatedAt.ToString("O"));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+}
