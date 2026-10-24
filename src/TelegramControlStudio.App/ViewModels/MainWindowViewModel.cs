@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using TelegramControlStudio.Core.Domain;
+using TelegramControlStudio.Core.Operations;
 using TelegramControlStudio.Infrastructure.Persistence;
 
 namespace TelegramControlStudio.App.ViewModels;
@@ -113,6 +114,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var requests = await new JoinRequestRepository(databasePath).ListPendingAsync(accountId, cancellationToken: cancellationToken);
         PendingRequestsSummary = $"คำขอเข้าร่วม: {requests.Count} รายการรอการตรวจสอบ";
+    }
+
+    public async Task<string> DecideJoinRequestAsync(
+        string databasePath,
+        long accountId,
+        long chatId,
+        long telegramUserId,
+        string decision,
+        string reason,
+        bool confirmed,
+        CancellationToken cancellationToken = default)
+    {
+        var validation = JoinRequestDecisionPolicy.Validate(decision, reason, confirmed);
+        if (!string.IsNullOrEmpty(validation)) return validation;
+        var changed = await new JoinRequestRepository(databasePath).DecideAsync(accountId, chatId, telegramUserId, decision, reason, cancellationToken);
+        if (changed) await LoadPendingRequestsAsync(databasePath, accountId, cancellationToken);
+        return changed ? "OK" : "REQUEST_NOT_PENDING";
     }
 
     public MainWindowViewModel()
