@@ -23,14 +23,23 @@ public sealed class EncryptedBackupService
     public async Task RestoreAsync(string backupPath, string databasePath, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(backupPath)) throw new FileNotFoundException("Encrypted backup was not found.", backupPath);
+        if (string.Equals(Path.GetFullPath(backupPath), Path.GetFullPath(databasePath), StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Backup path must differ from database path.", nameof(databasePath));
         var payload = await File.ReadAllBytesAsync(backupPath, cancellationToken);
         if (payload.Length <= Header.Length || !payload.AsSpan(0, Header.Length).SequenceEqual(Header)) throw new InvalidDataException("Backup header is invalid.");
         var clear = _store.Unprotect(payload[Header.Length..]);
         var database = Convert.FromBase64String(clear);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(databasePath))!);
         var temporaryPath = databasePath + ".restore.tmp";
-        await File.WriteAllBytesAsync(temporaryPath, database, cancellationToken);
-        File.Move(temporaryPath, databasePath, true);
+        try
+        {
+            await File.WriteAllBytesAsync(temporaryPath, database, cancellationToken);
+            File.Move(temporaryPath, databasePath, true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
     }
 
     private static void ValidatePaths(string databasePath, string backupPath)
