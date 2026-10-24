@@ -5,6 +5,12 @@ namespace TelegramControlStudio.Infrastructure.Persistence;
 
 public sealed class JobFailureHandler(string databasePath)
 {
+    public Task<JobExecutionDecision> HandleAsync(
+        Job job,
+        string error,
+        CancellationToken cancellationToken = default) =>
+        HandleAsync(job, JobFailureClassifier.Classify(error), error, cancellationToken);
+
     public async Task<JobExecutionDecision> HandleAsync(
         Job job,
         JobFailureKind failureKind,
