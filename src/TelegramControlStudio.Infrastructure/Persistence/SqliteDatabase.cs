@@ -29,6 +29,9 @@ public sealed class SqliteDatabase
             CREATE INDEX IF NOT EXISTS ix_activity_logs_account_created ON activity_logs(account_id, created_at);
             CREATE TABLE IF NOT EXISTS message_templates (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, name TEXT NOT NULL, language TEXT NOT NULL, body TEXT NOT NULL, link TEXT, version INTEGER NOT NULL, is_active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL, FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE UNIQUE INDEX IF NOT EXISTS ux_message_templates_account_name_version ON message_templates(account_id, name, version);
+            CREATE TABLE IF NOT EXISTS campaigns (id TEXT PRIMARY KEY, account_id INTEGER NOT NULL, template_id INTEGER NOT NULL, name TEXT NOT NULL, consent_policy TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY(account_id) REFERENCES accounts(id), FOREIGN KEY(template_id) REFERENCES message_templates(id));
+            CREATE TABLE IF NOT EXISTS campaign_recipients (campaign_id TEXT NOT NULL, account_id INTEGER NOT NULL, telegram_user_id INTEGER NOT NULL, status TEXT NOT NULL, retry_count INTEGER NOT NULL DEFAULT 0, idempotency_key TEXT NOT NULL UNIQUE, last_error TEXT, PRIMARY KEY(campaign_id, telegram_user_id), FOREIGN KEY(campaign_id) REFERENCES campaigns(id), FOREIGN KEY(account_id) REFERENCES accounts(id));
+            CREATE INDEX IF NOT EXISTS ix_campaign_recipients_status ON campaign_recipients(campaign_id, status);
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(1, CURRENT_TIMESTAMP);
             """;
