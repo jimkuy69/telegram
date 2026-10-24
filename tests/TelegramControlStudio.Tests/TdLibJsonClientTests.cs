@@ -32,5 +32,13 @@ public sealed class TdLibJsonClientTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await pending);
         Assert.Equal(0, client.PendingRequestCount);
     }
+
+    [Fact]
+    public async Task MalformedResponseIsRejectedWithoutThrowing()
+    {
+        await using var client = new TdLibJsonClient(new StringWriter());
+        Assert.False(client.HandleResponse("not-json"));
+        Assert.Equal(0, client.PendingRequestCount);
+    }
 }
 
