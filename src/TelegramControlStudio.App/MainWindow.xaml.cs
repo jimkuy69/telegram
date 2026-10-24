@@ -125,6 +125,31 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void RefreshContacts_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null) return;
+        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
+    }
+
+    private async void DeleteSelectedContacts_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null) return;
+        var selected = ContactGrid.SelectedItems.OfType<ContactRow>().ToArray();
+        if (selected.Length == 0)
+        {
+            MessageBox.Show("กรุณาเลือกรายชื่อที่ต้องการลบ", "ยังไม่ได้เลือก", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var answer = MessageBox.Show($"ยืนยัน Soft Delete จำนวน {selected.Length} รายการ? ข้อมูลจะไม่ถูกลบถาวร", "ยืนยันการลบ", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.Yes) return;
+        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var repository = new ContactRepository(databasePath);
+        foreach (var contact in selected)
+            await repository.SoftDeleteAsync(viewModel.ActiveAccount.Id, contact.Id);
+        await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
+    }
+
     private async void ExportContacts_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
