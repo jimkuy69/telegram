@@ -1,0 +1,32 @@
+name: Build and test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore TelegramControlStudio.sln --runtime win-x64
+
+      - name: Build
+        run: dotnet build TelegramControlStudio.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test TelegramControlStudio.sln --configuration Release --no-build --verbosity normal
+
+      - name: Publish Windows x64
+        run: dotnet publish src/TelegramControlStudio.App/TelegramControlStudio.App.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/publish/win-x64 --no-restore
