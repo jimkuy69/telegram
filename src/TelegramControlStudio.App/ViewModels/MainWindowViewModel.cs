@@ -65,6 +65,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public RelayCommand CreateJobCommand { get; }
 
+    private string _errorSummary = "ข้อผิดพลาด: ยังไม่ได้โหลดข้อมูล";
+    public string ErrorSummary
+    {
+        get => _errorSummary;
+        private set { _errorSummary = value; OnPropertyChanged(); }
+    }
+
     public async Task LoadContactsAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)
     {
         var repository = new ContactRepository(databasePath);
@@ -114,6 +121,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         foreach (var job in jobs) await synchronizer.SynchronizeAsync(job.Id, cancellationToken);
         var counts = await new JobRepository(databasePath).CountByStatusAsync(accountId, cancellationToken);
         var total = counts.Values.Sum();
+        var metrics = await new DashboardMetricsRepository(databasePath).LoadAsync(accountId, cancellationToken: cancellationToken);
+        ErrorSummary = $"เหตุการณ์ผิดพลาดทั้งหมด • สิทธิ์: {metrics.PermissionErrors} • Privacy: {metrics.PrivacyErrors} • Network: {metrics.NetworkErrors}";
         QueueSummary = $"Queue: {total} งานทั้งหมด • {counts.GetValueOrDefault(JobStatus.Queued)} รอคิว • {counts.GetValueOrDefault(JobStatus.Running)} กำลังทำ • {counts.GetValueOrDefault(JobStatus.WaitingForFloodWait)} รอ FloodWait • {counts.GetValueOrDefault(JobStatus.Completed)} สำเร็จ • {counts.GetValueOrDefault(JobStatus.Failed)} ล้มเหลว • {counts.GetValueOrDefault(JobStatus.Cancelled)} ยกเลิก";
     }
 
@@ -162,3 +171,4 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
+
