@@ -25,6 +25,8 @@ public sealed class SqliteDatabase
             CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, account_id INTEGER NOT NULL, target_type TEXT NOT NULL, target_count INTEGER NOT NULL, status TEXT NOT NULL, retry_count INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, started_at TEXT, completed_at TEXT, flood_wait_until TEXT, last_error TEXT, idempotency_key TEXT NOT NULL UNIQUE, FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE TABLE IF NOT EXISTS contacts (account_id INTEGER NOT NULL, telegram_user_id INTEGER NOT NULL, first_name TEXT NOT NULL, last_name TEXT NOT NULL DEFAULT '', username TEXT, phone_number TEXT, has_consent INTEGER NOT NULL DEFAULT 0, is_opted_out INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, deleted_at TEXT, PRIMARY KEY(account_id, telegram_user_id), FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE INDEX IF NOT EXISTS ix_contacts_account_consent ON contacts(account_id, has_consent, is_opted_out);
+            CREATE TABLE IF NOT EXISTS activity_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, job_id TEXT, level TEXT NOT NULL, event_type TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY(account_id) REFERENCES accounts(id));
+            CREATE INDEX IF NOT EXISTS ix_activity_logs_account_created ON activity_logs(account_id, created_at);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
