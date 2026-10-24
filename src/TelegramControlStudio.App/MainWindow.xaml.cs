@@ -150,6 +150,29 @@ public partial class MainWindow : Window
         await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
     }
 
+    private async void SetConsent_Click(object sender, RoutedEventArgs e) => await UpdateSelectedPolicyAsync(true);
+
+    private async void SetOptOut_Click(object sender, RoutedEventArgs e) => await UpdateSelectedPolicyAsync(false);
+
+    private async Task UpdateSelectedPolicyAsync(bool consent)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null) return;
+        var selected = ContactGrid.SelectedItems.OfType<ContactRow>().ToArray();
+        if (selected.Length == 0)
+        {
+            MessageBox.Show("กรุณาเลือกรายชื่อก่อนเปลี่ยนสถานะ", "ยังไม่ได้เลือก", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var repository = new ContactRepository(databasePath);
+        foreach (var contact in selected)
+        {
+            if (consent) await repository.SetConsentAsync(viewModel.ActiveAccount.Id, contact.Id, true);
+            else await repository.SetOptOutAsync(viewModel.ActiveAccount.Id, contact.Id, true);
+        }
+        await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
+    }
+
     private async void ExportContacts_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
