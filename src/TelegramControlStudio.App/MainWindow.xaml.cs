@@ -131,8 +131,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show($"ค้นหาไม่สำเร็จ
-{exception.Message}", "ค้นหาไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"ค้นหาไม่สำเร็จ\n{exception.Message}", "ค้นหาไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -236,8 +235,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show($"ส่งออกไม่สำเร็จ
-{exception.Message}", "Export ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"ส่งออกไม่สำเร็จ\n{exception.Message}", "Export ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
