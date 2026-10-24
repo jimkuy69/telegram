@@ -11,6 +11,7 @@ public sealed class TdLibSessionStateBridge
     private readonly string _sessionDirectory;
     private readonly long _accountId;
     private readonly AuthorizationStateMachine _stateMachine;
+    private bool _attached;
 
     public TdLibSessionStateBridge(string databasePath, long accountId, string sessionDirectory, AuthorizationStateMachine stateMachine)
     {
@@ -37,12 +38,16 @@ public sealed class TdLibSessionStateBridge
 
     public void Attach()
     {
+        if (_attached) return;
         _stateMachine.StateChanged += OnStateChanged;
+        _attached = true;
     }
 
     public void Detach()
     {
+        if (!_attached) return;
         _stateMachine.StateChanged -= OnStateChanged;
+        _attached = false;
     }
 
     private void OnStateChanged(object? sender, AuthorizationState state)
@@ -60,4 +65,3 @@ public sealed class TdLibSessionStateBridge
         _ => "PendingAuthorization"
     };
 }
-
