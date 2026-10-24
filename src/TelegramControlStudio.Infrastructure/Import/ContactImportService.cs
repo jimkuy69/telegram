@@ -12,9 +12,7 @@ public sealed class ContactImportService(string databasePath)
         ArgumentNullException.ThrowIfNull(preview);
         if (!confirmed) return new(0, preview.Valid.Count, [.. preview.Errors, "CONFIRMATION_REQUIRED"]);
         var repository = new ContactRepository(databasePath);
-        foreach (var contact in preview.Valid)
-            await repository.UpsertAsync(contact, cancellationToken);
+        await repository.UpsertManyAsync(preview.Valid, cancellationToken);
         return new(preview.Valid.Count, 0, preview.Errors);
     }
 }
-
