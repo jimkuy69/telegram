@@ -28,6 +28,7 @@ public static class CsvExporter
     private static string Escape(string? value)
     {
         var text = value ?? string.Empty;
-        return $""{text.Replace(""", """")}"";
+        var quote = ((char)34).ToString();
+        return quote + text.Replace(quote, quote + quote) + quote;
     }
 }
