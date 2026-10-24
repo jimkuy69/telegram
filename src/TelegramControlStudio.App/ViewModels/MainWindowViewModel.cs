@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using TelegramControlStudio.Core.Domain;
+using TelegramControlStudio.Infrastructure.Persistence;
 
 namespace TelegramControlStudio.App.ViewModels;
 
@@ -27,6 +29,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool CanCreateJob => ConsentCount > 0;
 
     public RelayCommand CreateJobCommand { get; }
+
+    public async Task LoadContactsAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)
+    {
+        var repository = new ContactRepository(databasePath);
+        var contacts = await repository.ListAsync(accountId, cancellationToken);
+        Contacts.Clear();
+        foreach (var contact in contacts)
+        {
+            Contacts.Add(new ContactRow(
+                contact.HasConsent && !contact.IsOptedOut,
+                $"{contact.FirstName} {contact.LastName}".Trim(),
+                contact.TelegramUserId,
+                contact.Username is null ? string.Empty : $"@{contact.Username.TrimStart('@')}",
+                contact.IsOptedOut ? "Opt-out" : contact.HasConsent ? "ได้รับความยินยอม" : "ยังไม่อนุญาต"));
+        }
+        OnPropertyChanged(nameof(ConsentCount));
+        OnPropertyChanged(nameof(CanCreateJob));
+        CreateJobCommand.Refresh();
+    }
 
     public MainWindowViewModel()
     {
