@@ -116,4 +116,43 @@ public sealed class JobRepository(string databasePath)
         command.Parameters.AddWithValue("$account_id", accountId);
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
+
+    public async Task<int> ResumeEligibleJobsAsync(
+        long accountId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE jobs
+            SET status = 'Queued', last_error = NULL, flood_wait_until = NULL
+            WHERE account_id = $account_id
+              AND (status = 'Paused' OR (status = 'WaitingForFloodWait' AND flood_wait_until IS NOT NULL AND flood_wait_until <= $now));
+            """;
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$now", now.ToString("O"));
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<bool> IncrementRetryAsync(
+        Guid jobId,
+        string error,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(error);
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE jobs
+            SET retry_count = retry_count + 1, last_error = $last_error, status = 'Queued'
+            WHERE id = $id AND status NOT IN ('Completed', 'Cancelled', 'Failed');
+            """;
+        command.Parameters.AddWithValue("$id", jobId.ToString());
+        command.Parameters.AddWithValue("$last_error", error);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
 }
+
