@@ -1,4 +1,7 @@
 using System.Windows;
+using System.IO;
+using System.Text;
+using Microsoft.Win32;
 using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.Infrastructure.Persistence;
 
@@ -38,6 +41,32 @@ public partial class MediaLibraryWindow : Window
     private async void Search_Click(object sender, RoutedEventArgs e) => await LoadAsync();
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await LoadAsync();
+
+    private async void Export_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "CSV files (*.csv)|*.csv",
+            FileName = "telegram-media-library.csv"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        var media = await new MediaRepository(_databasePath).ListAsync(_accountId);
+        var query = SearchBox.Text.Trim();
+        var filtered = string.IsNullOrWhiteSpace(query)
+            ? media
+            : media.Where(item => item.FileName.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || item.MimeType.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || item.Sha256.Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
+        var lines = new List<string> { "id,file_name,mime_type,size_bytes,sha256,local_path" };
+        lines.AddRange(filtered.Select(item => string.Join(",", [
+            item.Id.ToString(), Csv(item.FileName), Csv(item.MimeType), item.SizeBytes.ToString(),
+            Csv(item.Sha256), Csv(item.LocalPath)])));
+        await File.WriteAllLinesAsync(dialog.FileName, lines, Encoding.UTF8);
+        MessageBox.Show($"ส่งออก Media {filtered.Count} รายการแล้ว", "Export สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private static string Csv(string value) => $""{value.Replace(""", """")}"";
 
     private async void Delete_Click(object sender, RoutedEventArgs e)
     {
