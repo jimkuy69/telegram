@@ -177,4 +177,25 @@ public sealed class ContactRepository(string databasePath)
 
         return result;
     }
+
+    public Task<bool> SetConsentAsync(long accountId, long telegramUserId, bool hasConsent, CancellationToken cancellationToken = default) =>
+        UpdatePolicyAsync(accountId, telegramUserId, "$has_consent", hasConsent ? 1 : 0, cancellationToken);
+
+    public Task<bool> SetOptOutAsync(long accountId, long telegramUserId, bool isOptedOut, CancellationToken cancellationToken = default) =>
+        UpdatePolicyAsync(accountId, telegramUserId, "$is_opted_out", isOptedOut ? 1 : 0, cancellationToken);
+
+    private async Task<bool> UpdatePolicyAsync(long accountId, long telegramUserId, string parameterName, int value, CancellationToken cancellationToken)
+    {
+        if (parameterName is not ("$has_consent" or "$is_opted_out"))
+            throw new ArgumentException("Unsupported contact policy field.", nameof(parameterName));
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"UPDATE contacts SET {parameterName.TrimStart('$')} = $value, updated_at = $updated_at WHERE account_id = $account_id AND telegram_user_id = $telegram_user_id AND deleted_at IS NULL;";
+        command.Parameters.AddWithValue("$value", value);
+        command.Parameters.AddWithValue("$updated_at", DateTimeOffset.UtcNow.ToString("O"));
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$telegram_user_id", telegramUserId);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
 }
