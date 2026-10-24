@@ -20,7 +20,17 @@ public sealed class TdLibNativeLoaderTests
         using var directory = new TemporaryDirectory();
         File.WriteAllText(Path.Combine(directory.Path, "tdjson.dll"), "not-a-native-library");
         var loader = new TdLibNativeLoader();
-        Assert.Throws<InvalidDataException>(() => loader.Load(directory.Path, "00"));
+        Assert.Throws<InvalidDataException>(() => loader.Load(directory.Path, new string('0', 64)));
+    }
+
+    [Theory]
+    [InlineData("00")]
+    [InlineData("not-a-hash")]
+    public void RejectsMalformedTrustedHash(string expectedHash)
+    {
+        using var directory = new TemporaryDirectory();
+        File.WriteAllText(Path.Combine(directory.Path, "tdjson.dll"), "not-a-native-library");
+        Assert.Throws<ArgumentException>(() => new TdLibNativeLoader().Load(directory.Path, expectedHash));
     }
 
     [Fact]
