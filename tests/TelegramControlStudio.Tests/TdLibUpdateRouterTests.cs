@@ -14,4 +14,16 @@ public sealed class TdLibUpdateRouterTests
 
         Assert.Equal(AuthorizationState.WaitCode, machine.Current);
     }
+
+    [Fact]
+    public void NotifiesStateConsumerAfterRouting()
+    {
+        var machine = new AuthorizationStateMachine();
+        AuthorizationState? observed = null;
+        var router = new TdLibUpdateRouter(machine, state => observed = state);
+        router.Route("""{"@type":"updateAuthorizationState","authorization_state":{"@type":"authorizationStateReady"}}""");
+
+        Assert.Equal(AuthorizationState.Ready, observed);
+    }
 }
+
