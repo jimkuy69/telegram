@@ -78,7 +78,7 @@
 - [x] Local Media Library
 - [x] Media Search
 - [x] Media Soft Delete และ Activity Log
-- [x] Media CSV Export (Build/Test ผ่านแล้ว; รออัปโหลด GitHub)
+- [x] Media CSV Export (Build/Test ผ่านแล้ว และอัปโหลด GitHub แล้ว)
 - [ ] Preview ที่ผูกกับการส่ง Telegram จริง
 
 ## Phase 8 — Messaging Campaigns
@@ -141,7 +141,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [x] Automated Tests ผ่าน 101/101
+- [x] Automated Tests ผ่าน 110/110
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
@@ -178,3 +178,4 @@
 - [ ] Security Hardening
 - [ ] Installer และ Clean-machine Test
 - [ ] Backup/Restore Drill
+
