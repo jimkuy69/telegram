@@ -118,7 +118,7 @@
 - [x] Queue และ Pending Request Summary เบื้องต้น
 - [x] Activity Log View
 - [ ] Campaign Success/Failure Dashboard
-- [ ] FloodWait/Permission/Error Analytics
+- [x] FloodWait/Permission/Error Analytics (SQLite metrics wired to Dashboard)
 - [ ] Export Report ครบตามช่วงเวลาและบัญชี
 
 ## Phase 12 — Security Hardening
@@ -141,7 +141,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [x] Automated Tests ผ่าน 110/110
+- [x] Automated Tests ผ่าน 111/111
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
