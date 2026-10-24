@@ -29,4 +29,15 @@ public partial class MainWindow : Window
             // Startup must remain usable while no authenticated account exists.
         }
     }
+
+    private void AddAccount_Click(object sender, RoutedEventArgs e)
+    {
+        var databasePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "TelegramControlStudio",
+            "telegram-control-studio.db");
+        var wizard = new AddAccountWindow(databasePath) { Owner = this };
+        if (wizard.ShowDialog() == true)
+            Title = "Telegram Control Studio • บันทึกบัญชีแล้ว";
+    }
 }
