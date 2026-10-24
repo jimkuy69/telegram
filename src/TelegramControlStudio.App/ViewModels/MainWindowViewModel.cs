@@ -98,6 +98,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public async Task LoadQueueSummaryAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)
     {
+        var jobs = await new JobRepository(databasePath).ListAsync(accountId, cancellationToken);
+        var synchronizer = new JobAggregateSynchronizer(databasePath);
+        foreach (var job in jobs) await synchronizer.SynchronizeAsync(job.Id, cancellationToken);
         var counts = await new JobRepository(databasePath).CountByStatusAsync(accountId, cancellationToken);
         var total = counts.Values.Sum();
         QueueSummary = $"Queue: {total} งานทั้งหมด • {counts.GetValueOrDefault(JobStatus.Queued)} รอคิว • {counts.GetValueOrDefault(JobStatus.Running)} กำลังทำ • {counts.GetValueOrDefault(JobStatus.WaitingForFloodWait)} รอ FloodWait • {counts.GetValueOrDefault(JobStatus.Completed)} สำเร็จ • {counts.GetValueOrDefault(JobStatus.Failed)} ล้มเหลว • {counts.GetValueOrDefault(JobStatus.Cancelled)} ยกเลิก";
