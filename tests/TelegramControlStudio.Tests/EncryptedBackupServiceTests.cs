@@ -14,7 +14,8 @@ public sealed class EncryptedBackupServiceTests
         var database = Path.Combine(root, "source.db"); var backup = Path.Combine(root, "backup.tcs"); var restored = Path.Combine(root, "restored.db");
         try
         {
-            var bytes = System.Text.Encoding.UTF8.GetBytes("local sqlite test payload"); await File.WriteAllBytesAsync(database, bytes);
+            await new TelegramControlStudio.Infrastructure.Persistence.SqliteDatabase(database).InitializeAsync();
+            var bytes = await File.ReadAllBytesAsync(database);
             var service = new EncryptedBackupService(); await service.BackupAsync(database, backup); await service.RestoreAsync(backup, restored);
             Assert.Equal(bytes, await File.ReadAllBytesAsync(restored)); Assert.NotEqual(Convert.ToBase64String(bytes), Convert.ToBase64String(await File.ReadAllBytesAsync(backup)));
         }
