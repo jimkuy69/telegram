@@ -25,5 +25,12 @@ public sealed class TdLibUpdateRouterTests
 
         Assert.Equal(AuthorizationState.Ready, observed);
     }
+
+    [Fact]
+    public void IgnoresMalformedUpdateWithoutThrowing()
+    {
+        var router = new TdLibUpdateRouter(new AuthorizationStateMachine());
+        router.Route("not-json");
+    }
 }
 
