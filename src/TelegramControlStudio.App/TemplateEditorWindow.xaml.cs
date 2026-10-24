@@ -56,7 +56,10 @@ public partial class TemplateEditorWindow : Window
         {
             var bytes = await File.ReadAllBytesAsync(_selectedMediaPath);
             var mime = Path.GetExtension(_selectedMediaPath).ToLowerInvariant() switch { ".jpg" or ".jpeg" => "image/jpeg", ".png" => "image/png", ".webp" => "image/webp", ".pdf" => "application/pdf", _ => "application/octet-stream" };
-            var mediaId = await new MediaRepository(_databasePath).CreateAsync(new MediaFile(0, _accountId, Path.GetFileName(_selectedMediaPath), _selectedMediaPath, Convert.ToHexString(SHA256.HashData(bytes)), mime, bytes.LongLength, DateTimeOffset.UtcNow, null));
+            var mediaRepository = new MediaRepository(_databasePath);
+            var sha256 = Convert.ToHexString(SHA256.HashData(bytes));
+            var existing = await mediaRepository.FindBySha256Async(_accountId, sha256);
+            var mediaId = existing?.Id ?? await mediaRepository.CreateAsync(new MediaFile(0, _accountId, Path.GetFileName(_selectedMediaPath), _selectedMediaPath, sha256, mime, bytes.LongLength, DateTimeOffset.UtcNow, null));
             await new TemplateMediaRepository(_databasePath).LinkAsync(new TemplateMedia(id, mediaId, _accountId, 0));
         }
         MessageBox.Show($"บันทึก Template แล้ว (ID {id})", "สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -64,4 +67,3 @@ public partial class TemplateEditorWindow : Window
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }
-
