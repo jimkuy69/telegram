@@ -15,8 +15,7 @@ public sealed class ContactImportServiceTests
         try
         {
             await new SqliteDatabase(path).InitializeAsync();
-            var preview = ContactCsvImporter.Preview("telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out
-42,A,B,,,true,false", 7);
+            var preview = ContactCsvImporter.Preview("telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out\n42,A,B,,,true,false", 7);
             var result = await new ContactImportService(path).CommitAsync(preview, false);
             Assert.Equal(0, result.Imported);
             Assert.Contains("CONFIRMATION_REQUIRED", result.Errors);
@@ -36,9 +35,7 @@ public sealed class ContactImportServiceTests
         {
             await new SqliteDatabase(path).InitializeAsync();
             var accountId = await new AccountRepository(path).CreateAsync("Import", "+66000000005");
-            var preview = ContactCsvImporter.Preview("telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out
-42,A,B,,,true,false
-43,C,D,,,true,false", accountId);
+            var preview = ContactCsvImporter.Preview("telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out\n42,A,B,,,true,false\n43,C,D,,,true,false", accountId);
             var result = await new ContactImportService(path).CommitAsync(preview, true);
             Assert.Equal(2, result.Imported);
             Assert.Equal(2, (await new ContactRepository(path).ListAsync(accountId)).Count);
@@ -68,7 +65,7 @@ public sealed class ContactImportServiceTests
             command.Parameters.AddWithValue("$user_id", 99);
             Assert.Equal(1L, (long)(await command.ExecuteScalarAsync())!);
         }
-        finally { SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
 
     [Fact]
@@ -90,6 +87,31 @@ public sealed class ContactImportServiceTests
             Assert.Single(await repository.SearchAsync(accountId, "66810000000"));
             Assert.Equal(2, (await repository.SearchAsync(accountId, null)).Count);
             Assert.DoesNotContain(await repository.SearchAsync(accountId, "Alice"), item => item.AccountId != accountId);
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task ConsentAndOptOutPoliciesAreAccountScoped()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"telegram-import-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            var accountId = await new AccountRepository(path).CreateAsync("Policy", "+66000000011");
+            var otherAccountId = await new AccountRepository(path).CreateAsync("Other", "+66000000012");
+            var repository = new ContactRepository(path);
+            await repository.UpsertManyAsync([
+                new TelegramControlStudio.Core.Domain.Contact(accountId, 501, "A", "", null, null, false, false, DateTimeOffset.UtcNow),
+                new TelegramControlStudio.Core.Domain.Contact(otherAccountId, 501, "B", "", null, null, false, false, DateTimeOffset.UtcNow)]);
+
+            Assert.True(await repository.SetConsentAsync(accountId, 501, true));
+            Assert.True(await repository.SetOptOutAsync(accountId, 501, true));
+            Assert.False(await repository.SetConsentAsync(accountId, 999, true));
+            var contact = (await repository.ListAsync(accountId)).Single();
+            Assert.True(contact.HasConsent);
+            Assert.True(contact.IsOptedOut);
+            Assert.False((await repository.ListAsync(otherAccountId)).Single().HasConsent);
         }
         finally { SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
