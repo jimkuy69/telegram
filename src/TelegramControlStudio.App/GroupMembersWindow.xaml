@@ -1,0 +1,9 @@
+<Window x:Class="TelegramControlStudio.App.GroupMembersWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Group Members" Width="950" Height="620" Background="#08111F" Foreground="#F4F7FF">
+ <Grid Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel><TextBlock x:Name="TitleText" FontSize="24" FontWeight="SemiBold"/><TextBlock Text="ข้อมูลสมาชิกที่สังเกตได้จาก Telegram เท่านั้น" Foreground="#8FA6C6" Margin="0,5,0,12"/></StackPanel>
+  <DockPanel Grid.Row="1" Margin="0,0,0,12"><TextBox x:Name="SearchBox" Width="320" Padding="10" Background="#101F35" Foreground="#D9E2F2" BorderBrush="#29486E"/><Button Content="ค้นหา" Click="Search_Click" Width="90" Margin="10,0,0,0"/><Button Content="Export CSV" Click="Export_Click" Width="110" Margin="10,0,0,0"/></DockPanel>
+  <DataGrid Grid.Row="2" ItemsSource="{Binding Members}" AutoGenerateColumns="False" IsReadOnly="True" Background="#0A1627" Foreground="#D9E2F2" BorderBrush="#203A5D" RowBackground="#0D1A2D" AlternatingRowBackground="#10213A"><DataGrid.Columns><DataGridTextColumn Header="ชื่อ" Binding="{Binding DisplayName}" Width="*"/><DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="170"/><DataGridTextColumn Header="Telegram ID" Binding="{Binding TelegramUserId}" Width="150"/><DataGridTextColumn Header="สถานะ" Binding="{Binding Status}" Width="120"/><DataGridTextColumn Header="Sync ล่าสุด" Binding="{Binding SyncedAt}" Width="180"/></DataGrid.Columns></DataGrid>
+  <TextBlock Grid.Row="3" Text="ไม่ใช่ข้อมูลสมาชิกทั้งหมดโดยอัตโนมัติ • รายการนี้ต้องมีสิทธิ์และข้อมูลที่ Telegram ส่งกลับมา" Foreground="#FBBF24" TextWrapping="Wrap" Margin="0,12,0,0"/>
+ </Grid>
+</Window>
+
