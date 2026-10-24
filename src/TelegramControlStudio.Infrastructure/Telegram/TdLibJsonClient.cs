@@ -10,6 +10,8 @@ public sealed class TdLibJsonClient : ITdLibClient
     private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _pending = new();
     private long _requestNumber;
 
+    public int PendingRequestCount => _pending.Count;
+
     public TdLibJsonClient(TextWriter writer) => _writer = writer;
 
     public async Task<string> SendAsync(
@@ -20,16 +22,28 @@ public sealed class TdLibJsonClient : ITdLibClient
         var extra = Interlocked.Increment(ref _requestNumber).ToString(System.Globalization.CultureInfo.InvariantCulture);
         var completion = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[extra] = completion;
-        using var registration = cancellationToken.Register(() => completion.TrySetCanceled(cancellationToken));
-
-        var payload = new Dictionary<string, object?>(parameters)
+        using var registration = cancellationToken.Register(() =>
         {
-            ["@type"] = function,
-            ["@extra"] = extra
-        };
-        await _writer.WriteLineAsync(JsonSerializer.Serialize(payload));
-        await _writer.FlushAsync(cancellationToken);
-        return await completion.Task;
+            _pending.TryRemove(extra, out _);
+            completion.TrySetCanceled(cancellationToken);
+        });
+
+        try
+        {
+            var payload = new Dictionary<string, object?>(parameters)
+            {
+                ["@type"] = function,
+                ["@extra"] = extra
+            };
+            await _writer.WriteLineAsync(JsonSerializer.Serialize(payload));
+            await _writer.FlushAsync(cancellationToken);
+            return await completion.Task;
+        }
+        catch
+        {
+            _pending.TryRemove(extra, out _);
+            throw;
+        }
     }
 
     // The native receive loop will call this method for every complete TDLib JSON object.
@@ -52,3 +66,4 @@ public sealed class TdLibJsonClient : ITdLibClient
         return ValueTask.CompletedTask;
     }
 }
+
