@@ -141,7 +141,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [x] Automated Tests ผ่าน 142/142 (local, no-restore)
+- [x] Automated Tests ผ่าน 143/143 (local, no-restore)
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
