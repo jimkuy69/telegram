@@ -148,8 +148,8 @@
 
 ## Phase 14 — Windows Release
 
-- [ ] Self-contained Windows x64 Publish ตรวจสอบบนเครื่องสะอาด
-- [x] Installer Compile ด้วย Inno Setup (local compile ผ่าน; clean-machine install ยังไม่ยืนยัน)
+- [x] Self-contained Windows x64 Publish และ release verification (local ผ่าน; clean-machine ยังไม่ยืนยัน)
+- [x] Installer Compile ด้วย Inno Setup (local preflight ผ่าน; clean-machine install ยังไม่ยืนยัน)
 - [ ] Uninstaller และ Upgrade Test
 - [x] Version/Hash ของ Native Dependencies
 - [x] Third-party Notices ตรวจครบทุก Dependency
