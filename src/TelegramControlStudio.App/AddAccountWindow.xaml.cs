@@ -25,12 +25,23 @@ public partial class AddAccountWindow : Window
             return;
         }
 
+        string phoneNumber;
+        try
+        {
+            phoneNumber = TelegramPhoneNumberValidator.Normalize(PhoneNumberBox.Text);
+        }
+        catch (FormatException exception)
+        {
+            MessageBox.Show(exception.Message, "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         var repository = new AccountRepository(_databasePath);
-        var accountId = await repository.CreateAsync(DisplayNameBox.Text.Trim(), PhoneNumberBox.Text.Trim());
+        var accountId = await repository.CreateAsync(DisplayNameBox.Text.Trim(), phoneNumber);
         var sessionDirectory = SessionPathPolicy.GetAccountSessionDirectory(accountId);
         Directory.CreateDirectory(sessionDirectory);
         await repository.SaveSessionAsync(new AccountSession(accountId, sessionDirectory, "PendingAuthorization", false, DateTimeOffset.UtcNow));
-        MessageBox.Show("บันทึกบัญชีและโฟลเดอร์ Session ในเครื่องแล้ว ขั้นตอน Login จะเปิดใช้หลัง TDLib ผ่านการตรวจสอบ", "สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show("บันทึกบัญชีและโฟลเดอร์ Session ในเครื่องแล้ว ขั้นตอน Login จะเปิดใช้หลัง TDLib ผ่านทั้ง Hash Gate และ Native Runtime Gate", "สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
         DialogResult = true;
         Close();
     }
