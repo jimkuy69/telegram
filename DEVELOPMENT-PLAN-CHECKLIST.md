@@ -9,7 +9,7 @@
 ## Phase 0 — Research และ Compliance
 
 - [x] Research Report จากเอกสาร Telegram และ TDLib (`docs/RESEARCH-REPORT.md`)
-- [x] Feature Inventory และ Screen Analysis (scope และ UI inventory อยู่ในแผนหลัก; screenshot fidelity ยังไม่ใช่ acceptance gate)
+- [x] Feature Inventory และ Screen Analysis (`docs/FEATURE-INVENTORY.md`; observed/planned แยกชัดเจน)
 - [x] API Feasibility Matrix (`docs/API-FEASIBILITY-MATRIX.md`)
 - [x] Risk Register และ Compliance Rules (`docs/RISK-REGISTER.md`)
 - [x] ระบุขอบเขตที่ไม่ทำ: Spam, หลบแบน, ข้าม Privacy, Account Rotation
