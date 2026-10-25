@@ -13,6 +13,10 @@ jobs:
     steps:
       - name: Checkout project
         uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
       - name: Setup CMake
         uses: lukka/get-cmake@latest
       - name: Checkout official TDLib source
@@ -55,6 +59,16 @@ jobs:
           $manifest = [ordered]@{ sourceUrl='https://github.com/tdlib/td/tree/bc9c263e2bfee06aaab41e82db51a103376030bc'; version='1.8.67'; license='Boost Software License 1.0'; architecture='win-x64'; sha256=$hash; files=$files } | ConvertTo-Json -Depth 4
           Set-Content -Path artifacts\\tdlib\\tdjson.manifest.json -Value $manifest -Encoding utf8
           & $pwd\\scripts\\verify-tdlib-native.ps1 -Root $pwd\\artifacts -BinaryRelativePath 'tdlib\\tdjson.dll' -ManifestRelativePath 'tdlib\\tdjson.manifest.json'
+      - name: Prepare native runtime gate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force tdlib | Out-Null
+          Copy-Item artifacts\\tdlib\\*.dll tdlib -Force
+          Copy-Item artifacts\\tdlib\\tdjson.manifest.json tdlib -Force
+          dotnet restore tests\\TelegramControlStudio.Tests\\TelegramControlStudio.Tests.csproj
+          & $pwd\\scripts\\verify-tdlib-runtime.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'TDLib native runtime gate failed.' }
       - name: Upload TDLib artifact
         uses: actions/upload-artifact@v4
         with:
