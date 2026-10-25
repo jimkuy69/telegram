@@ -6,6 +6,7 @@ namespace TelegramControlStudio.Infrastructure.Telegram;
 public sealed class TdLibAccountClientRegistry
 {
     private readonly ConcurrentDictionary<long, ITdLibClient> _clients = new();
+    public int Count => _clients.Count;
 
     public bool Register(long accountId, ITdLibClient client)
     {
@@ -30,4 +31,3 @@ public sealed class TdLibAccountClientRegistry
             await RemoveAsync(accountId);
     }
 }
-
