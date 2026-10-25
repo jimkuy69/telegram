@@ -14,7 +14,7 @@
 - [x] Risk Register และ Compliance Rules (`docs/RISK-REGISTER.md`)
 - [x] ระบุขอบเขตที่ไม่ทำ: Spam, หลบแบน, ข้าม Privacy, Account Rotation
 - [x] กำหนดแหล่ง Official TDLib, License, pin version และ manifest/hash gate ใน Workflow
-- [ ] ตรวจสอบ Native TDLib Artifact และ Runtime จาก Workflow Run ล่าสุด (ยังไม่มีหลักฐาน Artifact ใน source tree)
+- [x] ตรวจสอบ Native TDLib Artifact และ Runtime จาก Workflow Run `40168091976` (Job `121093157042`: Build, package และ Runtime Gate ผ่าน; Artifact `TelegramControlStudio-tdlib-win-x64-1.8.67`, SHA-256 digest `343fa2a2ef4b0e3431c3a1f9407155a535b8db7acc0c3ac005013c1cf5729e20`)
 
 ## Phase 1 — Project Foundation
 
@@ -32,8 +32,8 @@
 - [x] Receive/Update Routing Foundation
 - [x] Native Library Loader และ Lifecycle Foundation
 - [x] Workflow สร้าง `tdjson.dll` จาก Official TDLib แบบ pin source/version และสร้าง manifest SHA-256
-- [ ] ตรวจสอบ TDLib Windows x64 artifact ที่ดาวน์โหลดจาก Successful Workflow Run (ไฟล์ไม่อยู่ใน source tree)
-- [ ] Runtime POC กับ TDLib Native จริงจาก Artifact (no-login `getOption(version)`; ต้องแนบหลักฐานของรอบ Release)
+- [x] ตรวจสอบ TDLib Windows x64 artifact จาก Successful Workflow Run `40168091976` (Artifact ID `12589959763`, ยังไม่หมดอายุ)
+- [x] Runtime POC กับ TDLib Native จริงจาก Artifact (no-login `getOption(version)` ผ่านใน Job `121093157042`; ยังไม่ใช่การ Login หรือ Telegram E2E)
 
 ## Phase 3 — Authentication และ Session
 
