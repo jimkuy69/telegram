@@ -25,12 +25,15 @@ public partial class AuthenticationWizardWindow : Window
     private void UpdateState()
     {
         StateText.Text = _stateMachine.UserFacingStep;
-        SubmitButton.IsEnabled = _stateMachine.CanSubmitPhoneNumber || _stateMachine.CanSubmitCode || _stateMachine.CanSubmitPassword;
+        SubmitButton.IsEnabled = _stateMachine.CanSubmitPhoneNumber || _stateMachine.CanSubmitEmailAddress || _stateMachine.CanSubmitEmailCode || _stateMachine.CanSubmitCode || _stateMachine.CanSubmitPassword || _stateMachine.CanRegister;
         SecretInputBox.Clear();
         PhoneInputBox.Clear();
+        RegistrationFirstNameBox.Clear();
+        RegistrationLastNameBox.Clear();
         PhoneInputBox.Visibility = _stateMachine.CanSubmitPhoneNumber ? Visibility.Visible : Visibility.Collapsed;
-        SecretInputBox.Visibility = _stateMachine.CanSubmitPhoneNumber ? Visibility.Collapsed : Visibility.Visible;
-        SubmitButton.Content = _stateMachine.CanSubmitPhoneNumber ? "เริ่มด้วยเบอร์โทรศัพท์" : "ส่งข้อมูลขั้นตอนนี้";
+        RegistrationPanel.Visibility = _stateMachine.CanRegister ? Visibility.Visible : Visibility.Collapsed;
+        SecretInputBox.Visibility = _stateMachine.CanSubmitPhoneNumber || _stateMachine.CanRegister ? Visibility.Collapsed : Visibility.Visible;
+        SubmitButton.Content = _stateMachine.CanSubmitPhoneNumber ? "เริ่มด้วยเบอร์โทรศัพท์" : _stateMachine.CanRegister ? "ลงทะเบียนบัญชี" : "ส่งข้อมูลขั้นตอนนี้";
     }
 
     private async void Submit_Click(object sender, RoutedEventArgs e)
@@ -38,6 +41,13 @@ public partial class AuthenticationWizardWindow : Window
         try
         {
             var value = _stateMachine.CanSubmitPhoneNumber ? PhoneInputBox.Text.Trim() : SecretInputBox.Password.Trim();
+            if (_stateMachine.CanRegister)
+            {
+                if (string.IsNullOrWhiteSpace(RegistrationFirstNameBox.Text)) { NoticeText.Text = "กรุณากรอกชื่อ"; return; }
+                await _coordinator.SubmitRegistrationAsync(_accountId, RegistrationFirstNameBox.Text.Trim(), RegistrationLastNameBox.Text.Trim());
+                NoticeText.Text = "ส่งข้อมูลลงทะเบียนแล้ว กำลังรอสถานะจาก Telegram";
+                return;
+            }
             if (string.IsNullOrWhiteSpace(value))
             {
                 NoticeText.Text = "กรุณากรอกข้อมูลของขั้นตอนนี้";
@@ -46,6 +56,10 @@ public partial class AuthenticationWizardWindow : Window
 
             if (_stateMachine.CanSubmitPhoneNumber)
                 await _coordinator.SubmitPhoneNumberAsync(_accountId, value);
+            else if (_stateMachine.CanSubmitEmailAddress)
+                await _coordinator.SubmitEmailAddressAsync(_accountId, value);
+            else if (_stateMachine.CanSubmitEmailCode)
+                await _coordinator.SubmitEmailCodeAsync(_accountId, value);
             else if (_stateMachine.CanSubmitCode)
                 await _coordinator.SubmitCodeAsync(_accountId, value);
             else if (_stateMachine.CanSubmitPassword)
@@ -69,4 +83,3 @@ public partial class AuthenticationWizardWindow : Window
         Close();
     }
 }
-
