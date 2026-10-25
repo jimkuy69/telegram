@@ -56,8 +56,8 @@
 - [x] Group Repository และ TDLib Parser Foundation
 - [x] Members Search/แสดงข้อจำกัด
 - [x] CSV Export สมาชิก
-- [ ] Sync Groups/Members กับ Telegram จริง (บริการและปุ่ม UI พร้อม; Manual Telegram E2E ยังไม่ยืนยัน)
-- [ ] Pagination จากข้อมูลจริงของ Telegram
+- [ ] Sync Groups/Members กับ Telegram จริง (เพิ่ม service/UI สำหรับ Supergroup แล้ว; Manual Telegram E2E ยังไม่ยืนยัน)
+- [ ] Pagination จากข้อมูลจริงของ Telegram (service รองรับ offset/limit; UI เปลี่ยนหน้ายังไม่เสร็จ)
 
 ## Phase 6 — Contacts และ Import/Export
 
@@ -141,7 +141,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [x] Automated Tests ผ่าน 140/140 (local, no-restore)
+- [x] Automated Tests ผ่าน 142/142 (local, no-restore)
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
