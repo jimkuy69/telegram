@@ -84,6 +84,7 @@ jobs:
             tdlib = $tdlibProvenance
           } | ConvertTo-Json -Depth 6
           Set-Content -Path 'artifacts/installer/release-manifest.json' -Value $releaseManifest -Encoding utf8
+          Copy-Item -LiteralPath 'artifacts/publish/win-x64/tdlib.provenance.json' -Destination 'artifacts/installer/tdlib.provenance.json' -Force
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
