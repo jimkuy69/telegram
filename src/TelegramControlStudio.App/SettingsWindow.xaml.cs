@@ -53,6 +53,17 @@ public partial class SettingsWindow : Window
         }
         catch (Exception exception) { ApiHashBox.Clear(); StatusText.Text = $"เชื่อมต่อไม่สำเร็จ: {exception.Message}"; }
     }
+    private async void Logout_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show("ยืนยันออกจากระบบบัญชีนี้? Session ของบัญชีนี้จะถูกถอดออกจากโปรแกรม", "ยืนยัน Logout", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try
+        {
+            var app = (App)Application.Current;
+            await new TdLibAccountLogoutService(app.TdLibClients, new AccountRepository(_databasePath)).LogoutAsync(_accountId);
+            StatusText.Text = "Logout สำเร็จ บัญชีนี้อยู่สถานะ Offline";
+        }
+        catch (Exception exception) { StatusText.Text = $"Logout ไม่สำเร็จ: {exception.Message}"; }
+    }
     private async void Backup_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = "Encrypted Telegram Control Studio backup (*.tcsbackup)|*.tcsbackup", FileName = $"telegram-control-studio-{DateTime.Now:yyyyMMdd-HHmmss}.tcsbackup" }; if (dialog.ShowDialog() != true) return;
