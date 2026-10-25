@@ -339,12 +339,21 @@ public partial class MainWindow : Window
         try
         {
             var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
-            var metrics = await new DashboardMetricsRepository(databasePath).LoadAsync(viewModel.ActiveAccount.Id);
+            DateTimeOffset? from = StartDateBox.SelectedDate?.Date;
+            DateTimeOffset? to = EndDateBox.SelectedDate?.Date.AddDays(1).AddTicks(-1);
+            if (from.HasValue && to.HasValue && from > to)
+            {
+                MessageBox.Show("วันที่เริ่มต้องไม่หลังวันที่สิ้นสุด", "ช่วงเวลาไม่ถูกต้อง", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var metrics = await new DashboardMetricsRepository(databasePath).LoadAsync(viewModel.ActiveAccount.Id, from, to);
             var rows = new[]
             {
                 "metric,value",
                 $"account_id,{viewModel.ActiveAccount.Id}",
                 $"generated_at_utc,{DateTimeOffset.UtcNow:O}",
+                $"from_utc,{from?.ToString("O") ?? ""}",
+                $"to_utc,{to?.ToString("O") ?? ""}",
                 $"total_jobs,{metrics.TotalJobs}",
                 $"completed_jobs,{metrics.CompletedJobs}",
                 $"failed_jobs,{metrics.FailedJobs}",
