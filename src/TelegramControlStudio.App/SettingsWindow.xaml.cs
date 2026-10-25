@@ -1,3 +1,4 @@
+
 using System.Windows;
 using System.IO;
 using Microsoft.Win32;
@@ -10,7 +11,8 @@ public partial class SettingsWindow : Window
 {
     private readonly string _databasePath; private readonly long _accountId;
     private string? _nativeDirectory;
-    public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; _ = LoadTdLibIdAsync(); }
+    private readonly Task _tdLibLoadTask;
+    public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; _tdLibLoadTask = LoadTdLibIdAsync(); }
     private async Task LoadTdLibIdAsync()
     {
         try
@@ -42,6 +44,7 @@ public partial class SettingsWindow : Window
     }
     private async void ConnectNative_Click(object sender, RoutedEventArgs e)
     {
+        await _tdLibLoadTask;
         if (_nativeDirectory is null || !int.TryParse(ApiIdBox.Text.Trim(), out var apiId) || apiId <= 0 || string.IsNullOrWhiteSpace(ApiHashBox.Password)) { StatusText.Text = "กรุณากรอก API ID, API Hash และเลือก tdjson.dll ก่อนเชื่อมต่อ"; return; }
         try
         {
