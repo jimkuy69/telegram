@@ -30,8 +30,9 @@
 - [x] Request Correlation ด้วย `@extra`
 - [x] Receive/Update Routing Foundation
 - [x] Native Library Loader และ Lifecycle Foundation
-- [x] ติดตั้งและตรวจสอบ `tdjson.dll` จริง (Windows x64 artifact; SHA-256 ตรง manifest)
-- [x] Runtime POC กับ TDLib Native จริง (no-login `getOption(version)` ผ่านบน Windows x64; live auth ยังไม่ยืนยัน)
+- [x] Workflow สร้าง `tdjson.dll` จาก Official TDLib แบบ pin source/version และสร้าง manifest SHA-256
+- [ ] ตรวจสอบ TDLib Windows x64 artifact ที่ดาวน์โหลดจาก Successful Workflow Run (ไฟล์ไม่อยู่ใน source tree)
+- [ ] Runtime POC กับ TDLib Native จริงจาก Artifact (no-login `getOption(version)`; ต้องแนบหลักฐานของรอบ Release)
 
 ## Phase 3 — Authentication และ Session
 
@@ -149,7 +150,8 @@
 
 ## Phase 14 — Windows Release
 
-- [x] Self-contained Windows x64 Publish และ release verification (local ผ่าน; clean-machine ยังไม่ยืนยัน)
+- [x] Self-contained Windows x64 Publish script และ release workflow
+- [ ] Release verification จาก Artifact TDLib ที่ตรวจสอบ hash/runtime แล้ว (clean-machine ยังไม่ยืนยัน)
 - [x] Installer Compile ด้วย Inno Setup (local preflight ผ่าน; clean-machine install ยังไม่ยืนยัน)
 - [ ] Uninstaller และ Upgrade Test
 - [x] Version/Hash ของ Native Dependencies
@@ -173,7 +175,7 @@
 
 **ยังไม่อนุญาตให้เรียกว่า Production Ready** จนกว่าจะผ่านอย่างน้อย:
 
-- [x] TDLib Native Runtime จริง (local no-login runtime gate ผ่าน)
+- [ ] TDLib Native Runtime จริงจาก Release Artifact (ต้องยืนยันจาก Workflow Artifact รอบปัจจุบัน)
 - [ ] Authentication จริง
 - [ ] Manual Telegram Acceptance Test
 - [ ] Security Hardening
