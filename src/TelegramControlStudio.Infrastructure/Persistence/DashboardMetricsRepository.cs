@@ -66,6 +66,27 @@ public sealed class DashboardMetricsRepository(string databasePath)
                 errorCounts[reader.GetString(0)] = reader.GetInt32(1);
         }
 
+        await using var campaigns = connection.CreateCommand();
+        campaigns.CommandText = """
+            SELECT status, COUNT(*)
+            FROM jobs
+            WHERE account_id = $account_id
+              AND target_type LIKE 'Campaign:%'
+              AND ($from IS NULL OR julianday(created_at) >= julianday($from))
+              AND ($to IS NULL OR julianday(created_at) <= julianday($to))
+            GROUP BY status;
+            """;
+        campaigns.Parameters.AddWithValue("$account_id", accountId);
+        campaigns.Parameters.AddWithValue("$from", from?.ToString("O") ?? (object)DBNull.Value);
+        campaigns.Parameters.AddWithValue("$to", to?.ToString("O") ?? (object)DBNull.Value);
+        var campaignCounts = new Dictionary<JobStatus, int>();
+        await using (var reader = await campaigns.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+                if (Enum.TryParse<JobStatus>(reader.GetString(0), out var status))
+                    campaignCounts[status] = reader.GetInt32(1);
+        }
+
         return new DashboardMetrics(
             counts.Values.Sum(),
             counts.GetValueOrDefault(JobStatus.Completed),
@@ -74,7 +95,10 @@ public sealed class DashboardMetricsRepository(string databasePath)
             counts.GetValueOrDefault(JobStatus.WaitingForFloodWait),
             errorCounts.GetValueOrDefault("PermissionError"),
             errorCounts.GetValueOrDefault("PrivacyError"),
-            errorCounts.GetValueOrDefault("NetworkError") + errorCounts.GetValueOrDefault("NetworkRetry"));
+            errorCounts.GetValueOrDefault("NetworkError") + errorCounts.GetValueOrDefault("NetworkRetry"),
+            campaignCounts.Values.Sum(),
+            campaignCounts.GetValueOrDefault(JobStatus.Completed),
+            campaignCounts.GetValueOrDefault(JobStatus.Failed) + campaignCounts.GetValueOrDefault(JobStatus.PartiallyCompleted));
     }
 }
 
