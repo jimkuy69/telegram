@@ -129,7 +129,7 @@
 - [x] Path Validation และ SQLite Integrity Check
 - [ ] Gitleaks Scan
 - [x] Dependency Vulnerability Scan (NuGet scan clean after SQLite native dependency pin)
-- [ ] Import/Media/Path Traversal Security Review
+- [x] Import/Media/Path Traversal Security Review (Media root boundary tests; Windows file-permission review remains pending)
 - [ ] File Permission Review บน Windows จริง
 
 ## Phase 13 — Testing
@@ -141,7 +141,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [x] Automated Tests ผ่าน 129/129 (local, no-restore)
+- [x] Automated Tests ผ่าน 130/130 (local, no-restore)
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
