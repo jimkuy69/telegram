@@ -13,7 +13,7 @@
 - [ ] API Feasibility Matrix
 - [ ] Risk Register และ Compliance Rules
 - [x] ระบุขอบเขตที่ไม่ทำ: Spam, หลบแบน, ข้าม Privacy, Account Rotation
-- [ ] ตรวจสอบ Native TDLib Binary และ License อย่างเป็นทางการ
+- [x] ตรวจสอบ Native TDLib Binary และ License อย่างเป็นทางการ (artifact manifest + SHA-256; live Telegram E2E ยังไม่ยืนยัน)
 
 ## Phase 1 — Project Foundation
 
@@ -30,15 +30,15 @@
 - [x] Request Correlation ด้วย `@extra`
 - [x] Receive/Update Routing Foundation
 - [x] Native Library Loader และ Lifecycle Foundation
-- [ ] ติดตั้งและตรวจสอบ `tdjson.dll` จริง
-- [ ] Runtime POC กับ TDLib Native จริง
+- [x] ติดตั้งและตรวจสอบ `tdjson.dll` จริง (Windows x64 artifact; SHA-256 ตรง manifest)
+- [x] Runtime POC กับ TDLib Native จริง (local test 1/1 ผ่าน; ยังไม่ Login Telegram)
 
 ## Phase 3 — Authentication และ Session
 
 - [x] Authorization State Machine
 - [x] Phone/OTP/2FA Request Models
 - [x] Session Path Policy
-- [x] DPAPI Secret Store
+- [x] DPAPI Secret Store และ Account Secret Repository (114 automated tests ผ่าน)
 - [ ] Login ด้วย Test Account จริง
 - [ ] Session Expired และ Logout กับ Telegram จริง
 
@@ -141,7 +141,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [x] Automated Tests ผ่าน 111/111
+- [x] Automated Tests ผ่าน 114/114
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
@@ -149,11 +149,11 @@
 ## Phase 14 — Windows Release
 
 - [ ] Self-contained Windows x64 Publish ตรวจสอบบนเครื่องสะอาด
-- [ ] Installer Compile ด้วย Inno Setup
+- [x] Installer Compile ด้วย Inno Setup (local compile ผ่าน; clean-machine install ยังไม่ยืนยัน)
 - [ ] Uninstaller และ Upgrade Test
-- [ ] Version/Hash ของ Native Dependencies
-- [ ] Third-party Notices ตรวจครบทุก Dependency
-- [ ] Backup/Restore ก่อน Release
+- [x] Version/Hash ของ Native Dependencies
+- [x] Third-party Notices ตรวจครบทุก Dependency
+- [x] Backup/Restore ก่อน Release (local round-trip test ผ่าน)
 
 ## Phase 15 — Pilot และใช้งานจริง
 
