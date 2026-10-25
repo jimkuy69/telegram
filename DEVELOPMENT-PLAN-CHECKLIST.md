@@ -128,7 +128,7 @@
 - [x] Encrypted Backup/Restore Foundation
 - [x] Path Validation และ SQLite Integrity Check
 - [ ] Gitleaks Scan
-- [x] Dependency Vulnerability Scan (NuGet scan clean after SQLite native dependency pin)
+- [ ] Dependency Vulnerability Scan (local `dotnet list package --vulnerable` requires a successful NuGet restore; current clean result is not verified)
 - [x] Import/Media/Path Traversal Security Review (Media root boundary tests; Windows file-permission review remains pending)
 - [ ] File Permission Review บน Windows จริง
 
@@ -141,7 +141,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [x] Automated Tests ผ่าน 130/130 (local, no-restore)
+- [x] Automated Tests ผ่าน 140/140 (local, no-restore)
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
@@ -178,4 +178,3 @@
 - [ ] Security Hardening
 - [ ] Installer และ Clean-machine Test
 - [ ] Backup/Restore Drill
-
