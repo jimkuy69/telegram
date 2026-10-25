@@ -77,15 +77,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private void AddAccount_Click(object sender, RoutedEventArgs e)
+    private async void AddAccount_Click(object sender, RoutedEventArgs e)
     {
         var databasePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "TelegramControlStudio",
             "telegram-control-studio.db");
         var wizard = new AddAccountWindow(databasePath) { Owner = this };
-        if (wizard.ShowDialog() == true)
-            Title = "Telegram Control Studio • บันทึกบัญชีแล้ว";
+        if (wizard.ShowDialog() != true || wizard.CreatedAccountId is not long createdAccountId || DataContext is not MainWindowViewModel viewModel)
+            return;
+
+        await viewModel.LoadAccountsAsync(databasePath);
+        viewModel.ActiveAccount = viewModel.Accounts.FirstOrDefault(account => account.Id == createdAccountId);
+        Title = "Telegram Control Studio • บันทึกบัญชีแล้ว";
+        new SettingsWindow(databasePath, createdAccountId) { Owner = this }.ShowDialog();
     }
 
     private void PendingRequests_Click(object sender, RoutedEventArgs e)
@@ -316,3 +321,4 @@ public partial class MainWindow : Window
         new SettingsWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 }
+
