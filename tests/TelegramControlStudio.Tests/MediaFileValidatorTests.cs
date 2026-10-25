@@ -21,5 +21,15 @@ public sealed class MediaFileValidatorTests
         Assert.False(result.IsValid);
         Assert.Equal("PATH_OUTSIDE_ALLOWED_ROOT", result.ErrorCode);
     }
+
+    [Fact]
+    public void RejectsSiblingDirectoryWithSharedNamePrefix()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "media-root");
+        var sibling = Path.Combine(Path.GetTempPath(), "media-root-archive", "photo.png");
+        var result = MediaFileValidator.Validate(sibling, "image/png", 100, root);
+        Assert.False(result.IsValid);
+        Assert.Equal("PATH_OUTSIDE_ALLOWED_ROOT", result.ErrorCode);
+    }
 }
 
