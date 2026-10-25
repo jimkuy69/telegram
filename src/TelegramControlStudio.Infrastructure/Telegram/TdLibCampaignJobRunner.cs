@@ -29,6 +29,13 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
             }
             catch (Exception exception)
             {
+                if (exception is TdLibFloodWaitException floodWait)
+                {
+                    var until = DateTimeOffset.UtcNow.AddSeconds(floodWait.Seconds);
+                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "WaitingForFloodWait", floodWait.Message, cancellationToken: cancellationToken);
+                    await new JobRepository(databasePath).UpdateStatusAsync(jobId, JobStatus.WaitingForFloodWait, floodWait.Message, until, cancellationToken);
+                    return JobStatus.WaitingForFloodWait;
+                }
                 await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Failed", "TDLIB_MESSAGE_SEND_FAILED", incrementRetry: true, cancellationToken: cancellationToken);
                 await new JobRepository(databasePath).UpdateStatusAsync(jobId, JobStatus.PartiallyCompleted, exception.Message, cancellationToken: cancellationToken);
                 return JobStatus.PartiallyCompleted;
@@ -40,4 +47,3 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
         return finalStatus;
     }
 }
-
