@@ -25,6 +25,15 @@ public sealed class TdLibAccountAuthorizationCoordinator(
         return await SendAndUpdateAsync(accountId, request, "AuthenticatedPendingStateUpdate", cancellationToken);
     }
 
+    public Task<string> SubmitEmailAddressAsync(long accountId, string emailAddress, CancellationToken cancellationToken = default) =>
+        SendAndUpdateAsync(accountId, Core.Telegram.TdLibAuthorizationRequests.SetEmailAddress(emailAddress), "AwaitingEmailCode", cancellationToken);
+
+    public Task<string> SubmitEmailCodeAsync(long accountId, string code, CancellationToken cancellationToken = default) =>
+        SendAndUpdateAsync(accountId, Core.Telegram.TdLibAuthorizationRequests.CheckEmailCode(code), "AwaitingPasswordOrReady", cancellationToken);
+
+    public Task<string> SubmitRegistrationAsync(long accountId, string firstName, string lastName, CancellationToken cancellationToken = default) =>
+        SendAndUpdateAsync(accountId, Core.Telegram.TdLibAuthorizationRequests.RegisterUser(firstName, lastName), "AuthenticatedPendingStateUpdate", cancellationToken);
+
     private async Task<string> SendAndUpdateAsync(long accountId, Core.Telegram.TdLibRequest request, string successStatus, CancellationToken cancellationToken)
     {
         var response = await sessions.SendAsync(accountId, request.Function, request.Parameters, cancellationToken);
