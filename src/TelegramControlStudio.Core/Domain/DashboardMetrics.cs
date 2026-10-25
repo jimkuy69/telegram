@@ -8,5 +8,8 @@ public sealed record DashboardMetrics(
     int FloodWaitJobs,
     int PermissionErrors,
     int PrivacyErrors,
-    int NetworkErrors);
+    int NetworkErrors,
+    int CampaignJobs,
+    int CampaignCompletedJobs,
+    int CampaignFailedJobs);
 
