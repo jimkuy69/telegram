@@ -56,7 +56,7 @@
 - [x] Group Repository และ TDLib Parser Foundation
 - [x] Members Search/แสดงข้อจำกัด
 - [x] CSV Export สมาชิก
-- [ ] Sync Groups/Members กับ Telegram จริง
+- [ ] Sync Groups/Members กับ Telegram จริง (บริการและปุ่ม UI พร้อม; Manual Telegram E2E ยังไม่ยืนยัน)
 - [ ] Pagination จากข้อมูลจริงของ Telegram
 
 ## Phase 6 — Contacts และ Import/Export
