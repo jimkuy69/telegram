@@ -4,6 +4,7 @@ using Xunit;
 
 namespace TelegramControlStudio.Tests;
 
+[Trait("Category", "NativeRuntime")]
 public sealed class TdLibNativeRuntimeTests
 {
     [Fact]
