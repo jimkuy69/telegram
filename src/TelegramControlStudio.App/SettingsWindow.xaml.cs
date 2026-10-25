@@ -10,7 +10,16 @@ public partial class SettingsWindow : Window
 {
     private readonly string _databasePath; private readonly long _accountId;
     private string? _nativeDirectory;
-    public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; }
+    public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; _ = LoadTdLibIdAsync(); }
+    private async Task LoadTdLibIdAsync()
+    {
+        try
+        {
+            var configuration = await new TdLibConfigurationRepository(_databasePath).GetAsync(_accountId);
+            if (configuration is not null) ApiIdBox.Text = configuration.Value.ApiId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+        catch { /* Settings remains usable when the local database is unavailable. */ }
+    }
     private async void SaveTdLib_Click(object sender, RoutedEventArgs e)
     {
         if (!int.TryParse(ApiIdBox.Text.Trim(), out var apiId) || apiId <= 0 || string.IsNullOrWhiteSpace(ApiHashBox.Password)) { StatusText.Text = "กรุณากรอก API ID และ API Hash ให้ถูกต้อง"; return; }
