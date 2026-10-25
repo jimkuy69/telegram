@@ -26,6 +26,11 @@ public sealed class TdLibConfigurationRepositoryTests
             Assert.Equal(123456, config.Value.ApiId);
             Assert.Equal("hash-one", config.Value.ApiHash);
             Assert.Null(await repository.GetAsync(second));
+            await repository.SaveNativeLocationAsync(first, ".\\tdlib", "abc123");
+            var native = await repository.GetNativeLocationAsync(first);
+            Assert.NotNull(native);
+            Assert.EndsWith("tdlib", native.Value.Directory, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal("abc123", native.Value.Sha256);
             Assert.True(await repository.DeleteAsync(first));
             Assert.Null(await repository.GetAsync(first));
         }
