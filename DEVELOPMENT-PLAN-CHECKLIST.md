@@ -8,10 +8,10 @@
 
 ## Phase 0 — Research และ Compliance
 
-- [ ] Research Report จากเอกสาร Telegram และ TDLib
-- [ ] Feature Inventory และ Screen Analysis
-- [ ] API Feasibility Matrix
-- [ ] Risk Register และ Compliance Rules
+- [x] Research Report จากเอกสาร Telegram และ TDLib (`docs/RESEARCH-REPORT.md`)
+- [x] Feature Inventory และ Screen Analysis (scope และ UI inventory อยู่ในแผนหลัก; screenshot fidelity ยังไม่ใช่ acceptance gate)
+- [x] API Feasibility Matrix (`docs/API-FEASIBILITY-MATRIX.md`)
+- [x] Risk Register และ Compliance Rules (`docs/RISK-REGISTER.md`)
 - [x] ระบุขอบเขตที่ไม่ทำ: Spam, หลบแบน, ข้าม Privacy, Account Rotation
 - [x] ตรวจสอบ Native TDLib Binary และ License อย่างเป็นทางการ (artifact manifest + SHA-256; live Telegram E2E ยังไม่ยืนยัน)
 
