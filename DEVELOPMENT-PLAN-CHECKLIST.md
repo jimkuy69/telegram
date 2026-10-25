@@ -1,3 +1,4 @@
+
 # Telegram Control Studio — Development Checklist
 
 สถานะใช้หลักฐานปัจจุบันเท่านั้น:
@@ -31,14 +32,14 @@
 - [x] Receive/Update Routing Foundation
 - [x] Native Library Loader และ Lifecycle Foundation
 - [x] ติดตั้งและตรวจสอบ `tdjson.dll` จริง (Windows x64 artifact; SHA-256 ตรง manifest)
-- [x] Runtime POC กับ TDLib Native จริง (local test 1/1 ผ่าน; ยังไม่ Login Telegram)
+- [ ] Runtime POC กับ TDLib Native จริง
 
 ## Phase 3 — Authentication และ Session
 
 - [x] Authorization State Machine
 - [x] Phone/OTP/2FA Request Models
 - [x] Session Path Policy
-- [x] DPAPI Secret Store และ Account Secret Repository (114 automated tests ผ่าน)
+- [x] DPAPI Secret Store
 - [ ] Login ด้วย Test Account จริง
 - [ ] Session Expired และ Logout กับ Telegram จริง
 
@@ -141,7 +142,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [x] Automated Tests ผ่าน 114/114
+- [x] Automated Tests ผ่าน 129/129 (local, no-restore)
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
@@ -153,7 +154,7 @@
 - [ ] Uninstaller และ Upgrade Test
 - [x] Version/Hash ของ Native Dependencies
 - [x] Third-party Notices ตรวจครบทุก Dependency
-- [x] Backup/Restore ก่อน Release (local round-trip test ผ่าน)
+- [ ] Backup/Restore ก่อน Release
 
 ## Phase 15 — Pilot และใช้งานจริง
 
