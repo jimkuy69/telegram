@@ -32,6 +32,7 @@ TDLib artifact procedure: [TDLIB-RELEASE-ARTIFACT-RUNBOOK.md](TDLIB-RELEASE-ARTI
 - Telegram End-to-End authentication and messaging are not verified.
 - Release preflight is allowed to pass the TDLib gate only when the verified artifact is present; hash verification alone is insufficient.
 - The native DLL is intentionally not committed to `main`; the release evidence must identify the successful Workflow Run and artifact.
-- Installer Workflow Run `40157970040` passed: verified TDLib download/hash, Windows x64 publish, Inno Setup install, installer compile, and installer hash.
-- Installer artifact: `TelegramControlStudio-installer-main`, Artifact ID `12584962429`, digest `sha256:f5500cf05e3f4ecdc4165ae30205a8a7e60e9b29752c7b4b291a7fc91c5ad886`.
+- Installer Workflow Run `40172166600` passed: verified TDLib download/hash, Windows x64 publish, Inno Setup install, installer compile, installer hash, and provenance files.
+- Installer artifact: `TelegramControlStudio-installer-main`, Artifact ID `12590842159`, digest `sha256:81d0c4bb6e6ca31ac34deb4bb3d4291c6303174f34cada61b5d52d8de9e37e5a`.
+- ZIP inspection passed: `release-manifest.json` and `tdlib.provenance.json` are present; `provenanceMatches=true`; installer SHA-256 `62d127d755154a0f0958d603bb74aae09928b75d4f3d156b9d9fdb41a43b62bb`.
 - Installer compilation is verified; clean-machine installation, uninstall, upgrade, and user-data preservation remain unverified.
