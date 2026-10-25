@@ -23,7 +23,8 @@ powershell -ExecutionPolicy Bypass -File scripts/verify-tdlib-runtime.ps1
 
 ## Current evidence
 
-- Provenance/hash gate: PASS for TDLib 1.8.67, `win-x64`.
-- Managed test suite: PASS, 142 tests locally.
-- Native runtime gate: PASS locally for the checked-in TDLib package; the no-login POC loads `tdjson.dll` and executes `getOption(version)`.
-- CI and clean-machine verification remain separate gates; live Telegram authentication is still not tested.
+- Workflow provenance definition: PASS. The pinned TDLib source, version, architecture, license, manifest generation, and SHA-256 verification are defined in `.github/workflows/build-tdlib-native.yml`.
+- Current repository tree: the native DLL and manifest are not checked into `main`; they are produced as a GitHub Actions artifact. Artifact availability and hash must be verified from a successful workflow run before each release.
+- Managed test suite: local evidence is 148/148 tests, but this is not live Telegram E2E evidence.
+- Native runtime gate: NOT VERIFIED from the current source tree alone. It becomes PASS only when the downloaded workflow artifact contains `tdjson.dll` plus its manifest and `scripts/verify-tdlib-runtime.ps1` passes on Windows x64.
+- CI, artifact retention, and clean-machine verification remain separate gates; live Telegram authentication is still not tested.
