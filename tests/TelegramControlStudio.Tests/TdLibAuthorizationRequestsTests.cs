@@ -12,6 +12,20 @@ public sealed class TdLibAuthorizationRequestsTests
         Assert.Equal("setAuthenticationPhoneNumber", request.Function); Assert.Equal("auth-phone", request.Extra); Assert.Equal("+66123456789", request.Parameters["phone_number"]);
     }
 
+    [Fact]
+    public void BuildsEmailAndRegistrationRequests()
+    {
+        var email = TdLibAuthorizationRequests.SetEmailAddress("user@example.com");
+        var emailCode = TdLibAuthorizationRequests.CheckEmailCode("123456");
+        var registration = TdLibAuthorizationRequests.RegisterUser("First", "Last");
+
+        Assert.Equal("setAuthenticationEmailAddress", email.Function);
+        Assert.Equal("checkAuthenticationEmailCode", emailCode.Function);
+        Assert.Equal("registerUser", registration.Function);
+        Assert.Equal("user@example.com", email.Parameters["email_address"]);
+        Assert.Equal("First", registration.Parameters["first_name"]);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData(" ")]
@@ -21,4 +35,3 @@ public sealed class TdLibAuthorizationRequestsTests
         Assert.Throws<ArgumentException>(() => TdLibAuthorizationRequests.CheckPassword(value));
     }
 }
-
