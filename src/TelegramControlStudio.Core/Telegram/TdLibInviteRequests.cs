@@ -24,4 +24,17 @@ public static class TdLibInviteRequests
         if (usageLimit is not null) parameters["member_limit"] = usageLimit.Value;
         return new TdLibRequest("createChatInviteLink", parameters, "invite-link");
     }
+
+    public static TdLibRequest ProcessChatJoinRequest(long chatId, long userId, bool approve, string reason, bool confirmed, bool canInvite)
+    {
+        if (!confirmed) throw new InvalidOperationException("CONFIRMATION_REQUIRED");
+        if (!canInvite) throw new InvalidOperationException("INVITE_PERMISSION_REQUIRED");
+        if (chatId == 0 || userId == 0) throw new ArgumentOutOfRangeException(nameof(chatId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        return new TdLibRequest("processChatJoinRequest", new Dictionary<string, object?>
+        {
+            ["chat_id"] = chatId, ["user_id"] = userId, ["approve"] = approve
+        }, $"join-request-{(approve ? "approve" : "reject")}");
+    }
 }
+
