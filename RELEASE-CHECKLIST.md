@@ -12,7 +12,8 @@
 ## Package gates
 
 - Confirm `TelegramControlStudio.exe` exists in `artifacts/publish/win-x64`.
-- Confirm `tdjson.dll` is absent until its source, version, architecture, license, and SHA-256 are reviewed.
+- Confirm the successful TDLib GitHub Actions artifact contains `tdjson.dll`, `tdjson.manifest.json`, all required runtime DLLs, and matching SHA-256 values.
+- Confirm the artifact was checked with both `verify-tdlib-native.ps1` and `verify-tdlib-runtime.ps1` before packaging.
 - Confirm Database and Session data are outside the install directory under `%LOCALAPPDATA%/TelegramControlStudio`.
 - Run the installer on a clean Windows x64 machine.
 - Test uninstall without deleting user data silently.
@@ -22,5 +23,6 @@
 
 - Build/test are local gates only.
 - Telegram End-to-End authentication and messaging are not verified.
-- Release preflight now runs both the TDLib hash gate and the no-login native runtime gate; hash verification alone is insufficient.
+- Release preflight is allowed to pass the TDLib gate only when the verified artifact is present; hash verification alone is insufficient.
+- The native DLL is intentionally not committed to `main`; the release evidence must identify the successful Workflow Run and artifact.
 - Installer compilation requires Inno Setup (`ISCC.exe`) and is not claimed PASS unless it is run.
