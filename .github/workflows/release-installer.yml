@@ -1,42 +1,62 @@
 name: Windows installer release
-
 on:
   workflow_dispatch:
   push:
     tags:
       - "v*"
-
 permissions:
   contents: read
-
+  actions: read
 jobs:
   installer:
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-
       - name: Restore
         run: dotnet restore TelegramControlStudio.sln
-
       - name: Publish Windows x64
         run: dotnet publish src/TelegramControlStudio.App/TelegramControlStudio.App.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/publish/win-x64 --no-restore
-
+      - name: Download verified TDLib artifact
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = 'application/vnd.github+json' }
+          $runsUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/workflows/build-tdlib-native.yml/runs?status=success&per_page=20"
+          $runs = Invoke-RestMethod -Headers $headers -Uri $runsUrl
+          $run = $runs.workflow_runs | Where-Object { $_.head_branch -eq 'main' } | Select-Object -First 1
+          if (-not $run) { throw 'No successful TDLib native workflow run was found.' }
+          $artifacts = Invoke-RestMethod -Headers $headers -Uri $run.artifacts_url
+          $artifact = $artifacts.artifacts | Where-Object { $_.name -like 'TelegramControlStudio-tdlib-win-x64-*' -and -not $_.expired } | Select-Object -First 1
+          if (-not $artifact) { throw "No usable TDLib artifact found for run $($run.id)." }
+          $zip = Join-Path $env:RUNNER_TEMP 'tdlib-artifact.zip'
+          Invoke-WebRequest -Headers $headers -Uri $artifact.archive_download_url -OutFile $zip
+          $extract = Join-Path $env:RUNNER_TEMP 'tdlib-artifact'
+          Expand-Archive -LiteralPath $zip -DestinationPath $extract -Force
+          $tdjson = (Get-ChildItem -LiteralPath $extract -Recurse -Filter 'tdjson.dll' | Select-Object -First 1).FullName
+          $manifest = (Get-ChildItem -LiteralPath $extract -Recurse -Filter 'tdjson.manifest.json' | Select-Object -First 1).FullName
+          if (-not (Test-Path -LiteralPath $tdjson) -or -not (Test-Path -LiteralPath $manifest)) { throw 'TDLib artifact is missing tdjson.dll or its manifest.' }
+          $expected = (Get-Content -Raw -LiteralPath $manifest | ConvertFrom-Json).sha256.ToLowerInvariant()
+          $actual = (Get-FileHash -LiteralPath $tdjson -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "TDLib hash mismatch. Expected $expected, got $actual." }
+          Get-ChildItem -LiteralPath $extract -Recurse -Filter '*.dll' | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination 'artifacts/publish/win-x64' -Force
+          }
+          Copy-Item -LiteralPath $manifest -Destination 'artifacts/publish/win-x64/tdjson.manifest.json' -Force
       - name: Install Inno Setup
         run: choco install innosetup --no-progress --yes
-
       - name: Compile installer
         shell: pwsh
         run: |
           $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
           if (-not (Test-Path -LiteralPath $iscc)) { throw "ISCC.exe was not found at $iscc" }
           & $iscc installer/TelegramControlStudio.iss
-
       - name: Hash installer
         shell: pwsh
         run: |
@@ -44,10 +64,8 @@ jobs:
           if (-not $installer) { throw 'Installer output was not created.' }
           $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content -Path "$($installer.FullName).sha256" -Value "$hash  $($installer.Name)" -Encoding utf8
-
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: TelegramControlStudio-installer-${{ github.ref_name }}
           path: artifacts/installer/*
-
