@@ -7,6 +7,7 @@
 - `powershell -ExecutionPolicy Bypass -File scripts/publish-win-x64.ps1`
 - `powershell -ExecutionPolicy Bypass -File scripts/verify-release.ps1`
 - `powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1`
+- `powershell -ExecutionPolicy Bypass -File scripts/verify-tdlib-runtime.ps1`
 
 ## Package gates
 
@@ -21,5 +22,5 @@
 
 - Build/test are local gates only.
 - Telegram End-to-End authentication and messaging are not verified.
+- Release preflight now runs both the TDLib hash gate and the no-login native runtime gate; hash verification alone is insufficient.
 - Installer compilation requires Inno Setup (`ISCC.exe`) and is not claimed PASS unless it is run.
-
