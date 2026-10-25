@@ -130,8 +130,8 @@
 - [x] Windows DPAPI Foundation
 - [x] Encrypted Backup/Restore Foundation
 - [x] Path Validation และ SQLite Integrity Check
-- [ ] Gitleaks Scan
-- [ ] Dependency Vulnerability Scan (local `dotnet list package --vulnerable` requires a successful NuGet restore; current clean result is not verified)
+- [x] Gitleaks Scan (GitHub Actions ผ่านบน Commit `e2accb6`)
+- [x] Dependency Vulnerability Scan (GitHub Actions ผ่านบน Commit `e2accb6`; local scan ยังไม่ยืนยัน)
 - [x] Import/Media/Path Traversal Security Review (Media root boundary tests)
 - [x] Read-only Windows ACL review script (`scripts/verify-windows-data-permissions.ps1`)
 - [ ] File Permission Review บน Windows จริง (ต้องรันกับ `%LOCALAPPDATA%\TelegramControlStudio`)
@@ -145,7 +145,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [ ] Automated Tests ต้องรันใหม่หลังเพิ่ม SQLite schema coverage (last verified: 148/148 ก่อนเพิ่ม test ล่าสุด)
+- [x] Managed Build/Test ผ่านบน GitHub Actions Commit `e2accb6` (Native Runtime แยกเป็น artifact-gated test)
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
