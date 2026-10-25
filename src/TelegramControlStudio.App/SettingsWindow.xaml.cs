@@ -60,6 +60,11 @@ public partial class SettingsWindow : Window
             {
                 var coordinator = new TdLibAccountAuthorizationCoordinator(new TdLibAccountSessionCoordinator(app.TdLibClients), repository);
                 new AuthenticationWizardWindow(_accountId, machine, coordinator) { Owner = this }.ShowDialog();
+                if (machine.IsReady && app.TdLibClients.TryGet(_accountId, out var connectedClient) && connectedClient is not null)
+                {
+                    await new TdLibAccountProfileSyncService(connectedClient, repository).SyncAsync(_accountId);
+                    StatusText.Text = "ยืนยันตัวตนแล้ว และ Sync โปรไฟล์บัญชีจาก Telegram สำเร็จ";
+                }
             }
         }
         catch (Exception exception) { ApiHashBox.Clear(); StatusText.Text = $"เชื่อมต่อไม่สำเร็จ: {exception.Message}"; }
