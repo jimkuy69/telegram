@@ -17,6 +17,8 @@ public partial class SettingsWindow : Window
         {
             var configuration = await new TdLibConfigurationRepository(_databasePath).GetAsync(_accountId);
             if (configuration is not null) ApiIdBox.Text = configuration.Value.ApiId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var native = await new TdLibConfigurationRepository(_databasePath).GetNativeLocationAsync(_accountId);
+            if (native is not null && Directory.Exists(native.Value.Directory)) { _nativeDirectory = native.Value.Directory; NativePathText.Text = $"Native TDLib: {_nativeDirectory}\nบันทึก hash: {native.Value.Sha256}"; }
         }
         catch { /* Settings remains usable when the local database is unavailable. */ }
     }
@@ -25,11 +27,18 @@ public partial class SettingsWindow : Window
         if (!int.TryParse(ApiIdBox.Text.Trim(), out var apiId) || apiId <= 0 || string.IsNullOrWhiteSpace(ApiHashBox.Password)) { StatusText.Text = "กรุณากรอก API ID และ API Hash ให้ถูกต้อง"; return; }
         try { await new TdLibConfigurationRepository(_databasePath).SaveAsync(_accountId, apiId, ApiHashBox.Password); ApiHashBox.Clear(); StatusText.Text = "บันทึก TDLib Configuration แบบเข้ารหัสแล้ว"; } catch (Exception exception) { ApiHashBox.Clear(); StatusText.Text = $"บันทึกไม่สำเร็จ: {exception.Message}"; }
     }
-    private void SelectNative_Click(object sender, RoutedEventArgs e)
+    private async void SelectNative_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Filter = "TDLib native library (tdjson.dll)|tdjson.dll" }; if (dialog.ShowDialog() != true) return;
         _nativeDirectory = Path.GetDirectoryName(dialog.FileName);
         NativePathText.Text = $"Native TDLib: {_nativeDirectory}\nตรวจ hash ก่อนเชื่อมต่อทุกครั้ง";
+        try
+        {
+            var hash = new TdLibNativeLoader().ComputeSha256(_nativeDirectory!);
+            await new TdLibConfigurationRepository(_databasePath).SaveNativeLocationAsync(_accountId, _nativeDirectory!, hash);
+            NativePathText.Text = $"Native TDLib: {_nativeDirectory}\nบันทึก hash: {hash}";
+        }
+        catch (Exception exception) { StatusText.Text = $"ตรวจ Native TDLib ไม่สำเร็จ: {exception.Message}"; }
     }
     private async void ConnectNative_Click(object sender, RoutedEventArgs e)
     {
