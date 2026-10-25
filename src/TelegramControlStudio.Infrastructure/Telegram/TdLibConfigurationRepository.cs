@@ -27,6 +27,23 @@ public sealed class TdLibConfigurationRepository(string databasePath)
 
     public async Task<bool> DeleteAsync(long accountId, CancellationToken cancellationToken = default) =>
         await _secrets.DeleteAsync(accountId, "tdlib.api_id", cancellationToken) |
-        await _secrets.DeleteAsync(accountId, "tdlib.api_hash", cancellationToken);
+        await _secrets.DeleteAsync(accountId, "tdlib.api_hash", cancellationToken) |
+        await _secrets.DeleteAsync(accountId, "tdlib.native_directory", cancellationToken) |
+        await _secrets.DeleteAsync(accountId, "tdlib.native_sha256", cancellationToken);
+
+    public async Task SaveNativeLocationAsync(long accountId, string nativeDirectory, string sha256, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nativeDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sha256);
+        await _secrets.SaveAsync(accountId, "tdlib.native_directory", Path.GetFullPath(nativeDirectory), cancellationToken);
+        await _secrets.SaveAsync(accountId, "tdlib.native_sha256", sha256, cancellationToken);
+    }
+
+    public async Task<(string Directory, string Sha256)?> GetNativeLocationAsync(long accountId, CancellationToken cancellationToken = default)
+    {
+        var directory = await _secrets.GetAsync(accountId, "tdlib.native_directory", cancellationToken);
+        var sha256 = await _secrets.GetAsync(accountId, "tdlib.native_sha256", cancellationToken);
+        return directory is null || sha256 is null ? null : (directory, sha256);
+    }
 }
 
