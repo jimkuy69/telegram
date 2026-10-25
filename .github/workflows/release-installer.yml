@@ -49,6 +49,14 @@ jobs:
             Copy-Item -LiteralPath $_.FullName -Destination 'artifacts/publish/win-x64' -Force
           }
           Copy-Item -LiteralPath $manifest -Destination 'artifacts/publish/win-x64/tdjson.manifest.json' -Force
+          $provenance = [ordered]@{
+            tdlibWorkflowRunId = $run.id
+            tdlibCommit = $run.head_sha
+            tdlibArtifactId = $artifact.id
+            tdlibArtifactName = $artifact.name
+            tdjsonSha256 = $actual
+          } | ConvertTo-Json -Depth 4
+          Set-Content -Path 'artifacts/publish/win-x64/tdlib.provenance.json' -Value $provenance -Encoding utf8
       - name: Install Inno Setup
         run: choco install innosetup --no-progress --yes
       - name: Compile installer
@@ -64,6 +72,18 @@ jobs:
           if (-not $installer) { throw 'Installer output was not created.' }
           $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content -Path "$($installer.FullName).sha256" -Value "$hash  $($installer.Name)" -Encoding utf8
+          $tdlibProvenance = Get-Content -Raw -LiteralPath 'artifacts/publish/win-x64/tdlib.provenance.json' | ConvertFrom-Json
+          $releaseManifest = [ordered]@{
+            repository = $env:GITHUB_REPOSITORY
+            commit = $env:GITHUB_SHA
+            ref = $env:GITHUB_REF
+            installer = [ordered]@{
+              name = $installer.Name
+              sha256 = $hash
+            }
+            tdlib = $tdlibProvenance
+          } | ConvertTo-Json -Depth 6
+          Set-Content -Path 'artifacts/installer/release-manifest.json' -Value $releaseManifest -Encoding utf8
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
