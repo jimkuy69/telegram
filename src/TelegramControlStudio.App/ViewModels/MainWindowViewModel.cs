@@ -35,7 +35,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     private string _dataSourceNotice = "ข้อมูลตัวอย่างในเครื่องเท่านั้น • ยังไม่ได้ Sync Telegram";
-    public string SystemStatus => "Local SQLite • TDLib Native ยังไม่ติดตั้ง • การส่งจริงปิดอยู่";
+    public string SystemStatus => "Local SQLite • TDLib Native ตรวจสอบ hash แล้ว • Runtime/การส่งจริงยังปิดอยู่";
     public string ActiveAccountStatus => ActiveAccount is null
         ? "ยังไม่ได้เลือกบัญชี"
         : $"{ActiveAccount.DisplayName} • {ActiveAccount.Status}";
@@ -70,6 +70,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => _errorSummary;
         private set { _errorSummary = value; OnPropertyChanged(); }
+    }
+    private string _campaignSummary = "Campaign: ยังไม่มีงาน";
+    public string CampaignSummary
+    {
+        get => _campaignSummary;
+        private set { _campaignSummary = value; OnPropertyChanged(); }
     }
 
     public async Task LoadContactsAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)
@@ -123,6 +129,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var total = counts.Values.Sum();
         var metrics = await new DashboardMetricsRepository(databasePath).LoadAsync(accountId, cancellationToken: cancellationToken);
         ErrorSummary = $"เหตุการณ์ผิดพลาดทั้งหมด • สิทธิ์: {metrics.PermissionErrors} • Privacy: {metrics.PrivacyErrors} • Network: {metrics.NetworkErrors}";
+        CampaignSummary = $"Campaign: {metrics.CampaignJobs} งาน • สำเร็จ {metrics.CampaignCompletedJobs} • ล้มเหลว {metrics.CampaignFailedJobs}";
         QueueSummary = $"Queue: {total} งานทั้งหมด • {counts.GetValueOrDefault(JobStatus.Queued)} รอคิว • {counts.GetValueOrDefault(JobStatus.Running)} กำลังทำ • {counts.GetValueOrDefault(JobStatus.WaitingForFloodWait)} รอ FloodWait • {counts.GetValueOrDefault(JobStatus.Completed)} สำเร็จ • {counts.GetValueOrDefault(JobStatus.Failed)} ล้มเหลว • {counts.GetValueOrDefault(JobStatus.Cancelled)} ยกเลิก";
     }
 
