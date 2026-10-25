@@ -57,7 +57,7 @@
 - [x] Members Search/แสดงข้อจำกัด
 - [x] CSV Export สมาชิก
 - [ ] Sync Groups/Members กับ Telegram จริง (เพิ่ม service/UI สำหรับ Supergroup แล้ว; Manual Telegram E2E ยังไม่ยืนยัน)
-- [ ] Pagination จากข้อมูลจริงของ Telegram (service รองรับ offset/limit; UI เปลี่ยนหน้ายังไม่เสร็จ)
+- [ ] Pagination จากข้อมูลจริงของ Telegram (service + UI รองรับ offset/limit; Manual Telegram E2E ยังไม่ยืนยัน)
 
 ## Phase 6 — Contacts และ Import/Export
 
