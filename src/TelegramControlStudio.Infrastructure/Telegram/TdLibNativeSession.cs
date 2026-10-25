@@ -125,9 +125,7 @@ public sealed class TdLibNativeSession : ITdLibClient
             }
         }
         catch (Exception exception) when (
-            exception is ObjectDisposedException or
-            exception is OperationCanceledException or
-            exception is InvalidOperationException)
+            exception is ObjectDisposedException or OperationCanceledException or InvalidOperationException)
         {
             foreach (var pending in _pending.Values)
                 pending.TrySetException(exception);
