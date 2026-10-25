@@ -132,8 +132,9 @@
 - [x] Path Validation และ SQLite Integrity Check
 - [ ] Gitleaks Scan
 - [ ] Dependency Vulnerability Scan (local `dotnet list package --vulnerable` requires a successful NuGet restore; current clean result is not verified)
-- [x] Import/Media/Path Traversal Security Review (Media root boundary tests; Windows file-permission review remains pending)
-- [ ] File Permission Review บน Windows จริง
+- [x] Import/Media/Path Traversal Security Review (Media root boundary tests)
+- [x] Read-only Windows ACL review script (`scripts/verify-windows-data-permissions.ps1`)
+- [ ] File Permission Review บน Windows จริง (ต้องรันกับ `%LOCALAPPDATA%\TelegramControlStudio`)
 
 ## Phase 13 — Testing
 
