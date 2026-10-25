@@ -98,7 +98,7 @@
 - [x] Join Request Domain/Repository
 - [x] TDLib Invite Request/Parser Foundation
 - [x] Pending Request UI และ Approve/Reject Foundation
-- [ ] สร้าง Invite Link กับ Telegram จริง
+- [ ] สร้าง Invite Link กับ Telegram จริง (UI/service/Join Request gate พร้อม; Manual E2E ยังไม่ยืนยัน)
 - [ ] Approve/Reject Join Request กับ Telegram จริง (TDLib service/UI gate พร้อม; Manual E2E ยังไม่ยืนยัน)
 - [ ] Direct Invite Permission Check แบบ End-to-End
 
