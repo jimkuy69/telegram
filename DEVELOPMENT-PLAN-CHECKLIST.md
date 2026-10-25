@@ -154,7 +154,7 @@
 
 - [x] Self-contained Windows x64 Publish script และ release workflow
 - [ ] Release verification จาก Artifact TDLib ที่ตรวจสอบ hash/runtime แล้ว (clean-machine ยังไม่ยืนยัน)
-- [x] Installer Compile ด้วย Inno Setup (local preflight ผ่าน; clean-machine install ยังไม่ยืนยัน)
+- [x] Installer Compile ด้วย Inno Setup ผ่าน Workflow Run `40157970040` (clean-machine install/uninstall/upgrade ยังไม่ยืนยัน)
 - [ ] Uninstaller และ Upgrade Test
 - [x] Version/Hash ของ Native Dependencies
 - [x] Third-party Notices ตรวจครบทุก Dependency
