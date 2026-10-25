@@ -15,7 +15,14 @@ if ($LASTEXITCODE -ne 0) {
     exit 2
 }
 
-& dotnet test $testProject --no-build --no-restore --filter 'FullyQualifiedName~TdLibNativeRuntimeTests' --verbosity minimal
+$previousGate = $env:TDLIB_RUNTIME_GATE
+$env:TDLIB_RUNTIME_GATE = '1'
+try {
+    & dotnet test $testProject --no-build --no-restore --filter 'FullyQualifiedName~TdLibNativeRuntimeTests' --verbosity minimal
+} finally {
+    if ($null -eq $previousGate) { Remove-Item Env:TDLIB_RUNTIME_GATE -ErrorAction SilentlyContinue }
+    else { $env:TDLIB_RUNTIME_GATE = $previousGate }
+}
 if ($LASTEXITCODE -ne 0) {
     Write-Host 'BLOCKED: TDLib native runtime POC failed. Check dependent native DLLs beside tdjson.dll.'
     exit 2
