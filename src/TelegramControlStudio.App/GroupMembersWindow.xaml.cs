@@ -5,6 +5,7 @@ using System.Windows;
 using Microsoft.Win32;
 using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.Infrastructure.Persistence;
+using TelegramControlStudio.Infrastructure.Telegram;
 
 namespace TelegramControlStudio.App;
 
@@ -16,7 +17,13 @@ public partial class GroupMembersWindow : Window
     { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; _chatId = chatId; TitleText.Text = $"สมาชิก • {title}"; DataContext = this; _ = LoadAsync(); }
     private async Task LoadAsync() { if (string.IsNullOrWhiteSpace(_databasePath)) return; foreach (var member in await new GroupMemberRepository(_databasePath).ListAsync(_accountId, _chatId)) Members.Add(member); }
     private async void Search_Click(object sender, RoutedEventArgs e) { Members.Clear(); foreach (var m in await new GroupMemberRepository(_databasePath).ListAsync(_accountId, _chatId, SearchBox.Text)) Members.Add(m); }
+    private async void Sync_Click(object sender, RoutedEventArgs e)
+    {
+        var app = (App)Application.Current;
+        if (!app.TdLibClients.TryGet(_accountId, out var client) || client is null) { StatusText.Text = "ยังไม่ได้เชื่อมต่อ TDLib"; return; }
+        try { var count = await new TdLibGroupMemberSyncService(client, _databasePath).SyncAsync(_accountId, _chatId); Members.Clear(); foreach (var m in await new GroupMemberRepository(_databasePath).ListAsync(_accountId, _chatId)) Members.Add(m); StatusText.Text = $"Sync สมาชิกที่ Telegram เปิดเผย {count} รายการ"; }
+        catch (Exception exception) { StatusText.Text = $"Sync ไม่สำเร็จ: {exception.Message}"; }
+    }
     private void Export_Click(object sender, RoutedEventArgs e)
     { var dialog = new SaveFileDialog { Filter = "CSV files (*.csv)|*.csv", FileName = "group-members.csv" }; if (dialog.ShowDialog() != true) return; var csv = new StringBuilder("account_id,chat_id,telegram_user_id,display_name,username,status,synced_at\n"); foreach (var m in Members) csv.AppendLine($"{m.AccountId},{m.ChatId},{m.TelegramUserId},\"{m.DisplayName.Replace("\"", "\"\"")}\",\"{m.Username ?? ""}\",{m.Status},{m.SyncedAt:O}"); File.WriteAllText(dialog.FileName, csv.ToString(), Encoding.UTF8); MessageBox.Show("Export CSV สำเร็จ", "เรียบร้อย", MessageBoxButton.OK, MessageBoxImage.Information); }
 }
-
