@@ -1,6 +1,7 @@
 using System.Windows;
 using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.Infrastructure.Persistence;
+using TelegramControlStudio.Infrastructure.Telegram;
 
 namespace TelegramControlStudio.App;
 
@@ -38,8 +39,21 @@ public partial class PendingRequestsWindow : Window
         }
         var confirm = MessageBox.Show($"ยืนยัน {decision} คำขอนี้หรือไม่?", "ยืนยันการตัดสินใจ", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
-        var changed = await new JoinRequestRepository(_databasePath).DecideAsync(_accountId, request.ChatId, request.TelegramUserId, decision, ReasonBox.Text.Trim());
-        if (!changed) MessageBox.Show("รายการนี้ไม่อยู่ในสถานะ Pending แล้ว", "ดำเนินการไม่ได้", MessageBoxButton.OK, MessageBoxImage.Information);
+        var app = (App)Application.Current;
+        if (!app.TdLibClients.TryGet(_accountId, out var client) || client is null)
+        {
+            MessageBox.Show("บัญชีนี้ยังไม่ได้เชื่อมต่อและยืนยันตัวตนกับ TDLib", "ยังไม่พร้อมดำเนินการ", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            await new TdLibJoinRequestDecisionService(_databasePath).DecideAsync(client, request, decision, ReasonBox.Text.Trim(), true, true);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show($"ดำเนินการไม่สำเร็จ\n{exception.Message}", "TDLib ไม่ยืนยันคำสั่ง", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
         await LoadAsync();
         ReasonBox.Clear();
     }
