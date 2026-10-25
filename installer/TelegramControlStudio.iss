@@ -25,8 +25,7 @@ Source: "..\artifacts\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{localappdata}\TelegramControlStudio"
 
 [Icons]
-Name: "{group}{#AppName}"; Filename: "{app}{#AppExeName}"
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
-
