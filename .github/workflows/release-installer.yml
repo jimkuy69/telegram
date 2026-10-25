@@ -27,7 +27,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $headers = @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = 'application/vnd.github+json' }
+          $headers = @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = 'application/vnd.github+json' }
           $runsUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/workflows/build-tdlib-native.yml/runs?status=success&per_page=20"
           $runs = Invoke-RestMethod -Headers $headers -Uri $runsUrl
           $run = $runs.workflow_runs | Where-Object { $_.head_branch -eq 'main' } | Select-Object -First 1
