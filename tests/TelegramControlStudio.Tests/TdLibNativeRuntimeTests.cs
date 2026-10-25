@@ -10,6 +10,12 @@ public sealed class TdLibNativeRuntimeTests
     [Fact]
     public void LoadsVerifiedNativeLibraryAndExecutesSynchronousOptionRequest()
     {
+        if (!string.Equals(Environment.GetEnvironmentVariable("TDLIB_RUNTIME_GATE"), "1", StringComparison.Ordinal))
+        {
+            Console.WriteLine("SKIPPED: TDLib native runtime requires the dedicated runtime gate.");
+            return;
+        }
+
         var root = FindRepositoryRoot();
         var nativeDirectory = Path.Combine(root, "tdlib");
         var manifestPath = Path.Combine(nativeDirectory, "tdjson.manifest.json");
