@@ -1,5 +1,7 @@
 # Windows Release Checklist
 
+TDLib artifact procedure: [TDLIB-RELEASE-ARTIFACT-RUNBOOK.md](TDLIB-RELEASE-ARTIFACT-RUNBOOK.md)
+
 ## Local gates
 
 - `dotnet build TelegramControlStudio.sln --no-restore --verbosity minimal`
