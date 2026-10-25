@@ -22,6 +22,10 @@ public sealed class DashboardMetricsRepositoryTests
             await jobs.UpdateStatusAsync(flood, JobStatus.WaitingForFloodWait, floodWaitUntil: DateTimeOffset.UtcNow.AddMinutes(5));
             var failed = await jobs.CreateAsync(accountId, "Message", 1, "dashboard-failed");
             await jobs.UpdateStatusAsync(failed, JobStatus.Failed, "failed");
+            var campaignCompleted = await jobs.CreateAsync(accountId, "Campaign:consented", 2, "dashboard-campaign-completed");
+            await jobs.UpdateStatusAsync(campaignCompleted, JobStatus.Completed);
+            var campaignFailed = await jobs.CreateAsync(accountId, "Campaign:consented", 2, "dashboard-campaign-failed");
+            await jobs.UpdateStatusAsync(campaignFailed, JobStatus.Failed, "campaign failed");
             var other = await jobs.CreateAsync(otherAccountId, "Message", 1, "other-job");
             await jobs.UpdateStatusAsync(other, JobStatus.Failed, "other");
             var logs = new ActivityLogRepository(path);
@@ -32,14 +36,17 @@ public sealed class DashboardMetricsRepositoryTests
 
             var metrics = await new DashboardMetricsRepository(path).LoadAsync(accountId, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddMinutes(1));
 
-            Assert.Equal(3, metrics.TotalJobs);
-            Assert.Equal(1, metrics.CompletedJobs);
-            Assert.Equal(1, metrics.FailedJobs);
+            Assert.Equal(5, metrics.TotalJobs);
+            Assert.Equal(2, metrics.CompletedJobs);
+            Assert.Equal(2, metrics.FailedJobs);
             Assert.Equal(0, metrics.QueuedJobs);
             Assert.Equal(1, metrics.FloodWaitJobs);
             Assert.Equal(1, metrics.PermissionErrors);
             Assert.Equal(1, metrics.PrivacyErrors);
             Assert.Equal(1, metrics.NetworkErrors);
+            Assert.Equal(2, metrics.CampaignJobs);
+            Assert.Equal(1, metrics.CampaignCompletedJobs);
+            Assert.Equal(1, metrics.CampaignFailedJobs);
         }
         finally
         {
