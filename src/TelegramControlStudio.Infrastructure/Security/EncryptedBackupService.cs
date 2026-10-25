@@ -36,7 +36,11 @@ public sealed class EncryptedBackupService
         {
             await File.WriteAllBytesAsync(temporaryPath, database, cancellationToken);
             await ValidateSqliteAsync(temporaryPath, cancellationToken);
-            File.Move(temporaryPath, databasePath, true);
+            // SQLite may retain a native handle briefly after the async connection is disposed.
+            // Clear pooled handles before replacing the destination so restore is reliable on Windows.
+            SqliteConnection.ClearAllPools();
+            if (File.Exists(databasePath)) File.Delete(databasePath);
+            File.Copy(temporaryPath, databasePath, false);
         }
         finally
         {
