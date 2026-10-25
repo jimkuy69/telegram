@@ -27,7 +27,7 @@ dotnet build TelegramControlStudio.sln
 dotnet test TelegramControlStudio.sln
 ```
 
-The current local verification reached 0 build warnings/errors and 111 passing tests. NuGet restore requires access to `https://api.nuget.org/v3/index.json`.
+The current local verification reached 0 build warnings/errors and 113 passing tests, including the TDLib native runtime POC against the verified Windows x64 artifact. NuGet restore requires access to `https://api.nuget.org/v3/index.json`.
 
 ## Windows release
 
@@ -41,7 +41,7 @@ pwsh ./scripts/verify-release.ps1
 pwsh ./scripts/build-portable.ps1 -Version 0.1.0
 ```
 
-The portable ZIP and SHA-256 file are written under `artifacts/releases/`. User data belongs under `%LOCALAPPDATA%\TelegramControlStudio\`, separate from the installed application directory.
+The portable ZIP and SHA-256 file are written under `artifacts/releases/`. User data belongs under `%LOCALAPPDATA%\\TelegramControlStudio\\`, separate from the installed application directory.
 
 ### GitHub Actions installer
 
