@@ -9,6 +9,7 @@ namespace TelegramControlStudio.App;
 public partial class AddAccountWindow : Window
 {
     private readonly string _databasePath;
+    public long? CreatedAccountId { get; private set; }
 
     public AddAccountWindow(string databasePath)
     {
@@ -38,6 +39,7 @@ public partial class AddAccountWindow : Window
 
         var repository = new AccountRepository(_databasePath);
         var accountId = await repository.CreateAsync(DisplayNameBox.Text.Trim(), phoneNumber);
+        CreatedAccountId = accountId;
         var sessionDirectory = SessionPathPolicy.GetAccountSessionDirectory(accountId);
         Directory.CreateDirectory(sessionDirectory);
         await repository.SaveSessionAsync(new AccountSession(accountId, sessionDirectory, "PendingAuthorization", false, DateTimeOffset.UtcNow));
