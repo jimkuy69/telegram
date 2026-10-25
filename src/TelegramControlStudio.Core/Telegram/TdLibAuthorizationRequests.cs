@@ -19,5 +19,22 @@ public static class TdLibAuthorizationRequests
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
         return new TdLibRequest("checkAuthenticationPassword", new Dictionary<string, object?> { ["password"] = password }, "auth-password");
     }
-}
 
+    public static TdLibRequest SetEmailAddress(string emailAddress)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(emailAddress);
+        return new TdLibRequest("setAuthenticationEmailAddress", new Dictionary<string, object?> { ["email_address"] = emailAddress }, "auth-email");
+    }
+
+    public static TdLibRequest CheckEmailCode(string code)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        return new TdLibRequest("checkAuthenticationEmailCode", new Dictionary<string, object?> { ["code"] = code }, "auth-email-code");
+    }
+
+    public static TdLibRequest RegisterUser(string firstName, string lastName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(firstName);
+        return new TdLibRequest("registerUser", new Dictionary<string, object?> { ["first_name"] = firstName, ["last_name"] = lastName ?? string.Empty }, "auth-register");
+    }
+}
