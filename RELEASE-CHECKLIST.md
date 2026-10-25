@@ -20,6 +20,7 @@ TDLib artifact procedure: [TDLIB-RELEASE-ARTIFACT-RUNBOOK.md](TDLIB-RELEASE-ARTI
 - Run `powershell -ExecutionPolicy Bypass -File scripts/verify-windows-data-permissions.ps1` and record the output; this check is read-only and does not alter ACLs.
 - Run the installer on a clean Windows x64 machine.
 - Test uninstall without deleting user data silently.
+- Confirm the installer artifact includes `release-manifest.json` with repository commit, TDLib Workflow Run/Artifact IDs, and SHA-256 values.
 - Record version, commit, publish date, and native dependency hashes.
 
 ## Current evidence
