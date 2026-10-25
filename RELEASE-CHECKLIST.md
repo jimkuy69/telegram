@@ -15,6 +15,7 @@
 - Confirm the successful TDLib GitHub Actions artifact contains `tdjson.dll`, `tdjson.manifest.json`, all required runtime DLLs, and matching SHA-256 values.
 - Confirm the artifact was checked with both `verify-tdlib-native.ps1` and `verify-tdlib-runtime.ps1` before packaging.
 - Confirm Database and Session data are outside the install directory under `%LOCALAPPDATA%/TelegramControlStudio`.
+- Run `powershell -ExecutionPolicy Bypass -File scripts/verify-windows-data-permissions.ps1` and record the output; this check is read-only and does not alter ACLs.
 - Run the installer on a clean Windows x64 machine.
 - Test uninstall without deleting user data silently.
 - Record version, commit, publish date, and native dependency hashes.
