@@ -36,6 +36,11 @@ public partial class SettingsWindow : Window
             await bootstrapper.ConnectAsync(_accountId, _nativeDirectory, hash, apiId, ApiHashBox.Password, sessionDirectory);
             ApiHashBox.Clear();
             StatusText.Text = $"Native TDLib เชื่อมต่อแล้ว\nSHA-256: {hash}";
+            if (bootstrapper.TryGetStateMachine(_accountId, out var machine) && machine is not null)
+            {
+                var coordinator = new TdLibAccountAuthorizationCoordinator(new TdLibAccountSessionCoordinator(app.TdLibClients), repository);
+                new AuthenticationWizardWindow(_accountId, machine, coordinator) { Owner = this }.ShowDialog();
+            }
         }
         catch (Exception exception) { ApiHashBox.Clear(); StatusText.Text = $"เชื่อมต่อไม่สำเร็จ: {exception.Message}"; }
     }
