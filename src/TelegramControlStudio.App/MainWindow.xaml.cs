@@ -320,5 +320,50 @@ public partial class MainWindow : Window
         var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
         new SettingsWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
+
+    private async void ExportDashboardReport_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "CSV files (*.csv)|*.csv",
+            FileName = $"telegram-dashboard-{DateTime.Now:yyyyMMdd-HHmmss}.csv"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
+        {
+            var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+            var metrics = await new DashboardMetricsRepository(databasePath).LoadAsync(viewModel.ActiveAccount.Id);
+            var rows = new[]
+            {
+                "metric,value",
+                $"account_id,{viewModel.ActiveAccount.Id}",
+                $"generated_at_utc,{DateTimeOffset.UtcNow:O}",
+                $"total_jobs,{metrics.TotalJobs}",
+                $"completed_jobs,{metrics.CompletedJobs}",
+                $"failed_jobs,{metrics.FailedJobs}",
+                $"queued_jobs,{metrics.QueuedJobs}",
+                $"flood_wait_jobs,{metrics.FloodWaitJobs}",
+                $"campaign_jobs,{metrics.CampaignJobs}",
+                $"campaign_completed_jobs,{metrics.CampaignCompletedJobs}",
+                $"campaign_failed_jobs,{metrics.CampaignFailedJobs}",
+                $"permission_errors,{metrics.PermissionErrors}",
+                $"privacy_errors,{metrics.PrivacyErrors}",
+                $"network_errors,{metrics.NetworkErrors}"
+            };
+            await File.WriteAllLinesAsync(dialog.FileName, rows, Encoding.UTF8);
+            MessageBox.Show("ส่งออก Dashboard Report สำเร็จ", "Export สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show($"ส่งออกไม่สำเร็จ\n{exception.Message}", "Export ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
 }
 
