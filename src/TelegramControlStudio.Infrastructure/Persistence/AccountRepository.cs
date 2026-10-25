@@ -96,5 +96,19 @@ public sealed class AccountRepository(string databasePath)
         command.Parameters.AddWithValue("$updated_at", DateTimeOffset.UtcNow.ToString("O"));
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
-}
 
+    public async Task<bool> UpdateProfileAsync(long accountId, string displayName, string phoneNumber, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(phoneNumber);
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE accounts SET display_name=$display_name, phone_number=$phone_number, last_sync_at=$updated_at WHERE id=$account_id";
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$display_name", displayName);
+        command.Parameters.AddWithValue("$phone_number", phoneNumber);
+        command.Parameters.AddWithValue("$updated_at", DateTimeOffset.UtcNow.ToString("O"));
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
+}
