@@ -1,6 +1,7 @@
 using System.Windows;
 using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.Infrastructure.Persistence;
+using TelegramControlStudio.Infrastructure.Telegram;
 
 namespace TelegramControlStudio.App;
 
@@ -28,6 +29,25 @@ public partial class CampaignWizardWindow : Window
         {
             MessageBox.Show($"สร้าง Campaign ไม่สำเร็จ\n{exception.Message}", "ตรวจสอบข้อมูล", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+    private async void Send_Click(object sender, RoutedEventArgs e)
+    {
+        if (!long.TryParse(TemplateIdBox.Text, out var templateId) || string.IsNullOrWhiteSpace(NameBox.Text) || string.IsNullOrWhiteSpace(MessageTextBox.Text))
+        { MessageBox.Show("กรุณาระบุชื่อ Template ID และข้อความ", "ข้อมูลไม่ครบ"); return; }
+        var app = (App)Application.Current;
+        if (!app.TdLibClients.TryGet(_accountId, out var client) || client is null)
+        { MessageBox.Show("บัญชีนี้ยังไม่ได้เชื่อมต่อและยืนยันตัวตนกับ TDLib", "ยังไม่พร้อมส่ง"); return; }
+        var eligible = _contacts.Count(item => item.HasConsent && !item.IsOptedOut);
+        if (eligible == 0) { MessageBox.Show("ไม่มีผู้รับที่ผ่าน Consent", "ส่งไม่ได้"); return; }
+        if (MessageBox.Show($"ยืนยันส่งข้อความจริงให้ผู้รับที่มี Consent จำนวน {eligible} รายการ?\nระบบจะส่งทีละรายการและข้าม Opt-out", "ยืนยันการส่งจริง", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try
+        {
+            var id = await new CampaignBuilder(_databasePath).CreateFromConsentedContactsAsync(_accountId, templateId, NameBox.Text.Trim(), PolicyBox.Text.Trim(), _contacts, true);
+            var jobId = await new CampaignQueueService(_databasePath).QueueCampaignAsync(id, _accountId, true);
+            var status = await new TdLibCampaignJobRunner(_databasePath).RunAsync(client, jobId, _accountId, MessageTextBox.Text.Trim(), true, TimeSpan.FromSeconds(1));
+            MessageBox.Show($"Campaign ส่งเสร็จตามสถานะ Job: {status}\nJob: {jobId}", "ดำเนินการเสร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception) { MessageBox.Show($"ส่ง Campaign ไม่สำเร็จ\n{exception.Message}", "ส่งไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning); }
     }
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }
