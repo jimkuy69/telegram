@@ -14,14 +14,17 @@ public sealed class TdLibAccountClientRegistryTests
         var second = new FakeClient();
         Assert.True(registry.Register(1, first));
         Assert.True(registry.Register(2, second));
+        Assert.Equal(2, registry.Count);
         Assert.False(registry.Register(1, new FakeClient()));
         Assert.True(registry.TryGet(2, out var resolved));
         Assert.Same(second, resolved);
         Assert.True(await registry.RemoveAsync(1));
         Assert.True(first.Disposed);
         Assert.False(registry.TryGet(1, out _));
+        Assert.Equal(1, registry.Count);
         await registry.DisposeAllAsync();
         Assert.True(second.Disposed);
+        Assert.Equal(0, registry.Count);
     }
 
     private sealed class FakeClient : ITdLibClient
