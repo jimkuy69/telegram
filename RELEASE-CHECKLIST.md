@@ -24,7 +24,10 @@ TDLib artifact procedure: [TDLIB-RELEASE-ARTIFACT-RUNBOOK.md](TDLIB-RELEASE-ARTI
 
 ## Current evidence
 
-- Build/test are local gates only.
+- Managed Build/Test/Windows x64 Publish passed on Workflow Run `40171132638` (commit `40815d02`).
+- Security scan passed on the same change.
+- TDLib native Build, package verification, and no-login Runtime Gate passed on Run `40168091976`, Job `121093157042`.
+- Verified TDLib artifact: `TelegramControlStudio-tdlib-win-x64-1.8.67`, Artifact ID `12589959763`, digest `sha256:343fa2a2ef4b0e3431c3a1f9407155a535b8db7acc0c3ac005013c1cf5729e20`.
 - Telegram End-to-End authentication and messaging are not verified.
 - Release preflight is allowed to pass the TDLib gate only when the verified artifact is present; hash verification alone is insufficient.
 - The native DLL is intentionally not committed to `main`; the release evidence must identify the successful Workflow Run and artifact.
