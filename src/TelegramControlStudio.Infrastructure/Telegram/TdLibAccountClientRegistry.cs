@@ -15,6 +15,7 @@ public sealed class TdLibAccountClientRegistry
     }
 
     public bool TryGet(long accountId, out ITdLibClient? client) => _clients.TryGetValue(accountId, out client);
+    public bool IsRegistered(long accountId) => _clients.ContainsKey(accountId);
 
     public async Task<bool> RemoveAsync(long accountId)
     {
@@ -29,3 +30,4 @@ public sealed class TdLibAccountClientRegistry
             await RemoveAsync(accountId);
     }
 }
+
