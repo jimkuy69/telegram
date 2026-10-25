@@ -15,6 +15,10 @@
         <TextBlock Text="ข้อมูลสำหรับขั้นตอนปัจจุบัน" Foreground="#AFC3DF"/>
         <TextBox x:Name="PhoneInputBox" Margin="0,7,0,14" Padding="11" Background="#101F35" Foreground="#D9E2F2" BorderBrush="#29486E"/>
         <PasswordBox x:Name="SecretInputBox" Margin="0,7,0,14" Padding="11" Background="#101F35" Foreground="#D9E2F2" BorderBrush="#29486E" Visibility="Collapsed"/>
+        <StackPanel x:Name="RegistrationPanel" Visibility="Collapsed" Margin="0,7,0,14">
+            <TextBox x:Name="RegistrationFirstNameBox" Padding="11" Margin="0,0,0,8" Background="#101F35" Foreground="#D9E2F2" BorderBrush="#29486E"/>
+            <TextBox x:Name="RegistrationLastNameBox" Padding="11" Background="#101F35" Foreground="#D9E2F2" BorderBrush="#29486E"/>
+        </StackPanel>
         <TextBlock Text="ช่องนี้ใช้รับ OTP หรือ 2FA ชั่วคราวเท่านั้น และจะไม่ถูกเขียนลง Log หรือฐานข้อมูล" Foreground="#FBBF24" TextWrapping="Wrap" Margin="0,0,0,18"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="ปิด" Click="Close_Click" Margin="0,0,10,0"/>
@@ -23,4 +27,3 @@
         <TextBlock x:Name="NoticeText" Foreground="#FBBF24" TextWrapping="Wrap" Margin="0,18,0,0"/>
     </StackPanel>
 </Window>
-
