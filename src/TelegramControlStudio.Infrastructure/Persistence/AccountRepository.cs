@@ -5,9 +5,10 @@ namespace TelegramControlStudio.Infrastructure.Persistence;
 
 public sealed class AccountRepository(string databasePath)
 {
+    public string DatabasePath { get; } = Path.GetFullPath(databasePath);
     private readonly string _connectionString = new SqliteConnectionStringBuilder
     {
-        DataSource = databasePath,
+        DataSource = Path.GetFullPath(databasePath),
         Mode = SqliteOpenMode.ReadWriteCreate,
         ForeignKeys = true
     }.ToString();
