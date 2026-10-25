@@ -145,7 +145,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [x] Automated Tests ผ่าน 148/148 (local, no-restore)
+- [ ] Automated Tests ต้องรันใหม่หลังเพิ่ม SQLite schema coverage (last verified: 148/148 ก่อนเพิ่ม test ล่าสุด)
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
