@@ -68,7 +68,7 @@
 - [x] Consent และ Opt-out Policy
 - [x] Soft Delete และ Activity Log
 - [x] TDLib Contact Sync Foundation
-- [ ] Contact Sync กับ Telegram จริง
+- [ ] Contact Sync กับ Telegram จริง (บริการและปุ่ม UI พร้อม; Manual Telegram E2E ยังไม่ยืนยัน)
 
 ## Phase 7 — Templates และ Media
 
