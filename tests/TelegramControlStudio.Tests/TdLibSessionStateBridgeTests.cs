@@ -9,6 +9,39 @@ namespace TelegramControlStudio.Tests;
 
 public sealed class TdLibSessionStateBridgeTests
 {
+    [Theory]
+    [InlineData(AuthorizationState.WaitPhoneNumber, "PendingAuthorization", false)]
+    [InlineData(AuthorizationState.WaitCode, "PendingAuthorization", false)]
+    [InlineData(AuthorizationState.WaitPassword, "PendingAuthorization", false)]
+    [InlineData(AuthorizationState.LoggingOut, "LoggingOut", false)]
+    [InlineData(AuthorizationState.Expired, "SessionExpired", false)]
+    [InlineData(AuthorizationState.Error, "Error", false)]
+    public async Task PersistsNonReadyAuthorizationStatesSafely(AuthorizationState state, string expectedStatus, bool expectedAuthorized)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"telegram-bridge-state-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            var accountId = await new AccountRepository(path).CreateAsync("State", "+66000000009");
+            var bridge = new TdLibSessionStateBridge(path, accountId, SessionPathPolicy.GetAccountSessionDirectory(accountId), new AuthorizationStateMachine());
+            await bridge.ApplyAsync(state);
+
+            var account = Assert.Single(await new AccountRepository(path).ListAsync());
+            Assert.Equal(expectedStatus, account.Status);
+            await using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT is_authorized FROM account_sessions WHERE account_id = $id;";
+            command.Parameters.AddWithValue("$id", accountId);
+            Assert.Equal(expectedAuthorized ? 1 : 0, Convert.ToInt32(await command.ExecuteScalarAsync()));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
     [Fact]
     public async Task PersistsReadyStateWithoutCredentialData()
     {
@@ -19,7 +52,9 @@ public sealed class TdLibSessionStateBridgeTests
             var accountId = await new AccountRepository(path).CreateAsync("Test", "+66000000000");
             var machine = new AuthorizationStateMachine();
             var bridge = new TdLibSessionStateBridge(path, accountId, SessionPathPolicy.GetAccountSessionDirectory(accountId), machine);
+
             await bridge.ApplyAsync(AuthorizationState.Ready);
+
             await using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
             await connection.OpenAsync();
             await using var sessionCommand = connection.CreateCommand();
@@ -29,12 +64,17 @@ public sealed class TdLibSessionStateBridgeTests
             Assert.True(await reader.ReadAsync());
             Assert.Equal("Ready", reader.GetString(0));
             Assert.Equal(1, reader.GetInt32(1));
+
             await using var accountCommand = connection.CreateCommand();
             accountCommand.CommandText = "SELECT status FROM accounts WHERE id = $id;";
             accountCommand.Parameters.AddWithValue("$id", accountId);
             Assert.Equal("Ready", await accountCommand.ExecuteScalarAsync());
         }
-        finally { SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (File.Exists(path)) File.Delete(path);
+        }
     }
 
     [Fact]
@@ -54,6 +94,11 @@ public sealed class TdLibSessionStateBridgeTests
             Assert.Equal("PendingAuthorization", account.Status);
             bridge.Detach(); bridge.Detach();
         }
-        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(path)) File.Delete(path);
+        }
     }
 }
+
