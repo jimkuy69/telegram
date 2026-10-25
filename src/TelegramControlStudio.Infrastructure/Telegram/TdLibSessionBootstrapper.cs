@@ -9,6 +9,9 @@ namespace TelegramControlStudio.Infrastructure.Telegram;
 /// </summary>
 public sealed class TdLibSessionBootstrapper(TdLibAccountClientRegistry registry, AccountRepository accounts)
 {
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<long, AuthorizationStateMachine> _stateMachines = new();
+
+    public bool TryGetStateMachine(long accountId, out AuthorizationStateMachine? stateMachine) => _stateMachines.TryGetValue(accountId, out stateMachine);
     public async Task<TdLibNativeSession> ConnectAsync(
         long accountId,
         string nativeDirectory,
@@ -24,6 +27,7 @@ public sealed class TdLibSessionBootstrapper(TdLibAccountClientRegistry registry
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionDirectory);
         Directory.CreateDirectory(sessionDirectory);
         var machine = new AuthorizationStateMachine();
+        _stateMachines[accountId] = machine;
         var router = new TdLibUpdateRouter(machine);
         var bridge = new TdLibSessionStateBridge(accounts.DatabasePath, accountId, sessionDirectory, machine);
         bridge.Attach();
@@ -34,6 +38,7 @@ public sealed class TdLibSessionBootstrapper(TdLibAccountClientRegistry registry
             if (!registry.Register(accountId, session))
             {
                 await session.DisposeAsync();
+                _stateMachines.TryRemove(accountId, out _);
                 throw new InvalidOperationException($"A TDLib session is already attached to account {accountId}.");
             }
             return session;
@@ -41,6 +46,7 @@ public sealed class TdLibSessionBootstrapper(TdLibAccountClientRegistry registry
         catch
         {
             bridge.Detach();
+            _stateMachines.TryRemove(accountId, out _);
             throw;
         }
     }
