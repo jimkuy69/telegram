@@ -145,7 +145,7 @@
 - [x] TDLib Adapter/Parser Mock Tests
 - [x] Security/Redaction Tests
 - [x] Build ผ่าน 0 warnings / 0 errors
-- [x] Managed Build/Test ผ่านบน GitHub Actions Commit `e2accb6` (Native Runtime แยกเป็น artifact-gated test)
+- [x] Managed Build/Test/Windows x64 Publish ผ่านบน GitHub Actions Commit `40815d02` (Run `40171132638`; Native Runtime แยกเป็น artifact-gated test)
 - [ ] UI Test ด้วย Playwright
 - [ ] Manual Telegram Acceptance Test
 - [ ] Offline/Network Failure Test กับ Runtime จริง
