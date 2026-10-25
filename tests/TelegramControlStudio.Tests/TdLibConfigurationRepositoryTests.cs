@@ -33,6 +33,7 @@ public sealed class TdLibConfigurationRepositoryTests
             Assert.Equal("abc123", native.Value.Sha256);
             Assert.True(await repository.DeleteAsync(first));
             Assert.Null(await repository.GetAsync(first));
+            Assert.Null(await repository.GetNativeLocationAsync(first));
         }
         finally
         {
