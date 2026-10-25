@@ -4,6 +4,7 @@ using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.App.ViewModels;
 using TelegramControlStudio.Infrastructure.Persistence;
 using TelegramControlStudio.Core.Export;
+using TelegramControlStudio.Infrastructure.Telegram;
 using System.Text;
 
 namespace TelegramControlStudio.App;
@@ -145,6 +146,33 @@ public partial class MainWindow : Window
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null) return;
         var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
         await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
+    }
+
+    private async void SyncContacts_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var app = (App)Application.Current;
+        if (!app.TdLibClients.TryGet(viewModel.ActiveAccount.Id, out var client) || client is null)
+        {
+            MessageBox.Show("บัญชีนี้ยังไม่ได้เชื่อมต่อและยืนยันตัวตนกับ TDLib", "ยังไม่พร้อม Sync", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+            var contacts = await new TdLibContactSyncService(client, databasePath).SyncAsync(viewModel.ActiveAccount.Id);
+            await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
+            await viewModel.LoadActivityLogsAsync(databasePath, viewModel.ActiveAccount.Id);
+            MessageBox.Show($"Sync Contacts สำเร็จ {contacts.Count} รายการ", "Sync สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show($"Sync Contacts ไม่สำเร็จ\n{exception.Message}", "Sync ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private async void DeleteSelectedContacts_Click(object sender, RoutedEventArgs e)
