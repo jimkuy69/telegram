@@ -89,7 +89,7 @@
 - [x] Idempotency Key และ Recipient Result Foundation
 - [x] Pause/Resume/Cancel/Retry Policy Foundation
 - [x] FloodWait Policy
-- [ ] ส่งข้อความกับ Telegram จริง
+- [ ] ส่งข้อความกับ Telegram จริง (UI/runner/Consent gate พร้อม; Manual Acceptance ยังไม่ยืนยัน)
 - [ ] Manual Acceptance Test แบบผู้รับยินยอม
 
 ## Phase 9 — Invitation Management
