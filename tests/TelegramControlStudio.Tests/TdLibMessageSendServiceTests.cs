@@ -26,6 +26,27 @@ public sealed class TdLibMessageSendServiceTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
 
+    [Fact]
+    public async Task ConvertsTdlibFloodWaitErrorToTypedExceptionAndRedactedLog()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-flood-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            var client = new FakeClient("{\"@type\":\"error\",\"code\":429,\"message\":\"FLOOD_WAIT_42\"}");
+            var accountId = await new AccountRepository(path).CreateAsync("Flood", "+66000000098");
+            var recipient = new Contact(accountId, 456, "A", "B", null, null, true, false, DateTimeOffset.UtcNow);
+
+            var exception = await Assert.ThrowsAsync<TdLibFloodWaitException>(() =>
+                new TdLibMessageSendService(path).SendTextAsync(client, recipient, "private message", true));
+
+            Assert.Equal(42, exception.Seconds);
+            var logs = await new ActivityLogRepository(path).ListAsync(accountId);
+            Assert.Contains(logs, item => item.EventType == "FloodWait" && !item.Message.Contains("private message", StringComparison.Ordinal));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
     private sealed class FakeClient(string response) : TelegramControlStudio.Core.Telegram.ITdLibClient
     {
         public string? Function { get; private set; }
@@ -33,4 +54,3 @@ public sealed class TdLibMessageSendServiceTests
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }
-
