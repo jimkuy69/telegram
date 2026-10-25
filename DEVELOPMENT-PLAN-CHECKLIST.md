@@ -94,7 +94,7 @@
 
 ## Phase 9 — Invitation Management
 
-- [x] Invite Link Policy Validation
+- [x] Invite Link Policy Validation และ Revoke ผ่าน TDLib gate
 - [x] Join Request Domain/Repository
 - [x] TDLib Invite Request/Parser Foundation
 - [x] Pending Request UI และ Approve/Reject Foundation
