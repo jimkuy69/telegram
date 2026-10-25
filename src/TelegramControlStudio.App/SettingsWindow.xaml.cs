@@ -3,11 +3,22 @@ using System.IO;
 using Microsoft.Win32;
 using TelegramControlStudio.Infrastructure.Persistence;
 using TelegramControlStudio.Infrastructure.Security;
+using TelegramControlStudio.Infrastructure.Telegram;
 namespace TelegramControlStudio.App;
 public partial class SettingsWindow : Window
 {
     private readonly string _databasePath; private readonly long _accountId;
     public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; }
+    private async void SaveTdLib_Click(object sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(ApiIdBox.Text.Trim(), out var apiId) || apiId <= 0 || string.IsNullOrWhiteSpace(ApiHashBox.Password)) { StatusText.Text = "กรุณากรอก API ID และ API Hash ให้ถูกต้อง"; return; }
+        try { await new TdLibConfigurationRepository(_databasePath).SaveAsync(_accountId, apiId, ApiHashBox.Password); ApiHashBox.Clear(); StatusText.Text = "บันทึก TDLib Configuration แบบเข้ารหัสแล้ว"; } catch (Exception exception) { ApiHashBox.Clear(); StatusText.Text = $"บันทึกไม่สำเร็จ: {exception.Message}"; }
+    }
+    private void SelectNative_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Filter = "TDLib native library (tdjson.dll)|tdjson.dll" }; if (dialog.ShowDialog() != true) return;
+        NativePathText.Text = $"Native TDLib: {Path.GetDirectoryName(dialog.FileName)}\nตรวจ hash ก่อนเชื่อมต่อทุกครั้ง";
+    }
     private async void Backup_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = "Encrypted Telegram Control Studio backup (*.tcsbackup)|*.tcsbackup", FileName = $"telegram-control-studio-{DateTime.Now:yyyyMMdd-HHmmss}.tcsbackup" }; if (dialog.ShowDialog() != true) return;
