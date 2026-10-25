@@ -119,7 +119,7 @@
 - [x] Activity Log View
 - [x] Campaign Success/Failure Dashboard (แยก Campaign Job ตาม account/date range)
 - [x] FloodWait/Permission/Error Analytics (SQLite metrics wired to Dashboard)
-- [ ] Export Report ครบตามช่วงเวลาและบัญชี (CSV สำหรับบัญชีที่เลือกเริ่มต้นแล้ว; date range ยังไม่เสร็จ)
+- [x] Export Report ครบตามช่วงเวลาและบัญชี (CSV; date range จาก Dashboard)
 
 ## Phase 12 — Security Hardening
 
