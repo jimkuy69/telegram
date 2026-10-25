@@ -13,7 +13,8 @@
 - [x] API Feasibility Matrix (`docs/API-FEASIBILITY-MATRIX.md`)
 - [x] Risk Register และ Compliance Rules (`docs/RISK-REGISTER.md`)
 - [x] ระบุขอบเขตที่ไม่ทำ: Spam, หลบแบน, ข้าม Privacy, Account Rotation
-- [x] ตรวจสอบ Native TDLib Binary และ License อย่างเป็นทางการ (artifact manifest + SHA-256; live Telegram E2E ยังไม่ยืนยัน)
+- [x] กำหนดแหล่ง Official TDLib, License, pin version และ manifest/hash gate ใน Workflow
+- [ ] ตรวจสอบ Native TDLib Artifact และ Runtime จาก Workflow Run ล่าสุด (ยังไม่มีหลักฐาน Artifact ใน source tree)
 
 ## Phase 1 — Project Foundation
 
