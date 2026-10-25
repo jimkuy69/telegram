@@ -19,6 +19,28 @@ public partial class InviteLinksWindow : Window
 
     private async Task LoadAsync() => LinksGrid.ItemsSource = await new InviteLinkRepository(_databasePath).ListAsync(_accountId);
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await LoadAsync();
+    private async void Revoke_Click(object sender, RoutedEventArgs e)
+    {
+        if (LinksGrid.SelectedItem is not TelegramControlStudio.Core.Domain.InviteLink link)
+        {
+            StatusText.Text = "กรุณาเลือกลิงก์ก่อน";
+            return;
+        }
+        var app = (App)Application.Current;
+        if (!app.TdLibClients.TryGet(_accountId, out var client) || client is null)
+        {
+            StatusText.Text = "บัญชียังไม่เชื่อมต่อและยืนยันตัวตนกับ TDLib";
+            return;
+        }
+        if (MessageBox.Show("ยืนยัน Revoke Invite Link นี้? ลิงก์จะใช้เข้าร่วมไม่ได้อีก", "ยืนยัน Revoke", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try
+        {
+            await new TdLibInviteLinkService(_databasePath).RevokeAsync(client, _accountId, link.ChatId, link.InviteUrl, true, true);
+            StatusText.Text = "Revoke สำเร็จ";
+            await LoadAsync();
+        }
+        catch (Exception exception) { StatusText.Text = $"Revoke ไม่สำเร็จ: {exception.Message}"; }
+    }
     private async void Create_Click(object sender, RoutedEventArgs e)
     {
         if (!long.TryParse(ChatIdBox.Text.Trim(), out var chatId) || chatId == 0)
