@@ -99,7 +99,7 @@
 - [x] TDLib Invite Request/Parser Foundation
 - [x] Pending Request UI และ Approve/Reject Foundation
 - [ ] สร้าง Invite Link กับ Telegram จริง
-- [ ] Approve/Reject Join Request กับ Telegram จริง
+- [ ] Approve/Reject Join Request กับ Telegram จริง (TDLib service/UI gate พร้อม; Manual E2E ยังไม่ยืนยัน)
 - [ ] Direct Invite Permission Check แบบ End-to-End
 
 ## Phase 10 — Queue, Logging และ Recovery
