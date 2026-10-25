@@ -31,7 +31,7 @@
 - [x] Receive/Update Routing Foundation
 - [x] Native Library Loader และ Lifecycle Foundation
 - [x] ติดตั้งและตรวจสอบ `tdjson.dll` จริง (Windows x64 artifact; SHA-256 ตรง manifest)
-- [ ] Runtime POC กับ TDLib Native จริง
+- [x] Runtime POC กับ TDLib Native จริง (no-login `getOption(version)` ผ่านบน Windows x64; live auth ยังไม่ยืนยัน)
 
 ## Phase 3 — Authentication และ Session
 
@@ -172,7 +172,7 @@
 
 **ยังไม่อนุญาตให้เรียกว่า Production Ready** จนกว่าจะผ่านอย่างน้อย:
 
-- [ ] TDLib Native Runtime จริง
+- [x] TDLib Native Runtime จริง (local no-login runtime gate ผ่าน)
 - [ ] Authentication จริง
 - [ ] Manual Telegram Acceptance Test
 - [ ] Security Hardening
