@@ -28,4 +28,15 @@ public sealed class TdLibInviteRequestsTests
         Assert.Throws<InvalidOperationException>(() => TdLibInviteRequests.RevokeChatInviteLink(-100, "https://t.me/+abc", false, true));
         Assert.Throws<InvalidOperationException>(() => TdLibInviteRequests.RevokeChatInviteLink(-100, "https://t.me/+abc", true, false));
     }
+
+    [Fact]
+    public void BuildsJoinRequestDecisionOnlyAfterConfirmationAndPermission()
+    {
+        var request = TdLibInviteRequests.ProcessChatJoinRequest(-100, 123, true, "ตรวจสอบ consent แล้ว", true, true);
+        Assert.Equal("processChatJoinRequest", request.Function);
+        Assert.Equal(true, request.Parameters["approve"]);
+        Assert.Throws<InvalidOperationException>(() => TdLibInviteRequests.ProcessChatJoinRequest(-100, 123, true, "reason", false, true));
+        Assert.Throws<InvalidOperationException>(() => TdLibInviteRequests.ProcessChatJoinRequest(-100, 123, true, "reason", true, false));
+    }
 }
+
