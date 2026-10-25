@@ -7,8 +7,11 @@ public sealed class AuthorizationStateMachineTests
 {
     [Theory]
     [InlineData("authorizationStateWaitPhoneNumber", AuthorizationState.WaitPhoneNumber)]
+    [InlineData("authorizationStateWaitEmailAddress", AuthorizationState.WaitEmailAddress)]
+    [InlineData("authorizationStateWaitEmailCode", AuthorizationState.WaitEmailCode)]
     [InlineData("authorizationStateWaitCode", AuthorizationState.WaitCode)]
     [InlineData("authorizationStateWaitPassword", AuthorizationState.WaitPassword)]
+    [InlineData("authorizationStateWaitRegistration", AuthorizationState.WaitRegistration)]
     [InlineData("authorizationStateReady", AuthorizationState.Ready)]
     public void MapsTdlibAuthorizationStates(string tdlibState, AuthorizationState expected)
     {
@@ -29,4 +32,3 @@ public sealed class AuthorizationStateMachineTests
         Assert.Equal(AuthorizationState.WaitCode, observed);
     }
 }
-
