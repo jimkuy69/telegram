@@ -1,4 +1,3 @@
-
 # Telegram Control Studio — Development Checklist
 
 สถานะใช้หลักฐานปัจจุบันเท่านั้น:
@@ -118,7 +117,7 @@
 
 - [x] Queue และ Pending Request Summary เบื้องต้น
 - [x] Activity Log View
-- [ ] Campaign Success/Failure Dashboard
+- [x] Campaign Success/Failure Dashboard (แยก Campaign Job ตาม account/date range)
 - [x] FloodWait/Permission/Error Analytics (SQLite metrics wired to Dashboard)
 - [ ] Export Report ครบตามช่วงเวลาและบัญชี
 
