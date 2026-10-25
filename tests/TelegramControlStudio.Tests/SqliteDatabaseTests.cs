@@ -63,7 +63,7 @@ public sealed class SqliteDatabaseTests
             while (await reader.ReadAsync())
                 tables.Add(reader.GetString(0));
 
-            Assert.Equal(17, tables.Count);
+            Assert.Equal(16, tables.Count);
         }
         finally
         {
