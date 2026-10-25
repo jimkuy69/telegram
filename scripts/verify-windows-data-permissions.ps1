@@ -28,7 +28,7 @@ $broadWriteRules = @(
     $acl.Access | Where-Object {
         $_.AccessControlType -eq [System.Security.AccessControl.AccessControlType]::Allow -and
         $_.IdentityReference.Value -match '^(Everyone|BUILTIN\\Users|NT AUTHORITY\\Authenticated Users)$' -and
-        (($writeRights | Where-Object { ($rule.FileSystemRights -band $_) -ne 0 }).Count -gt 0)
+        ((([System.Security.AccessControl.FileSystemRights]::Write -bor [System.Security.AccessControl.FileSystemRights]::Modify -bor [System.Security.AccessControl.FileSystemRights]::FullControl) -band $_.FileSystemRights) -ne 0)
     }
 )
 
