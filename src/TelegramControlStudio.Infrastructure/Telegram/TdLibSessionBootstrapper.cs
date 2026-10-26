@@ -35,17 +35,22 @@ public sealed class TdLibSessionBootstrapper(TdLibAccountClientRegistry registry
         var bridge = new TdLibSessionStateBridge(accounts.DatabasePath, accountId, sessionDirectory, machine);
         bridge.Attach();
         var parameters = TdLibParametersBuilder.Build(apiId, apiHash, sessionDirectory, Path.Combine(sessionDirectory, "files"));
+        TdLibNativeSession? session = null;
+        var registered = false;
 
         try
         {
-            var session = await TdLibNativeSession.CreateAsync(nativeDirectory, expectedSha256, parameters, router, null, cancellationToken);
+            session = await TdLibNativeSession.CreateAsync(nativeDirectory, expectedSha256, parameters, router, null, cancellationToken);
 
             if (!registry.Register(accountId, session))
             {
                 await session.DisposeAsync();
+                session = null;
                 _stateMachines.TryRemove(accountId, out _);
                 throw new InvalidOperationException($"A TDLib session is already attached to account {accountId}.");
             }
+
+            registered = true;
 
             // TDLib normally emits updateAuthorizationState after setTdlibParameters.
             // Explicitly request the current state as a deterministic fallback so the
@@ -63,7 +68,12 @@ public sealed class TdLibSessionBootstrapper(TdLibAccountClientRegistry registry
         {
             bridge.Detach();
             _stateMachines.TryRemove(accountId, out _);
-            await registry.RemoveAsync(accountId);
+
+            if (registered)
+                await registry.RemoveAsync(accountId);
+            else if (session is not null)
+                await session.DisposeAsync();
+
             throw;
         }
     }
