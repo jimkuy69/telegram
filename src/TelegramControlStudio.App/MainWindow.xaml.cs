@@ -285,6 +285,25 @@ public partial class MainWindow : Window
         var definition = $"{viewModel.ActiveAccount.Id}|{fingerprint}|{viewModel.MessageDraft}|{viewModel.LinkDraft}";
         var idempotencyKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(definition)));
         var jobId = await new JobRepository(databasePath).CreateAsync(viewModel.ActiveAccount.Id, "ConsentMessaging", selected.Length, idempotencyKey);
+        var itemRepository = new JobItemRepository(databasePath);
+        var existingItems = await itemRepository.ListAsync(jobId);
+        if (existingItems.Count == 0)
+        {
+            var items = selected.Select(contact =>
+            {
+                var itemKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{jobId:D}|{viewModel.ActiveAccount.Id}|{contact.Id}")));
+                return new JobItem(
+                    jobId,
+                    viewModel.ActiveAccount.Id,
+                    contact.Id,
+                    JobStatus.Queued.ToString(),
+                    0,
+                    itemKey,
+                    null,
+                    DateTimeOffset.UtcNow);
+            });
+            await itemRepository.CreateAsync(items);
+        }
         await new ActivityLogRepository(databasePath).AppendAsync(new ActivityLog(
             viewModel.ActiveAccount.Id,
             jobId,
