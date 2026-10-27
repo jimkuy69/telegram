@@ -200,7 +200,7 @@ public sealed class JobRepository(string databasePath)
         while (await reader.ReadAsync(cancellationToken))
         {
             if (!Guid.TryParse(reader.GetString(0), out var id) || !Enum.TryParse<JobStatus>(reader.GetString(4), out var status)) continue;
-            jobs.Add(new Job(id, reader.GetInt64(1), reader.GetString(2), reader.GetInt32(3), status, reader.GetInt32(5), DateTimeOffset.Parse(reader.GetString(6)), ParseDate(reader, 7), ParseDate(reader, 8), ParseDate(reader, 9), reader.IsDBNull(10) ? null : reader.GetString(10), reader.GetString(11), reader.IsDBNull(13) ? "" : reader.GetString(13), reader.IsDBNull(14) ? null : reader.GetString(14)));
+            jobs.Add(new Job(id, reader.GetInt64(1), reader.GetString(2), reader.GetInt32(3), status, reader.GetInt32(5), DateTimeOffset.Parse(reader.GetString(6)), ParseDate(reader, 7), ParseDate(reader, 8), ParseDate(reader, 9), reader.IsDBNull(10) ? null : reader.GetString(10), reader.GetString(11), reader.IsDBNull(12) ? "" : reader.GetString(12), reader.IsDBNull(13) ? null : reader.GetString(13)));
         }
         return jobs;
     }
