@@ -27,6 +27,23 @@ public partial class QueueWindow : Window
         await LoadAsync();
     }
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await LoadAsync();
+    private async void Confirm_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedJob is null)
+        {
+            MessageBox.Show("กรุณาเลือก Job ก่อน", "ยังไม่ได้เลือก", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (SelectedJob.Status != JobStatus.WaitingForConfirmation)
+        {
+            MessageBox.Show("Job นี้ไม่ได้อยู่ในสถานะรอยืนยัน", "ยืนยันไม่ได้", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (MessageBox.Show("ยืนยันนำ Job นี้เข้าคิวหรือไม่? ระบบยังไม่ส่งข้อความจริง", "ยืนยันเข้าคิว", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+        await ChangeAsync(JobStatus.Queued);
+    }
+
     private async void Pause_Click(object sender, RoutedEventArgs e) => await ChangeAsync(JobStatus.Paused);
     private async void Resume_Click(object sender, RoutedEventArgs e) => await ChangeAsync(JobStatus.Queued);
     private async void Retry_Click(object sender, RoutedEventArgs e) { if (SelectedJob is not null && await new JobRepository(_databasePath).IncrementRetryAsync(SelectedJob.Id, "Manually retried from queue")) { await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, SelectedJob.Id, "Info", "JobRetry", $"Job {SelectedJob.Id} manually retried from Queue UI.", DateTimeOffset.UtcNow)); await LoadAsync(); } }
