@@ -17,8 +17,8 @@ public sealed class JobRepository(string databasePath)
         string targetType,
         int targetCount,
         string idempotencyKey,
-        string messageText,
-        string? linkUrl,
+        string messageText = "Preview payload",
+        string? linkUrl = null,
         CancellationToken cancellationToken = default)
     {
         if (accountId <= 0)
