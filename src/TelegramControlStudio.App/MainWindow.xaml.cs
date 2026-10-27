@@ -296,7 +296,7 @@ public partial class MainWindow : Window
                     jobId,
                     viewModel.ActiveAccount.Id,
                     contact.Id,
-                    JobStatus.Queued.ToString(),
+                    JobStatus.WaitingForConfirmation.ToString(),
                     0,
                     itemKey,
                     null,
