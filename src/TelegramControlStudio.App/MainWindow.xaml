@@ -4,6 +4,8 @@
  Title="Telegram Control Studio" Width="1440" Height="900" MinWidth="1180" MinHeight="700"
  Background="#08111F" Foreground="#F4F7FF">
  <Window.Resources>
+  <Style TargetType="{x:Type DataGridColumnHeader}"><Setter Property="Foreground" Value="#0B1B33"/><Setter Property="Background" Value="#B9C7DA"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="8,5"/></Style>
+  <Style TargetType="{x:Type DataGridCell}"><Setter Property="Foreground" Value="#D9E2F2"/></Style>
   <Style TargetType="Button"><Setter Property="Foreground" Value="#D9E2F2"/><Setter Property="Background" Value="#101F35"/><Setter Property="BorderBrush" Value="#233C60"/><Setter Property="Padding" Value="12,9"/><Setter Property="Margin" Value="0,0,0,8"/><Setter Property="FontSize" Value="14"/></Style>
   <Style x:Key="Nav" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="13"/></Style>
  </Window.Resources>
