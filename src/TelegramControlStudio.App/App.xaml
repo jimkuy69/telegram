@@ -10,5 +10,25 @@
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         </Style>
+        <Style TargetType="Control">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="#101F35" />
+            <Setter Property="BorderBrush" Value="#29486E" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="#101F35" />
+            <Setter Property="BorderBrush" Value="#29486E" />
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#0B1B33" />
+            <Setter Property="Background" Value="#E8F0FA" />
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
     </Application.Resources>
 </Application>
