@@ -226,6 +226,11 @@ public partial class MainWindow : Window
         await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
     }
 
+    private void ShowAllContacts_Click(object sender, RoutedEventArgs e) { if (DataContext is MainWindowViewModel vm) vm.SetContactFilter(null); }
+    private void ShowConsentedContacts_Click(object sender, RoutedEventArgs e) { if (DataContext is MainWindowViewModel vm) vm.SetContactFilter("ได้รับความยินยอม"); }
+    private void ShowOptedOutContacts_Click(object sender, RoutedEventArgs e) { if (DataContext is MainWindowViewModel vm) vm.SetContactFilter("Opt-out"); }
+    private void ShowNotAllowedContacts_Click(object sender, RoutedEventArgs e) { if (DataContext is MainWindowViewModel vm) vm.SetContactFilter("ยังไม่อนุญาต"); }
+
     private async void SetConsent_Click(object sender, RoutedEventArgs e) => await UpdateSelectedPolicyAsync(true);
 
     private async void SetOptOut_Click(object sender, RoutedEventArgs e) => await UpdateSelectedPolicyAsync(false);
