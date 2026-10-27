@@ -40,13 +40,13 @@ public sealed class TdLibAccountAuthorizationCoordinatorTests
         var accounts = new AccountRepository(path);
         var accountId = await accounts.CreateAsync("Auth error test", "+10000000003");
         var registry = new TdLibAccountClientRegistry();
-        registry.Register(accountId, new FakeClient("""{"@type":"error","code":400,"message":"PHONE_NUMBER_INVALID"}"""));
+        registry.Register(accountId, new FakeClient(@"{""@type"":""error"",""code"":400,""message"":""PHONE_NUMBER_INVALID""}"));
         var coordinator = new TdLibAccountAuthorizationCoordinator(new TdLibAccountSessionCoordinator(registry), accounts);
         await Assert.ThrowsAsync<InvalidOperationException>(() => coordinator.SubmitPhoneNumberAsync(accountId, "+10000000003"));
         Assert.Equal("Error", (await accounts.ListAsync()).Single().Status);
     }
 
-    private sealed class FakeClient(string response = "{"@type":"ok"}") : ITdLibClient
+    private sealed class FakeClient(string response = @"{""@type"":""ok""}") : ITdLibClient
     {
         public string? LastFunction { get; private set; }
         public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
