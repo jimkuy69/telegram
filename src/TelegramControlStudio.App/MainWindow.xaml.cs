@@ -139,7 +139,8 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show($"ค้นหาไม่สำเร็จ\n{exception.Message}", "ค้นหาไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"ค้นหาไม่สำเร็จ
+{exception.Message}", "ค้นหาไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -178,7 +179,8 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show($"Sync Contacts ไม่สำเร็จ\n{exception.Message}", "Sync ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"Sync Contacts ไม่สำเร็จ
+{exception.Message}", "Sync ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -286,7 +288,14 @@ public partial class MainWindow : Window
         }
 
         var linkNotice = string.IsNullOrWhiteSpace(viewModel.LinkDraft) ? "ไม่มีลิงก์" : "มีลิงก์แนบ";
-        var preview = $"ผู้รับที่ผ่าน Consent: {selected.Length} รายการ\n\nข้อความ:\n{viewModel.MessageDraft}\n\n{linkNotice}\n\nงานจะถูกบันทึกเป็น WaitingForConfirmation และยังไม่ส่งจริง";
+        var preview = $"ผู้รับที่ผ่าน Consent: {selected.Length} รายการ
+
+ข้อความ:
+{viewModel.MessageDraft}
+
+{linkNotice}
+
+งานจะถูกบันทึกเป็น WaitingForConfirmation และยังไม่ส่งจริง";
         if (MessageBox.Show(preview, "ตรวจสอบก่อนสร้าง Job", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
             return;
 
@@ -294,7 +303,10 @@ public partial class MainWindow : Window
         var fingerprint = string.Join("|", selected.Select(contact => contact.Id).OrderBy(id => id));
         var definition = $"{viewModel.ActiveAccount.Id}|{fingerprint}|{viewModel.MessageDraft}|{viewModel.LinkDraft}";
         var idempotencyKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(definition)));
-        var jobId = await new JobRepository(databasePath).CreateAsync(\n            viewModel.ActiveAccount.Id, "ConsentMessaging", selected.Length, idempotencyKey,\n            viewModel.MessageDraft.Trim(),\n            string.IsNullOrWhiteSpace(viewModel.LinkDraft) ? null : viewModel.LinkDraft.Trim());
+        var jobId = await new JobRepository(databasePath).CreateAsync(
+            viewModel.ActiveAccount.Id, "ConsentMessaging", selected.Length, idempotencyKey,
+            viewModel.MessageDraft.Trim(),
+            string.IsNullOrWhiteSpace(viewModel.LinkDraft) ? null : viewModel.LinkDraft.Trim());
         var itemRepository = new JobItemRepository(databasePath);
         var existingItems = await itemRepository.ListAsync(jobId);
         if (existingItems.Count == 0)
@@ -323,7 +335,10 @@ public partial class MainWindow : Window
             DateTimeOffset.UtcNow));
         await viewModel.LoadQueueSummaryAsync(databasePath, viewModel.ActiveAccount.Id);
         await viewModel.LoadActivityLogsAsync(databasePath, viewModel.ActiveAccount.Id);
-        MessageBox.Show($"สร้าง Job แล้ว\nสถานะ: WaitingForConfirmation\nJob ID: {jobId}\nยังไม่มีการส่งข้อความจริง", "Preview พร้อมแล้ว", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show($"สร้าง Job แล้ว
+สถานะ: WaitingForConfirmation
+Job ID: {jobId}
+ยังไม่มีการส่งข้อความจริง", "Preview พร้อมแล้ว", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private async void ExportContacts_Click(object sender, RoutedEventArgs e)
@@ -352,7 +367,8 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show($"ส่งออกไม่สำเร็จ\n{exception.Message}", "Export ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"ส่งออกไม่สำเร็จ
+{exception.Message}", "Export ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -480,7 +496,8 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show($"เริ่มเข้าสู่ระบบไม่สำเร็จ\n{exception.Message}", "เชื่อมต่อไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"เริ่มเข้าสู่ระบบไม่สำเร็จ
+{exception.Message}", "เชื่อมต่อไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -534,7 +551,8 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show($"ส่งออกไม่สำเร็จ\n{exception.Message}", "Export ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"ส่งออกไม่สำเร็จ
+{exception.Message}", "Export ไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }
