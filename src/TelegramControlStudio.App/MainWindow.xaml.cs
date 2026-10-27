@@ -190,7 +190,7 @@ public partial class MainWindow : Window
         if (DataContext is not MainWindowViewModel viewModel) return;
         var checkbox = sender as System.Windows.Controls.CheckBox;
         var shouldSelect = checkbox?.IsChecked == true;
-        foreach (var contact in viewModel.Contacts)
+        foreach (var contact in ContactGrid.Items.OfType<ContactRow>())
             contact.Selected = shouldSelect;
         ContactGrid.Items.Refresh();
         if (checkbox is not null)
