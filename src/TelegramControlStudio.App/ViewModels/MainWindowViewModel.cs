@@ -92,6 +92,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         get => _errorSummary;
         private set { _errorSummary = value; OnPropertyChanged(); }
     }
+    private string _dashboardSummary = "Dashboard: ยังไม่มีข้อมูล";
+    public string DashboardSummary
+    {
+        get => _dashboardSummary;
+        private set { _dashboardSummary = value; OnPropertyChanged(); }
+    }
     private string _campaignSummary = "Campaign: ยังไม่มีงาน";
     public string CampaignSummary
     {
@@ -190,6 +196,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var counts = await new JobRepository(databasePath).CountByStatusAsync(accountId, cancellationToken);
         var total = counts.Values.Sum();
         var metrics = await new DashboardMetricsRepository(databasePath).LoadAsync(accountId, cancellationToken: cancellationToken);
+        DashboardSummary = $"Dashboard: ทั้งหมด {metrics.TotalJobs} งาน • สำเร็จ {metrics.CompletedJobs} • ล้มเหลว {metrics.FailedJobs} • รอคิว {metrics.QueuedJobs} • FloodWait {metrics.FloodWaitJobs}";
         ErrorSummary = $"เหตุการณ์ผิดพลาดทั้งหมด • สิทธิ์: {metrics.PermissionErrors} • Privacy: {metrics.PrivacyErrors} • Network: {metrics.NetworkErrors}";
         CampaignSummary = $"Campaign: {metrics.CampaignJobs} งาน • สำเร็จ {metrics.CampaignCompletedJobs} • ล้มเหลว {metrics.CampaignFailedJobs}";
         QueueSummary = $"Queue: {total} งานทั้งหมด • {counts.GetValueOrDefault(JobStatus.Queued)} รอคิว • {counts.GetValueOrDefault(JobStatus.Running)} กำลังทำ • {counts.GetValueOrDefault(JobStatus.WaitingForFloodWait)} รอ FloodWait • {counts.GetValueOrDefault(JobStatus.Completed)} สำเร็จ • {counts.GetValueOrDefault(JobStatus.Failed)} ล้มเหลว • {counts.GetValueOrDefault(JobStatus.Cancelled)} ยกเลิก";
