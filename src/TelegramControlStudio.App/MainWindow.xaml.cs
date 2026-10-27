@@ -7,6 +7,7 @@ using TelegramControlStudio.Core.Export;
 using TelegramControlStudio.Infrastructure.Telegram;
 using TelegramControlStudio.Core.Security;
 using System.Text;
+using System.Security.Cryptography;
 
 namespace TelegramControlStudio.App;
 
@@ -249,6 +250,51 @@ public partial class MainWindow : Window
         }
         await viewModel.LoadActivityLogsAsync(databasePath, viewModel.ActiveAccount.Id);
         await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
+    }
+
+    private async void CreatePreview_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var selected = viewModel.Contacts
+            .Where(contact => contact.Selected && contact.Consent == "ได้รับความยินยอม")
+            .ToArray();
+        if (selected.Length == 0)
+        {
+            MessageBox.Show("กรุณาติ๊กผู้รับที่มี Consent อย่างน้อย 1 รายการ", "ยังไม่มีผู้รับที่พร้อมส่ง", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(viewModel.MessageDraft))
+        {
+            MessageBox.Show("กรุณากรอกข้อความก่อนสร้าง Preview", "ยังไม่มีข้อความ", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var linkNotice = string.IsNullOrWhiteSpace(viewModel.LinkDraft) ? "ไม่มีลิงก์" : "มีลิงก์แนบ";
+        var preview = $"ผู้รับที่ผ่าน Consent: {selected.Length} รายการ\n\nข้อความ:\n{viewModel.MessageDraft}\n\n{linkNotice}\n\nงานจะถูกบันทึกเป็น WaitingForConfirmation และยังไม่ส่งจริง";
+        if (MessageBox.Show(preview, "ตรวจสอบก่อนสร้าง Job", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
+            return;
+
+        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var fingerprint = string.Join("|", selected.Select(contact => contact.Id).OrderBy(id => id));
+        var definition = $"{viewModel.ActiveAccount.Id}|{fingerprint}|{viewModel.MessageDraft}|{viewModel.LinkDraft}";
+        var idempotencyKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(definition)));
+        var jobId = await new JobRepository(databasePath).CreateAsync(viewModel.ActiveAccount.Id, "ConsentMessaging", selected.Length, idempotencyKey);
+        await new ActivityLogRepository(databasePath).AppendAsync(new ActivityLog(
+            viewModel.ActiveAccount.Id,
+            jobId,
+            "Info",
+            "JobCreatedWaitingForConfirmation",
+            $"Created local preview job for {selected.Length} consented recipient(s).",
+            DateTimeOffset.UtcNow));
+        await viewModel.LoadQueueSummaryAsync(databasePath, viewModel.ActiveAccount.Id);
+        await viewModel.LoadActivityLogsAsync(databasePath, viewModel.ActiveAccount.Id);
+        MessageBox.Show($"สร้าง Job แล้ว\nสถานะ: WaitingForConfirmation\nJob ID: {jobId}\nยังไม่มีการส่งข้อความจริง", "Preview พร้อมแล้ว", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private async void ExportContacts_Click(object sender, RoutedEventArgs e)
