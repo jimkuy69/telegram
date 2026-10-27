@@ -5,8 +5,8 @@
     <Application.Resources>
         <SolidColorBrush x:Key="BackgroundBrush" Color="#111827" />
         <SolidColorBrush x:Key="PanelBrush" Color="#1F2937" />
-        <SolidColorBrush x:Key="TextBrush" Color="#F9FAFB" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#9CA3AF" />
+        <SolidColorBrush x:Key="TextBrush" Color="#E8F0FA" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#AFC3DA" />
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         </Style>
