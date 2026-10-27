@@ -95,13 +95,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Contacts.Clear();
         foreach (var contact in contacts)
         {
-            Contacts.Add(new ContactRow(
+            var row = new ContactRow(
                 contact.HasConsent && !contact.IsOptedOut,
                 $"{contact.FirstName} {contact.LastName}".Trim(),
                 contact.TelegramUserId,
                 contact.Username is null ? string.Empty : $"@{contact.Username.TrimStart('@')}",
-                contact.IsOptedOut ? "Opt-out" : contact.HasConsent ? "ได้รับความยินยอม" : "ยังไม่อนุญาต"));
+                contact.IsOptedOut ? "Opt-out" : contact.HasConsent ? "ได้รับความยินยอม" : "ยังไม่อนุญาต");
+            row.PropertyChanged += ContactRow_PropertyChanged;
+            Contacts.Add(row);
         }
+        OnPropertyChanged(nameof(ConsentCount));
+        OnPropertyChanged(nameof(CanCreateJob));
+        CreateJobCommand.Refresh();
+    }
+
+    private void ContactRow_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ContactRow.Selected)) return;
         OnPropertyChanged(nameof(ConsentCount));
         OnPropertyChanged(nameof(CanCreateJob));
         CreateJobCommand.Refresh();
