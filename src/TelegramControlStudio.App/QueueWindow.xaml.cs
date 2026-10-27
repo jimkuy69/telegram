@@ -3,10 +3,12 @@ using System.Windows;
 using System.Windows.Input;
 using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.Infrastructure.Persistence;
+using TelegramControlStudio.Infrastructure.Telegram;
 namespace TelegramControlStudio.App;
 public partial class QueueWindow : Window
 {
     private readonly string _databasePath; private readonly long _accountId;
+    private CancellationTokenSource? _runCancellation;
     public ObservableCollection<Job> Jobs { get; } = []; public Job? SelectedJob { get; set; }
     public QueueWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DataContext = this; Loaded += async (_, _) => await LoadAsync(); }
     private async Task LoadAsync()
@@ -39,7 +41,7 @@ public partial class QueueWindow : Window
             MessageBox.Show("Job นี้ไม่ได้อยู่ในสถานะรอยืนยัน", "ยืนยันไม่ได้", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        if (MessageBox.Show("ยืนยันนำ Job นี้เข้าคิวหรือไม่? ระบบยังไม่ส่งข้อความจริง", "ยืนยันเข้าคิว", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (MessageBox.Show("ยืนยันเริ่มส่งเฉพาะผู้รับที่ผ่าน Consent หรือไม่? การส่งจะเริ่มผ่าน Telegram จริง", "ยืนยันการส่ง", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
         var movedItems = await new JobItemRepository(_databasePath).UpdateStatusForJobAsync(
             SelectedJob.Id,
@@ -52,6 +54,39 @@ public partial class QueueWindow : Window
             return;
         }
         await ChangeAsync(JobStatus.Queued);
+        await StartSelectedJobAsync();
+    }
+
+    private async Task StartSelectedJobAsync()
+    {
+        if (SelectedJob is null) return;
+        var app = (App)Application.Current;
+        if (!app.TdLibClients.TryGet(_accountId, out var client) || client is null)
+        {
+            MessageBox.Show("บัญชียังไม่ได้เชื่อมต่อกับ Telegram หรือ Session หมดอายุ", "ยังไม่พร้อมส่ง", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        _runCancellation?.Dispose();
+        _runCancellation = new CancellationTokenSource();
+        try
+        {
+            await new TdLibCampaignJobRunner(_databasePath).RunAsync(client, SelectedJob.Id, _accountId, true, TimeSpan.FromSeconds(2), _runCancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            await new JobRepository(_databasePath).UpdateStatusAsync(SelectedJob.Id, JobStatus.Paused, "Paused by user.");
+        }
+        catch (Exception exception)
+        {
+            await new JobRepository(_databasePath).UpdateStatusAsync(SelectedJob.Id, JobStatus.Failed, "QUEUE_RUN_FAILED");
+            await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, SelectedJob.Id, "Error", "QueueRunFailed", "Queue runner failed; sensitive data was not logged.", DateTimeOffset.UtcNow));
+        }
+        finally
+        {
+            _runCancellation.Dispose();
+            _runCancellation = null;
+            await LoadAsync();
+        }
     }
 
     private async void Pause_Click(object sender, RoutedEventArgs e)
@@ -61,6 +96,7 @@ public partial class QueueWindow : Window
             MessageBox.Show("เลือก Job ที่กำลังทำงานอยู่ก่อนกดหยุดชั่วคราว", "หยุดชั่วคราวไม่ได้", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
+        _runCancellation?.Cancel();
         await ChangeAsync(JobStatus.Paused);
     }
 
@@ -79,7 +115,11 @@ public partial class QueueWindow : Window
         await ChangeAsync(JobStatus.Queued);
     }
     private async void Retry_Click(object sender, RoutedEventArgs e) { if (SelectedJob is not null && await new JobRepository(_databasePath).IncrementRetryAsync(SelectedJob.Id, "Manually retried from queue")) { await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, SelectedJob.Id, "Info", "JobRetry", $"Job {SelectedJob.Id} manually retried from Queue UI.", DateTimeOffset.UtcNow)); await LoadAsync(); } }
-    private async void Cancel_Click(object sender, RoutedEventArgs e) => await ChangeAsync(JobStatus.Cancelled);
+    private async void Cancel_Click(object sender, RoutedEventArgs e)
+    {
+        _runCancellation?.Cancel();
+        await ChangeAsync(JobStatus.Cancelled);
+    }
     private void Job_DoubleClick(object sender, MouseButtonEventArgs e) { if (SelectedJob is not null) new JobItemsWindow(_databasePath, SelectedJob.Id) { Owner = this }.ShowDialog(); }
 }
 
