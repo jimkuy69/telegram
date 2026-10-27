@@ -115,7 +115,7 @@ public partial class QueueWindow : Window
         await ChangeAsync(JobStatus.Queued);
         await StartSelectedJobAsync();
     }
-    private async void Retry_Click(object sender, RoutedEventArgs e) { if (SelectedJob is not null && await new JobRepository(_databasePath).IncrementRetryAsync(SelectedJob.Id, "Manually retried from queue")) { await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, SelectedJob.Id, "Info", "JobRetry", $"Job {SelectedJob.Id} manually retried from Queue UI.", DateTimeOffset.UtcNow)); await LoadAsync(); } }
+    private async void Retry_Click(object sender, RoutedEventArgs e) { if (SelectedJob is not null && await new JobRepository(_databasePath).IncrementRetryAsync(SelectedJob.Id, "Manually retried from queue")) { await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, SelectedJob.Id, "Info", "JobRetry", $"Job {SelectedJob.Id} manually retried from Queue UI.", DateTimeOffset.UtcNow)); await LoadAsync(); await StartSelectedJobAsync(); } }
     private async void Cancel_Click(object sender, RoutedEventArgs e)
     {
         _runCancellation?.Cancel();
