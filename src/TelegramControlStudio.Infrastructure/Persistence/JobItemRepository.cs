@@ -17,6 +17,21 @@ public sealed class JobItemRepository(string databasePath)
         }
         await transaction.CommitAsync(cancellationToken);
     }
+    public async Task<int> UpdateStatusForJobAsync(Guid jobId, string fromStatus, string toStatus, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fromStatus);
+        ArgumentException.ThrowIfNullOrWhiteSpace(toStatus);
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE job_items SET status=$to_status, updated_at=$updated_at WHERE job_id=$job_id AND status=$from_status";
+        command.Parameters.AddWithValue("$to_status", toStatus);
+        command.Parameters.AddWithValue("$updated_at", DateTimeOffset.UtcNow.ToString("O"));
+        command.Parameters.AddWithValue("$job_id", jobId.ToString("D"));
+        command.Parameters.AddWithValue("$from_status", fromStatus);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<JobItem>> ListAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString); await connection.OpenAsync(cancellationToken); await using var command = connection.CreateCommand(); command.CommandText = "SELECT job_id,account_id,target_id,status,retry_count,idempotency_key,last_error,updated_at FROM job_items WHERE job_id=$job_id ORDER BY target_id"; command.Parameters.AddWithValue("$job_id", jobId.ToString("D"));
