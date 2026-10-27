@@ -157,6 +157,11 @@ public partial class MainWindow : Window
             return;
         }
         var app = (App)Application.Current;
+        if (!string.Equals(viewModel.ActiveAccount.Status, "Ready", StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show("กรุณาเข้าสู่ระบบและยืนยันตัวตนกับ Telegram ให้สำเร็จก่อน Sync Contacts", "ยังไม่พร้อม Sync", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         if (!app.TdLibClients.TryGet(viewModel.ActiveAccount.Id, out var client) || client is null)
         {
             MessageBox.Show("บัญชีนี้ยังไม่ได้เชื่อมต่อและยืนยันตัวตนกับ TDLib", "ยังไม่พร้อม Sync", MessageBoxButton.OK, MessageBoxImage.Information);
