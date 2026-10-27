@@ -61,6 +61,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public int ConsentCount => Contacts.Count(contact => contact.Selected && contact.Consent == "ได้รับความยินยอม");
 
+    public int SelectedCount => Contacts.Count(contact => contact.Selected);
+    public string SelectionSummary => $"เลือกผู้รับ {SelectedCount} รายการ • ผ่าน Consent {ConsentCount} รายการ";
+
     public bool CanCreateJob => ActiveAccount is not null && ConsentCount > 0;
 
     public RelayCommand CreateJobCommand { get; }
@@ -105,6 +108,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             Contacts.Add(row);
         }
         OnPropertyChanged(nameof(ConsentCount));
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(SelectionSummary));
         OnPropertyChanged(nameof(CanCreateJob));
         CreateJobCommand.Refresh();
     }
@@ -113,6 +118,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (e.PropertyName != nameof(ContactRow.Selected)) return;
         OnPropertyChanged(nameof(ConsentCount));
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(SelectionSummary));
         OnPropertyChanged(nameof(CanCreateJob));
         CreateJobCommand.Refresh();
     }
