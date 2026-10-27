@@ -190,6 +190,19 @@ public sealed class JobRepository(string databasePath)
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
+    public async Task<Job?> GetAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT id, account_id, target_type, target_count, status, retry_count, created_at, started_at, completed_at, flood_wait_until, last_error, idempotency_key, message_text, link_url FROM jobs WHERE id=$id";
+        command.Parameters.AddWithValue("$id", jobId.ToString());
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken) || !Enum.TryParse<JobStatus>(reader.GetString(4), out var status)) return null;
+        if (!Guid.TryParse(reader.GetString(0), out var id)) return null;
+        return new Job(id, reader.GetInt64(1), reader.GetString(2), reader.GetInt32(3), status, reader.GetInt32(5), DateTimeOffset.Parse(reader.GetString(6)), ParseDate(reader, 7), ParseDate(reader, 8), ParseDate(reader, 9), reader.IsDBNull(10) ? null : reader.GetString(10), reader.GetString(11), reader.IsDBNull(12) ? "" : reader.GetString(12), reader.IsDBNull(13) ? null : reader.GetString(13));
+    }
+
     public async Task<IReadOnlyList<Job>> ListAsync(long accountId, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString); await connection.OpenAsync(cancellationToken);

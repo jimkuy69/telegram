@@ -6,6 +6,16 @@ namespace TelegramControlStudio.Infrastructure.Telegram;
 
 public sealed class TdLibCampaignJobRunner(string databasePath)
 {
+    public async Task<JobStatus> RunAsync(ITdLibClient client, Guid jobId, long accountId, bool confirmed, TimeSpan interval, CancellationToken cancellationToken = default)
+    {
+        var job = await new JobRepository(databasePath).GetAsync(jobId, cancellationToken) ?? throw new InvalidOperationException("JOB_NOT_FOUND");
+        if (job.AccountId != accountId) throw new InvalidOperationException("JOB_ACCOUNT_MISMATCH");
+        var text = job.MessageText;
+        if (string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("JOB_MESSAGE_EMPTY");
+        if (!string.IsNullOrWhiteSpace(job.LinkUrl)) text = $"{text}\n\n{job.LinkUrl}";
+        return await RunAsync(client, jobId, accountId, text, confirmed, interval, cancellationToken);
+    }
+
     public async Task<JobStatus> RunAsync(ITdLibClient client, Guid jobId, long accountId, string text, bool confirmed, TimeSpan interval, CancellationToken cancellationToken = default)
     {
         if (!confirmed) throw new InvalidOperationException("CONFIRMATION_REQUIRED");
