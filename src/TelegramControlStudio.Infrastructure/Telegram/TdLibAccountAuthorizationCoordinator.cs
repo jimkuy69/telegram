@@ -10,31 +10,31 @@ public sealed class TdLibAccountAuthorizationCoordinator(
     public async Task<string> SubmitPhoneNumberAsync(long accountId, string phoneNumber, CancellationToken cancellationToken = default)
     {
         var request = Core.Telegram.TdLibAuthorizationRequests.SetPhoneNumber(phoneNumber);
-        return await SendAndUpdateAsync(accountId, request, "AwaitingCode", cancellationToken);
+        return await SendAsync(accountId, request, cancellationToken);
     }
 
     public async Task<string> SubmitCodeAsync(long accountId, string code, CancellationToken cancellationToken = default)
     {
         var request = Core.Telegram.TdLibAuthorizationRequests.CheckCode(code);
-        return await SendAndUpdateAsync(accountId, request, "AwaitingPasswordOrReady", cancellationToken);
+        return await SendAsync(accountId, request, cancellationToken);
     }
 
     public async Task<string> SubmitPasswordAsync(long accountId, string password, CancellationToken cancellationToken = default)
     {
         var request = Core.Telegram.TdLibAuthorizationRequests.CheckPassword(password);
-        return await SendAndUpdateAsync(accountId, request, "AuthenticatedPendingStateUpdate", cancellationToken);
+        return await SendAsync(accountId, request, cancellationToken);
     }
 
     public Task<string> SubmitEmailAddressAsync(long accountId, string emailAddress, CancellationToken cancellationToken = default) =>
-        SendAndUpdateAsync(accountId, Core.Telegram.TdLibAuthorizationRequests.SetEmailAddress(emailAddress), "AwaitingEmailCode", cancellationToken);
+        SendAsync(accountId, Core.Telegram.TdLibAuthorizationRequests.SetEmailAddress(emailAddress), cancellationToken);
 
     public Task<string> SubmitEmailCodeAsync(long accountId, string code, CancellationToken cancellationToken = default) =>
-        SendAndUpdateAsync(accountId, Core.Telegram.TdLibAuthorizationRequests.CheckEmailCode(code), "AwaitingPasswordOrReady", cancellationToken);
+        SendAsync(accountId, Core.Telegram.TdLibAuthorizationRequests.CheckEmailCode(code), cancellationToken);
 
     public Task<string> SubmitRegistrationAsync(long accountId, string firstName, string lastName, CancellationToken cancellationToken = default) =>
-        SendAndUpdateAsync(accountId, Core.Telegram.TdLibAuthorizationRequests.RegisterUser(firstName, lastName), "AuthenticatedPendingStateUpdate", cancellationToken);
+        SendAsync(accountId, Core.Telegram.TdLibAuthorizationRequests.RegisterUser(firstName, lastName), cancellationToken);
 
-    private async Task<string> SendAndUpdateAsync(long accountId, Core.Telegram.TdLibRequest request, string successStatus, CancellationToken cancellationToken)
+    private async Task<string> SendAsync(long accountId, Core.Telegram.TdLibRequest request, CancellationToken cancellationToken)
     {
         var response = await sessions.SendAsync(accountId, request.Function, request.Parameters, cancellationToken);
         if (IsTdLibError(response))
@@ -42,7 +42,10 @@ public sealed class TdLibAccountAuthorizationCoordinator(
             await accounts.UpdateStatusAsync(accountId, "Error", cancellationToken);
             throw new InvalidOperationException("TDLib authorization request failed.");
         }
-        await accounts.UpdateStatusAsync(accountId, successStatus, cancellationToken);
+
+        // AuthorizationState updates are the source of truth for the account status.
+        // Do not write a transient success status here: it can race with
+        // authorizationStateReady and overwrite the persisted Ready state.
         return response;
     }
 
