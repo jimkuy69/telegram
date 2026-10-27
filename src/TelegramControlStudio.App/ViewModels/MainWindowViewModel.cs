@@ -21,6 +21,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<Account> Accounts { get; } = [];
     public ObservableCollection<string> ActivityLogs { get; } = [];
     private Account? _activeAccount;
+    private readonly List<ContactRow> _allContactRows = [];
+    private string? _contactFilter;
     public Account? ActiveAccount
     {
         get => _activeAccount;
@@ -59,9 +61,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set { _pendingRequestsSummary = value; OnPropertyChanged(); }
     }
 
-    public int TotalContactsCount => Contacts.Count;
-    public int ConsentContactsCount => Contacts.Count(contact => contact.Consent == "ได้รับความยินยอม");
-    public int NotAllowedContactsCount => Contacts.Count(contact => contact.Consent == "ยังไม่อนุญาต");
+    public int TotalContactsCount => _allContactRows.Count;
+    public int ConsentContactsCount => _allContactRows.Count(contact => contact.Consent == "ได้รับความยินยอม");
+    public int NotAllowedContactsCount => _allContactRows.Count(contact => contact.Consent == "ยังไม่อนุญาต");
 
     public string AllContactsSummary => $"ทั้งหมด ({TotalContactsCount})";
     public string ConsentedContactsSummary => $"ได้รับความยินยอม ({ConsentContactsCount})";
@@ -111,18 +113,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ReplaceContacts(ContactRepository repository, IReadOnlyList<Contact> contacts)
     {
-        Contacts.Clear();
+        _allContactRows.Clear();
         foreach (var contact in contacts)
         {
-            var row = new ContactRow(
-                false,
-                $"{contact.FirstName} {contact.LastName}".Trim(),
-                contact.TelegramUserId,
-                contact.Username is null ? string.Empty : $"@{contact.Username.TrimStart('@')}",
-                contact.IsOptedOut ? "Opt-out" : contact.HasConsent ? "ได้รับความยินยอม" : "ยังไม่อนุญาต");
+            var row = new ContactRow(false, $"{contact.FirstName} {contact.LastName}".Trim(), contact.TelegramUserId, contact.Username is null ? string.Empty : $"@{contact.Username.TrimStart('@')}", contact.IsOptedOut ? "Opt-out" : contact.HasConsent ? "ได้รับความยินยอม" : "ยังไม่อนุญาต");
             row.PropertyChanged += ContactRow_PropertyChanged;
-            Contacts.Add(row);
+            _allContactRows.Add(row);
         }
+        ApplyContactFilter();
         OnPropertyChanged(nameof(TotalContactsCount));
         OnPropertyChanged(nameof(ConsentContactsCount));
         OnPropertyChanged(nameof(NotAllowedContactsCount));
@@ -130,6 +128,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ConsentedContactsSummary));
         OnPropertyChanged(nameof(NotAllowedContactsSummary));
         OnPropertyChanged(nameof(SendAvailabilityNotice));
+        OnPropertyChanged(nameof(ConsentCount));
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(SelectionSummary));
+        OnPropertyChanged(nameof(CanCreateJob));
+        CreateJobCommand.Refresh();
+    }
+
+    public void SetContactFilter(string? filter)
+    {
+        _contactFilter = filter;
+        ApplyContactFilter();
+    }
+
+    private void ApplyContactFilter()
+    {
+        var visible = string.IsNullOrWhiteSpace(_contactFilter) ? _allContactRows : _allContactRows.Where(contact => contact.Consent == _contactFilter);
+        Contacts.Clear();
+        foreach (var row in visible) Contacts.Add(row);
+        OnPropertyChanged(nameof(TotalContactsCount));
+        OnPropertyChanged(nameof(ConsentContactsCount));
+        OnPropertyChanged(nameof(NotAllowedContactsCount));
+        OnPropertyChanged(nameof(AllContactsSummary));
+        OnPropertyChanged(nameof(ConsentedContactsSummary));
+        OnPropertyChanged(nameof(NotAllowedContactsSummary));
         OnPropertyChanged(nameof(ConsentCount));
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(SelectionSummary));
