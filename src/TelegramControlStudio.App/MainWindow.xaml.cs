@@ -5,6 +5,7 @@ using TelegramControlStudio.App.ViewModels;
 using TelegramControlStudio.Infrastructure.Persistence;
 using TelegramControlStudio.Core.Export;
 using TelegramControlStudio.Infrastructure.Telegram;
+using TelegramControlStudio.Core.Security;
 using System.Text;
 
 namespace TelegramControlStudio.App;
@@ -347,6 +348,57 @@ public partial class MainWindow : Window
         }
         var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
         new SettingsWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
+    }
+
+    private async void ConnectAccount_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var account = viewModel.ActiveAccount;
+        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        try
+        {
+            var configuration = await new TdLibConfigurationRepository(databasePath).GetAsync(account.Id);
+            var native = await new TdLibConfigurationRepository(databasePath).GetNativeLocationAsync(account.Id);
+            if (configuration is null || native is null)
+            {
+                MessageBox.Show("บัญชียังตั้งค่าไม่ครบ กรุณาเปิด ตั้งค่า แล้วบันทึก API ID, API Hash และเลือก tdjson.dll ก่อน", "ยังไม่พร้อมเข้าสู่ระบบ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var app = (App)Application.Current;
+            if (app.TdLibClients.TryGet(account.Id, out _))
+            {
+                MessageBox.Show("บัญชีนี้เชื่อมต่ออยู่แล้ว หรือกำลังรอการยืนยันตัวตน", "กำลังเชื่อมต่อ", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var repository = new AccountRepository(databasePath);
+            var sessionDirectory = SessionPathPolicy.GetAccountSessionDirectory(account.Id);
+            var bootstrapper = new TdLibSessionBootstrapper(app.TdLibClients, repository);
+            await bootstrapper.ConnectAsync(account.Id, native.Value.Directory, native.Value.Sha256, configuration.Value.ApiId, configuration.Value.ApiHash, sessionDirectory);
+
+            if (bootstrapper.TryGetStateMachine(account.Id, out var machine) && machine is not null)
+            {
+                var coordinator = new TdLibAccountAuthorizationCoordinator(new TdLibAccountSessionCoordinator(app.TdLibClients), repository);
+                new AuthenticationWizardWindow(account.Id, machine, coordinator) { Owner = this }.ShowDialog();
+                if (machine.IsReady && app.TdLibClients.TryGet(account.Id, out var connectedClient) && connectedClient is not null)
+                {
+                    await new TdLibAccountProfileSyncService(connectedClient, repository).SyncAsync(account.Id);
+                    await viewModel.LoadAccountsAsync(databasePath);
+                    viewModel.ActiveAccount = viewModel.Accounts.FirstOrDefault(item => item.Id == account.Id);
+                    MessageBox.Show("ยืนยันตัวตนสำเร็จแล้ว สามารถ Sync Contacts ได้", "เข้าสู่ระบบสำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show($"เริ่มเข้าสู่ระบบไม่สำเร็จ\n{exception.Message}", "เชื่อมต่อไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private async void ExportDashboardReport_Click(object sender, RoutedEventArgs e)
