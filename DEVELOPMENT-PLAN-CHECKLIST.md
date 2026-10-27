@@ -50,7 +50,7 @@
 - [x] Active Account และ Account Isolation Foundation
 - [x] Profile Sync Foundation จาก TDLib `getMe` (Manual Telegram E2E ยังไม่ยืนยัน)
 - [x] Queue/Activity/Pending Request Summary
-- [ ] Dashboard Metrics ครบตามแผน
+- [x] Dashboard Metrics ครบตามแผน (DashboardSummary wired to SQLite queue metrics; Build/Test/Security/CI/Installer passed on commit `1042b5c`)
 - [ ] ยืนยันสถานะบัญชีจาก Telegram จริง
 
 ## Phase 5 — Groups และ Members
