@@ -28,6 +28,12 @@ public partial class GroupsWindow : Window
         new GroupMembersWindow(_databasePath, group.AccountId, group.ChatId, group.Title) { Owner = this }.ShowDialog();
     }
 
+    private void ViewDetails_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button button && button.DataContext is TelegramGroup group)
+            new GroupMembersWindow(_databasePath, group.AccountId, group.ChatId, group.Title) { Owner = this }.ShowDialog();
+    }
+
     private async void Sync_Click(object sender, RoutedEventArgs e)
     {
         var app = (App)Application.Current;
