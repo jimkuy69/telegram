@@ -99,7 +99,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         foreach (var contact in contacts)
         {
             var row = new ContactRow(
-                contact.HasConsent && !contact.IsOptedOut,
+                false,
                 $"{contact.FirstName} {contact.LastName}".Trim(),
                 contact.TelegramUserId,
                 contact.Username is null ? string.Empty : $"@{contact.Username.TrimStart('@')}",
