@@ -56,11 +56,19 @@ public sealed class TdLibSessionBootstrapper(TdLibAccountClientRegistry registry
             // Explicitly request the current state as a deterministic fallback so the
             // UI cannot remain stuck at "preparing connection" when the first update
             // arrives before the wizard subscribes.
-            var response = await session.SendAsync(
-                "getAuthorizationState",
-                new Dictionary<string, object?>(),
-                cancellationToken);
-            ApplyAuthorizationStateResponse(machine, response);
+            for (var attempt = 0; attempt < 12; attempt++)
+            {
+                var response = await session.SendAsync(
+                    "getAuthorizationState",
+                    new Dictionary<string, object?>(),
+                    cancellationToken);
+                ApplyAuthorizationStateResponse(machine, response);
+
+                if (machine.Current is not AuthorizationState.WaitTdlibParameters and not AuthorizationState.Unknown)
+                    break;
+
+                await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
+            }
 
             return session;
         }
