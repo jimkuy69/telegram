@@ -35,7 +35,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     private string _dataSourceNotice = "ข้อมูลตัวอย่างในเครื่องเท่านั้น • ยังไม่ได้ Sync Telegram";
-    public string SystemStatus => "Local SQLite • TDLib Native ตรวจสอบ hash แล้ว • Runtime/การส่งจริงยังปิดอยู่";
+    public string SystemStatus => "Local SQLite • TDLib Native • ส่งจริงเฉพาะงานที่ผ่าน Consent และยืนยัน";
     public string ActiveAccountStatus => ActiveAccount is null
         ? "ยังไม่ได้เลือกบัญชี"
         : $"{ActiveAccount.DisplayName} • {ActiveAccount.Status}";
@@ -58,6 +58,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         get => _pendingRequestsSummary;
         private set { _pendingRequestsSummary = value; OnPropertyChanged(); }
     }
+
+    public int TotalContactsCount => Contacts.Count;
+    public int ConsentContactsCount => Contacts.Count(contact => contact.Consent == "ได้รับความยินยอม");
+    public int NotAllowedContactsCount => Contacts.Count(contact => contact.Consent == "ยังไม่อนุญาต");
+
+    public string AllContactsSummary => $"ทั้งหมด ({TotalContactsCount})";
+    public string ConsentedContactsSummary => $"ได้รับความยินยอม ({ConsentContactsCount})";
+    public string NotAllowedContactsSummary => $"ยังไม่อนุญาต ({NotAllowedContactsCount})";
+    public string SendAvailabilityNotice => ActiveAccount is null
+        ? "ยังไม่มีบัญชีที่เลือก • เลือกบัญชีและเข้าสู่ระบบก่อนสร้างงาน"
+        : (string.Equals(ActiveAccount.Status, "Ready", StringComparison.OrdinalIgnoreCase) || string.Equals(ActiveAccount.Status, "Authenticated", StringComparison.OrdinalIgnoreCase))
+            ? "พร้อมส่งเมื่อผู้รับมี Consent และกดยืนยันงาน • ระบบยังไม่ส่งจนกว่าจะยืนยัน"
+            : $"บัญชี {ActiveAccount.DisplayName} ยังไม่พร้อมส่ง • สถานะ: {ActiveAccount.Status}";
 
     public int ConsentCount => Contacts.Count(contact => contact.Selected && contact.Consent == "ได้รับความยินยอม");
 
@@ -110,6 +123,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             row.PropertyChanged += ContactRow_PropertyChanged;
             Contacts.Add(row);
         }
+        OnPropertyChanged(nameof(TotalContactsCount));
+        OnPropertyChanged(nameof(ConsentContactsCount));
+        OnPropertyChanged(nameof(NotAllowedContactsCount));
+        OnPropertyChanged(nameof(AllContactsSummary));
+        OnPropertyChanged(nameof(ConsentedContactsSummary));
+        OnPropertyChanged(nameof(NotAllowedContactsSummary));
+        OnPropertyChanged(nameof(SendAvailabilityNotice));
         OnPropertyChanged(nameof(ConsentCount));
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(SelectionSummary));
