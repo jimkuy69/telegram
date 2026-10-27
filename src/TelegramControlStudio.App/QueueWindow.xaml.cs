@@ -41,6 +41,10 @@ public partial class QueueWindow : Window
         }
         if (MessageBox.Show("ยืนยันนำ Job นี้เข้าคิวหรือไม่? ระบบยังไม่ส่งข้อความจริง", "ยืนยันเข้าคิว", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
+        await new JobItemRepository(_databasePath).UpdateStatusForJobAsync(
+            SelectedJob.Id,
+            JobStatus.WaitingForConfirmation.ToString(),
+            JobStatus.Queued.ToString());
         await ChangeAsync(JobStatus.Queued);
     }
 
