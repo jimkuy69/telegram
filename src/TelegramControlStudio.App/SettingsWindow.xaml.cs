@@ -44,7 +44,8 @@ public partial class SettingsWindow : Window
     private async void ConnectNative_Click(object sender, RoutedEventArgs e)
     {
         await _tdLibLoadTask;
-        if (_nativeDirectory is null || !int.TryParse(ApiIdBox.Text.Trim(), out var apiId) || apiId <= 0 || string.IsNullOrWhiteSpace(ApiHashBox.Password)) { StatusText.Text = "กรุณากรอก API ID, API Hash และเลือก tdjson.dll ก่อนเชื่อมต่อ"; return; }
+        var configuration = await new TdLibConfigurationRepository(_databasePath).GetAsync(_accountId);
+        if (_nativeDirectory is null || configuration is null) { StatusText.Text = "กรุณาบันทึก API ID, API Hash และเลือก tdjson.dll ก่อนเชื่อมต่อ"; return; }
         try
         {
             var loader = new TdLibNativeLoader();
@@ -53,7 +54,7 @@ public partial class SettingsWindow : Window
             var repository = new AccountRepository(_databasePath);
             var sessionDirectory = SessionPathPolicy.GetAccountSessionDirectory(_accountId);
             var bootstrapper = new TdLibSessionBootstrapper(app.TdLibClients, repository);
-            await bootstrapper.ConnectAsync(_accountId, _nativeDirectory, hash, apiId, ApiHashBox.Password, sessionDirectory);
+            await bootstrapper.ConnectAsync(_accountId, _nativeDirectory, hash, configuration.Value.ApiId, configuration.Value.ApiHash, sessionDirectory);
             ApiHashBox.Clear();
             StatusText.Text = $"Native TDLib เชื่อมต่อแล้ว\nSHA-256: {hash}";
             if (bootstrapper.TryGetStateMachine(_accountId, out var machine) && machine is not null)
