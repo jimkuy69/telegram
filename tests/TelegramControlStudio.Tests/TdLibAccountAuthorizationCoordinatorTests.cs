@@ -8,7 +8,7 @@ namespace TelegramControlStudio.Tests;
 public sealed class TdLibAccountAuthorizationCoordinatorTests
 {
     [Fact]
-    public async Task RoutesAuthRequestsAndUpdatesOnlyThatAccountStatus()
+    public async Task RoutesAuthRequestsWithoutOverwritingTdLibAuthorizationState()
     {
         var path = Path.Combine(Path.GetTempPath(), $"tcs-auth-{Guid.NewGuid():N}.db");
         await new SqliteDatabase(path).InitializeAsync();
@@ -18,13 +18,18 @@ public sealed class TdLibAccountAuthorizationCoordinatorTests
         var client = new FakeClient();
         registry.Register(accountId, client);
         var coordinator = new TdLibAccountAuthorizationCoordinator(new TdLibAccountSessionCoordinator(registry), accounts);
+
         await coordinator.SubmitPhoneNumberAsync(accountId, "+10000000002");
         Assert.Equal("setAuthenticationPhoneNumber", client.LastFunction);
-        Assert.Equal("AwaitingCode", (await accounts.ListAsync()).Single().Status);
+        Assert.Equal("PendingAuthorization", (await accounts.ListAsync()).Single().Status);
+
         await coordinator.SubmitCodeAsync(accountId, "12345");
         Assert.Equal("checkAuthenticationCode", client.LastFunction);
+        Assert.Equal("PendingAuthorization", (await accounts.ListAsync()).Single().Status);
+
         await coordinator.SubmitPasswordAsync(accountId, "secret");
         Assert.Equal("checkAuthenticationPassword", client.LastFunction);
+        Assert.Equal("PendingAuthorization", (await accounts.ListAsync()).Single().Status);
     }
 
     [Fact]
@@ -41,7 +46,7 @@ public sealed class TdLibAccountAuthorizationCoordinatorTests
         Assert.Equal("Error", (await accounts.ListAsync()).Single().Status);
     }
 
-    private sealed class FakeClient(string response = "{\"@type\":\"ok\"}") : ITdLibClient
+    private sealed class FakeClient(string response = "{"@type":"ok"}") : ITdLibClient
     {
         public string? LastFunction { get; private set; }
         public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
