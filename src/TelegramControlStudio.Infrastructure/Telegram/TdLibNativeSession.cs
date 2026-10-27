@@ -105,6 +105,26 @@ public sealed class TdLibNativeSession : ITdLibClient
         }
     }
 
+    private static void EnsureSuccessfulResponse(string response, string operation)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(response);
+            var root = document.RootElement;
+            if (root.TryGetProperty("@type", out var type) &&
+                string.Equals(type.GetString(), "error", StringComparison.Ordinal))
+            {
+                var code = root.TryGetProperty("code", out var codeElement) ? codeElement.ToString() : "unknown";
+                var message = root.TryGetProperty("message", out var messageElement) ? messageElement.GetString() : "unknown";
+                throw new InvalidOperationException($"TDLIB_{operation.ToUpperInvariant()}_FAILED_{code}_{message}");
+            }
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidOperationException($"TDLIB_{operation.ToUpperInvariant()}_INVALID_RESPONSE", exception);
+        }
+    }
+
     private async Task ReceiveLoopAsync()
     {
         try
