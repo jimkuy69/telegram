@@ -64,6 +64,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public int SelectedCount => Contacts.Count(contact => contact.Selected);
     public string SelectionSummary => $"เลือกผู้รับ {SelectedCount} รายการ • ผ่าน Consent {ConsentCount} รายการ";
 
+    public string MessageDraft { get; set; } = string.Empty;
+    public string LinkDraft { get; set; } = string.Empty;
+
     public bool CanCreateJob => ActiveAccount is not null && ConsentCount > 0;
 
     public RelayCommand CreateJobCommand { get; }
@@ -188,8 +191,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void CreateJob()
     {
-        // Intentionally remains a local preview boundary until TDLib and confirmation gates exist.
-        DataSourceNotice = $"พร้อมสร้าง Job แบบ Preview สำหรับ {ConsentCount} ผู้รับที่ยินยอม";
+        if (ConsentCount == 0)
+        {
+            DataSourceNotice = "ยังสร้าง Preview ไม่ได้: กรุณาเลือกผู้รับที่มี Consent";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(MessageDraft))
+        {
+            DataSourceNotice = "ยังสร้าง Preview ไม่ได้: กรุณากรอกข้อความก่อน";
+            return;
+        }
+        var linkNotice = string.IsNullOrWhiteSpace(LinkDraft) ? string.Empty : " พร้อมลิงก์";
+        DataSourceNotice = $"Preview พร้อมตรวจสอบ • ผู้รับ {ConsentCount} รายการ{linkNotice} • ยังไม่ส่งข้อความจริง";
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
