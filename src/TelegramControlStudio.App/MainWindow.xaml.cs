@@ -185,6 +185,18 @@ public partial class MainWindow : Window
     private ContactRow[] GetCheckedContacts() =>
         ContactGrid.Items.OfType<ContactRow>().Where(contact => contact.Selected).ToArray();
 
+    private void SelectVisibleContacts_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel) return;
+        var checkbox = sender as System.Windows.Controls.CheckBox;
+        var shouldSelect = checkbox?.IsChecked == true;
+        foreach (var contact in viewModel.Contacts)
+            contact.Selected = shouldSelect;
+        ContactGrid.Items.Refresh();
+        if (checkbox is not null)
+            checkbox.IsChecked = shouldSelect ? true : false;
+    }
+
     private void ContactCheckBox_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.CheckBox checkBox && checkBox.DataContext is ContactRow row)
