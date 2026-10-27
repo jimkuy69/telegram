@@ -17,12 +17,15 @@ public sealed class JobRepository(string databasePath)
         string targetType,
         int targetCount,
         string idempotencyKey,
+        string messageText = "Preview payload",
+        string? linkUrl = null,
         CancellationToken cancellationToken = default)
     {
         if (accountId <= 0)
             throw new ArgumentOutOfRangeException(nameof(accountId));
         ArgumentException.ThrowIfNullOrWhiteSpace(targetType);
         ArgumentException.ThrowIfNullOrWhiteSpace(idempotencyKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageText);
         if (targetCount < 0)
             throw new ArgumentOutOfRangeException(nameof(targetCount));
 
@@ -47,9 +50,9 @@ public sealed class JobRepository(string databasePath)
         await using var command = connection.CreateCommand();
         command.CommandText = """
             INSERT INTO jobs
-                (id, account_id, target_type, target_count, status, created_at, idempotency_key)
+                (id, account_id, target_type, target_count, status, created_at, idempotency_key, message_text, link_url)
             VALUES
-                ($id, $account_id, $target_type, $target_count, $status, $created_at, $idempotency_key);
+                ($id, $account_id, $target_type, $target_count, $status, $created_at, $idempotency_key, $message_text, $link_url);
             """;
         command.Parameters.AddWithValue("$id", id.ToString());
         command.Parameters.AddWithValue("$account_id", accountId);
@@ -58,6 +61,8 @@ public sealed class JobRepository(string databasePath)
         command.Parameters.AddWithValue("$status", JobStatus.WaitingForConfirmation.ToString());
         command.Parameters.AddWithValue("$created_at", DateTimeOffset.UtcNow.ToString("O"));
         command.Parameters.AddWithValue("$idempotency_key", idempotencyKey);
+        command.Parameters.AddWithValue("$message_text", messageText);
+        command.Parameters.AddWithValue("$link_url", (object?)linkUrl ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
         return id;
     }
@@ -189,13 +194,13 @@ public sealed class JobRepository(string databasePath)
     {
         await using var connection = new SqliteConnection(_connectionString); await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id, account_id, target_type, target_count, status, retry_count, created_at, started_at, completed_at, flood_wait_until, last_error, idempotency_key FROM jobs WHERE account_id=$account_id ORDER BY created_at DESC";
+        command.CommandText = "SELECT id, account_id, target_type, target_count, status, retry_count, created_at, started_at, completed_at, flood_wait_until, last_error, idempotency_key, message_text, link_url FROM jobs WHERE account_id=$account_id ORDER BY created_at DESC";
         command.Parameters.AddWithValue("$account_id", accountId);
         var jobs = new List<Job>(); await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
             if (!Guid.TryParse(reader.GetString(0), out var id) || !Enum.TryParse<JobStatus>(reader.GetString(4), out var status)) continue;
-            jobs.Add(new Job(id, reader.GetInt64(1), reader.GetString(2), reader.GetInt32(3), status, reader.GetInt32(5), DateTimeOffset.Parse(reader.GetString(6)), ParseDate(reader, 7), ParseDate(reader, 8), ParseDate(reader, 9), reader.IsDBNull(10) ? null : reader.GetString(10), reader.GetString(11)));
+            jobs.Add(new Job(id, reader.GetInt64(1), reader.GetString(2), reader.GetInt32(3), status, reader.GetInt32(5), DateTimeOffset.Parse(reader.GetString(6)), ParseDate(reader, 7), ParseDate(reader, 8), ParseDate(reader, 9), reader.IsDBNull(10) ? null : reader.GetString(10), reader.GetString(11), reader.IsDBNull(12) ? "" : reader.GetString(12), reader.IsDBNull(13) ? null : reader.GetString(13)));
         }
         return jobs;
     }

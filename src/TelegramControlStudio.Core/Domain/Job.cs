@@ -12,4 +12,6 @@ public sealed record Job(
     DateTimeOffset? CompletedAt,
     DateTimeOffset? FloodWaitUntil,
     string? LastError,
-    string IdempotencyKey);
+    string IdempotencyKey,
+    string MessageText = "",
+    string? LinkUrl = null);

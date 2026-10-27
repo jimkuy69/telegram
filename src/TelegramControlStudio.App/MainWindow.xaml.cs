@@ -294,7 +294,10 @@ public partial class MainWindow : Window
         var fingerprint = string.Join("|", selected.Select(contact => contact.Id).OrderBy(id => id));
         var definition = $"{viewModel.ActiveAccount.Id}|{fingerprint}|{viewModel.MessageDraft}|{viewModel.LinkDraft}";
         var idempotencyKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(definition)));
-        var jobId = await new JobRepository(databasePath).CreateAsync(viewModel.ActiveAccount.Id, "ConsentMessaging", selected.Length, idempotencyKey);
+        var jobId = await new JobRepository(databasePath).CreateAsync(
+            viewModel.ActiveAccount.Id, "ConsentMessaging", selected.Length, idempotencyKey,
+            viewModel.MessageDraft.Trim(),
+            string.IsNullOrWhiteSpace(viewModel.LinkDraft) ? null : viewModel.LinkDraft.Trim());
         var itemRepository = new JobItemRepository(databasePath);
         var existingItems = await itemRepository.ListAsync(jobId);
         if (existingItems.Count == 0)
