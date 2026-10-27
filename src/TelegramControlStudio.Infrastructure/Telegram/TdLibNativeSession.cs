@@ -55,7 +55,8 @@ public sealed class TdLibNativeSession : ITdLibClient
                 throw new InvalidOperationException("TDLib did not return a valid client id.");
 
             var session = new TdLibNativeSession(nativeClient, clientId, router, onUnmatchedUpdate);
-            await session.SendAsync("setTdlibParameters", parameters, cancellationToken).ConfigureAwait(false);
+            var parameterResponse = await session.SendAsync("setTdlibParameters", parameters, cancellationToken).ConfigureAwait(false);
+            EnsureSuccessfulResponse(parameterResponse, "setTdlibParameters");
             return session;
         }
         catch
