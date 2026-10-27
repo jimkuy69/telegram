@@ -76,7 +76,7 @@ public partial class QueueWindow : Window
         {
             await new JobRepository(_databasePath).UpdateStatusAsync(SelectedJob.Id, JobStatus.Paused, "Paused by user.");
         }
-        catch (Exception exception)
+        catch (Exception)
         {
             await new JobRepository(_databasePath).UpdateStatusAsync(SelectedJob.Id, JobStatus.Failed, "QUEUE_RUN_FAILED");
             await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, SelectedJob.Id, "Error", "QueueRunFailed", "Queue runner failed; sensitive data was not logged.", DateTimeOffset.UtcNow));
