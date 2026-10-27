@@ -25,6 +25,16 @@ public sealed class JobAggregateStatusPolicyTests
             [Item("Failed", 1), Item("Cancelled", 2)]));
 
     [Fact]
+    public void WaitingForConfirmationItemKeepsJobWaitingForConfirmation() =>
+        Assert.Equal(JobStatus.WaitingForConfirmation, JobAggregateStatusPolicy.FromItems(
+            [Item("WaitingForConfirmation", 1), Item("WaitingForConfirmation", 2)]));
+
+    [Fact]
+    public void PausedItemKeepsJobPaused() =>
+        Assert.Equal(JobStatus.Paused, JobAggregateStatusPolicy.FromItems(
+            [Item("Paused", 1), Item("Paused", 2)]));
+
+    [Fact]
     public void RunningItemKeepsJobRunning() =>
         Assert.Equal(JobStatus.Running, JobAggregateStatusPolicy.FromItems(
             [Item("Completed", 1), Item("Running", 2)]));

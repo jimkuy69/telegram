@@ -61,6 +61,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public int ConsentCount => Contacts.Count(contact => contact.Selected && contact.Consent == "ได้รับความยินยอม");
 
+    public int SelectedCount => Contacts.Count(contact => contact.Selected);
+    public string SelectionSummary => $"เลือกผู้รับ {SelectedCount} รายการ • ผ่าน Consent {ConsentCount} รายการ";
+
+    public string MessageDraft { get; set; } = string.Empty;
+    public string LinkDraft { get; set; } = string.Empty;
+
     public bool CanCreateJob => ActiveAccount is not null && ConsentCount > 0;
 
     public RelayCommand CreateJobCommand { get; }
@@ -95,14 +101,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Contacts.Clear();
         foreach (var contact in contacts)
         {
-            Contacts.Add(new ContactRow(
-                contact.HasConsent && !contact.IsOptedOut,
+            var row = new ContactRow(
+                false,
                 $"{contact.FirstName} {contact.LastName}".Trim(),
                 contact.TelegramUserId,
                 contact.Username is null ? string.Empty : $"@{contact.Username.TrimStart('@')}",
-                contact.IsOptedOut ? "Opt-out" : contact.HasConsent ? "ได้รับความยินยอม" : "ยังไม่อนุญาต"));
+                contact.IsOptedOut ? "Opt-out" : contact.HasConsent ? "ได้รับความยินยอม" : "ยังไม่อนุญาต");
+            row.PropertyChanged += ContactRow_PropertyChanged;
+            Contacts.Add(row);
         }
         OnPropertyChanged(nameof(ConsentCount));
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(SelectionSummary));
+        OnPropertyChanged(nameof(CanCreateJob));
+        CreateJobCommand.Refresh();
+    }
+
+    private void ContactRow_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ContactRow.Selected)) return;
+        OnPropertyChanged(nameof(ConsentCount));
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(SelectionSummary));
         OnPropertyChanged(nameof(CanCreateJob));
         CreateJobCommand.Refresh();
     }
@@ -171,8 +191,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void CreateJob()
     {
-        // Intentionally remains a local preview boundary until TDLib and confirmation gates exist.
-        DataSourceNotice = $"พร้อมสร้าง Job แบบ Preview สำหรับ {ConsentCount} ผู้รับที่ยินยอม";
+        if (ConsentCount == 0)
+        {
+            DataSourceNotice = "ยังสร้าง Preview ไม่ได้: กรุณาเลือกผู้รับที่มี Consent";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(MessageDraft))
+        {
+            DataSourceNotice = "ยังสร้าง Preview ไม่ได้: กรุณากรอกข้อความก่อน";
+            return;
+        }
+        var linkNotice = string.IsNullOrWhiteSpace(LinkDraft) ? string.Empty : " พร้อมลิงก์";
+        DataSourceNotice = $"Preview พร้อมตรวจสอบ • ผู้รับ {ConsentCount} รายการ{linkNotice} • ยังไม่ส่งข้อความจริง";
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
