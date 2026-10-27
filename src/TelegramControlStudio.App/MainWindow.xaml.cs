@@ -185,6 +185,16 @@ public partial class MainWindow : Window
     private ContactRow[] GetCheckedContacts() =>
         ContactGrid.Items.OfType<ContactRow>().Where(contact => contact.Selected).ToArray();
 
+    private void ContactCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox checkBox && checkBox.DataContext is ContactRow row)
+        {
+            row.Selected = checkBox.IsChecked == true;
+            ContactGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Cell, true);
+            ContactGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Row, true);
+        }
+    }
+
     private async void DeleteSelectedContacts_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null) return;
