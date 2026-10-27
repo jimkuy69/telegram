@@ -74,11 +74,18 @@ jobs:
           if (-not $installer) { throw 'Installer output was not created.' }
           $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content -Path "$($installer.FullName).sha256" -Value "$hash  $($installer.Name)" -Encoding utf8
+          $publishedExe = Join-Path (Resolve-Path 'artifacts/publish/win-x64') 'TelegramControlStudio.exe'
+          if (-not (Test-Path -LiteralPath $publishedExe)) { throw 'Published TelegramControlStudio.exe was not found.' }
+          $publishedExeHash = (Get-FileHash $publishedExe -Algorithm SHA256).Hash.ToLowerInvariant()
           $tdlibProvenance = Get-Content -Raw -LiteralPath 'artifacts/publish/win-x64/tdlib.provenance.json' | ConvertFrom-Json
           $releaseManifest = [ordered]@{
             repository = $env:GITHUB_REPOSITORY
             commit = $env:GITHUB_SHA
             ref = $env:GITHUB_REF
+            application = [ordered]@{
+              name = 'TelegramControlStudio.exe'
+              sha256 = $publishedExeHash
+            }
             installer = [ordered]@{
               name = $installer.Name
               sha256 = $hash
