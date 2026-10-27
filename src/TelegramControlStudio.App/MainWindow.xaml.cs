@@ -187,7 +187,7 @@ public partial class MainWindow : Window
 
     private void ContactCheckBox_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is CheckBox checkBox && checkBox.DataContext is ContactRow row)
+        if (sender is System.Windows.Controls.CheckBox checkBox && checkBox.DataContext is ContactRow row)
         {
             row.Selected = checkBox.IsChecked == true;
             ContactGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Cell, true);
