@@ -181,10 +181,13 @@ public partial class MainWindow : Window
         }
     }
 
+    private ContactRow[] GetCheckedContacts() =>
+        ContactGrid.Items.OfType<ContactRow>().Where(contact => contact.Selected).ToArray();
+
     private async void DeleteSelectedContacts_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null) return;
-        var selected = ContactGrid.SelectedItems.OfType<ContactRow>().ToArray();
+        var selected = GetCheckedContacts();
         if (selected.Length == 0)
         {
             MessageBox.Show("กรุณาเลือกรายชื่อที่ต้องการลบ", "ยังไม่ได้เลือก", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -219,7 +222,7 @@ public partial class MainWindow : Window
     private async Task UpdateSelectedPolicyAsync(bool consent)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null) return;
-        var selected = ContactGrid.SelectedItems.OfType<ContactRow>().ToArray();
+        var selected = GetCheckedContacts();
         if (selected.Length == 0)
         {
             MessageBox.Show("กรุณาเลือกรายชื่อก่อนเปลี่ยนสถานะ", "ยังไม่ได้เลือก", MessageBoxButton.OK, MessageBoxImage.Information);
