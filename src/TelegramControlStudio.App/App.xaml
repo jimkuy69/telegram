@@ -25,6 +25,7 @@
         </Style>
         <Style TargetType="ComboBoxItem">
             <Setter Property="Foreground" Value="#0B1B33" />
+            <Setter Property="TextElement.Foreground" Value="#0B1B33" />
             <Setter Property="Background" Value="#E8F0FA" />
         </Style>
         <Style TargetType="CheckBox">
