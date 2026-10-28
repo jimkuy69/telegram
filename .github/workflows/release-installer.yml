@@ -131,3 +131,5 @@ jobs:
         with:
           name: TelegramControlStudio-installer-${{ github.ref_name }}
           path: artifacts/installer/*
+          if-no-files-found: error
+          retention-days: 90
