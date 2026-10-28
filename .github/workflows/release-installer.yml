@@ -87,6 +87,21 @@ jobs:
           $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Uninstaller exited with code $($uninstall.ExitCode)." }
           if (Test-Path -LiteralPath $installRoot) { throw 'Install directory still exists after uninstall.' }
+          if (-not (Test-Path -LiteralPath $installRoot)) { throw 'Install root was not created.' }
+      - name: Verify installer upgrade
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Get-ChildItem artifacts/installer/*.exe | Select-Object -First 1
+          $installRoot = Join-Path $env:RUNNER_TEMP 'TelegramControlStudio-install-test'
+          $marker = Join-Path $installRoot 'upgrade-marker.txt'
+          Set-Content -LiteralPath $marker -Value 'preserve-user-data' -Encoding utf8
+          $upgrade = Start-Process -FilePath $installer.FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',"/DIR=$installRoot") -Wait -PassThru
+          if ($upgrade.ExitCode -ne 0) { throw "Upgrade exited with code $($upgrade.ExitCode)." }
+          if (-not (Test-Path -LiteralPath $marker)) { throw 'Upgrade removed an existing user-data marker.' }
+          foreach ($required in @((Join-Path $installRoot 'TelegramControlStudio.exe'),(Join-Path $installRoot 'tdjson.dll'),(Join-Path $installRoot 'tdjson.manifest.json'))) {
+            if (-not (Test-Path -LiteralPath $required)) { throw "Upgrade removed required file: $required" }
+          }
 
       - name: Hash installer
         shell: pwsh
