@@ -26,7 +26,8 @@
    </DockPanel>
   </Border>
   <Border Grid.Row="1" Grid.Column="0" Background="#0A1627" Padding="14,18">
-   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
     <StackPanel>
      <Button Style="{StaticResource Nav}" Content="✈  ส่งข้อความ" Background="#3B237D" Foreground="White"/>
      <Button Style="{StaticResource Nav}" Content="▤  คิวงาน" Click="Queue_Click"/>
@@ -40,28 +41,32 @@
      <Button Style="{StaticResource Nav}" Content="◷  ประวัติการทำงาน" Click="History_Click"/>
      <Button Style="{StaticResource Nav}" Content="◉  Pending Requests" Click="PendingRequests_Click"/>
      <Button Style="{StaticResource Nav}" Content="＋  เพิ่มบัญชี" Click="AddAccount_Click"/>
-     <Border Background="#101F35" CornerRadius="8" Padding="12" Margin="0,12,0,0">
-      <StackPanel>
-       <TextBlock Text="บัญชีที่ใช้งาน" Foreground="#8FA6C6"/>
-       <TextBlock Text="{Binding ActiveAccountStatus}" Foreground="#60A5FA" Margin="0,6,0,0" TextWrapping="Wrap"/>
-       <TextBlock Text="สถานะระบบ" Foreground="#8FA6C6" Margin="0,10,0,0"/>
-       <TextBlock Text="{Binding QueueSummary}" Foreground="#34D399" Margin="0,6,0,0" TextWrapping="Wrap"/>
-       <TextBlock Text="{Binding DashboardSummary}" Foreground="#93C5FD" Margin="0,6,0,0" TextWrapping="Wrap"/>
-       <TextBlock Text="{Binding CampaignSummary}" Foreground="#C4B5FD" TextWrapping="Wrap" Margin="0,6,0,0"/>
-       <TextBlock Text="{Binding ErrorSummary}" Foreground="#FBBF24" TextWrapping="Wrap" Margin="0,6,0,0"/>
-       <TextBlock Text="{Binding PendingRequestsSummary}" Foreground="#FBBF24" Margin="0,6,0,0" TextWrapping="Wrap"/>
-       <TextBlock Text="ประวัติล่าสุด" Foreground="#8FA6C6" Margin="0,12,0,4"/>
-       <ItemsControl ItemsSource="{Binding ActivityLogs}">
-        <ItemsControl.ItemTemplate>
-         <DataTemplate><TextBlock Text="{Binding}" Foreground="#AFC3DF" TextWrapping="Wrap" Margin="0,2,0,2"/></DataTemplate>
-        </ItemsControl.ItemTemplate>
-       </ItemsControl>
-      </StackPanel>
-     </Border>
-     <TextBlock Text="Telegram Control Studio" Foreground="#7187A7" Margin="4,18,0,0"/>
-     <TextBlock Text="Foundation UI • Phase 1" Foreground="#7187A7" Margin="4,4,0,0"/>
     </StackPanel>
-   </ScrollViewer>
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,12,0,0">
+     <StackPanel>
+      <Border Background="#101F35" CornerRadius="8" Padding="12">
+       <StackPanel>
+        <TextBlock Text="บัญชีที่ใช้งาน" Foreground="#8FA6C6"/>
+        <TextBlock Text="{Binding ActiveAccountStatus}" Foreground="#60A5FA" Margin="0,6,0,0" TextWrapping="Wrap"/>
+        <TextBlock Text="สถานะระบบ" Foreground="#8FA6C6" Margin="0,10,0,0"/>
+        <TextBlock Text="{Binding QueueSummary}" Foreground="#34D399" Margin="0,6,0,0" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding DashboardSummary}" Foreground="#93C5FD" Margin="0,6,0,0" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding CampaignSummary}" Foreground="#C4B5FD" TextWrapping="Wrap" Margin="0,6,0,0"/>
+        <TextBlock Text="{Binding ErrorSummary}" Foreground="#FBBF24" TextWrapping="Wrap" Margin="0,6,0,0"/>
+        <TextBlock Text="{Binding PendingRequestsSummary}" Foreground="#FBBF24" Margin="0,6,0,0" TextWrapping="Wrap"/>
+        <TextBlock Text="ประวัติล่าสุด" Foreground="#8FA6C6" Margin="0,12,0,4"/>
+        <ItemsControl ItemsSource="{Binding ActivityLogs}">
+         <ItemsControl.ItemTemplate>
+          <DataTemplate><TextBlock Text="{Binding}" Foreground="#AFC3DF" TextWrapping="Wrap" Margin="0,2,0,2"/></DataTemplate>
+         </ItemsControl.ItemTemplate>
+        </ItemsControl>
+       </StackPanel>
+      </Border>
+      <TextBlock Text="Telegram Control Studio" Foreground="#7187A7" Margin="4,18,0,0"/>
+      <TextBlock Text="Foundation UI • Phase 1" Foreground="#7187A7" Margin="4,4,0,0"/>
+     </StackPanel>
+    </ScrollViewer>
+   </Grid>
   </Border>
   <Grid Grid.Row="1" Grid.Column="1" Margin="18">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="360"/></Grid.ColumnDefinitions>
@@ -70,7 +75,7 @@
    <Border Grid.Row="1" Grid.Column="0" Background="#0D1A2D" BorderBrush="#1D395D" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,14,0">
     <DockPanel>
      <StackPanel DockPanel.Dock="Top"><DockPanel Margin="0,0,0,14"><TextBlock Text="เลือกผู้รับ" FontSize="19" FontWeight="SemiBold"/><ComboBox Width="130" SelectedIndex="0" HorizontalAlignment="Right"><ComboBoxItem Content="เรียง: ชื่อ"/><ComboBoxItem Content="เรียง: สถานะ"/></ComboBox></DockPanel><DockPanel Margin="0,0,0,12"><TextBox x:Name="ContactSearchBox" Text="" ToolTip="ค้นหาชื่อ Username เบอร์โทรศัพท์ หรือ Telegram ID" Padding="12" Background="#101F35" Foreground="#AFC3DF" BorderBrush="#29486E"/><Button Content="ค้นหา" Click="SearchContacts_Click" Width="92" Margin="10,0,0,0" Background="#6941E8" Foreground="White"/><Button Content="Refresh" Click="RefreshContacts_Click" Width="90" Margin="10,0,0,0"/><Button Content="Sync TDLib" Click="SyncContacts_Click" Width="100" Margin="10,0,0,0" Background="#0F766E" Foreground="White"/></DockPanel><TextBlock Text="{Binding SelectionSummary}" Foreground="#60A5FA" Margin="0,0,0,8"/><StackPanel Orientation="Horizontal" Margin="0,0,0,12"><TextBlock Text="{Binding AllContactsSummary}" Foreground="#C7D7EA" VerticalAlignment="Center" Margin="0,0,12,0"/><Button Content="ทั้งหมด" Click="ShowAllContacts_Click" Margin="0,0,8,0"/><Button Content="Consent" Click="ShowConsentedContacts_Click" Margin="0,0,8,0"/><Button Content="Opt-out" Click="ShowOptedOutContacts_Click" Margin="0,0,8,0"/><Button Content="ยังไม่อนุญาต" Click="ShowNotAllowedContacts_Click" Margin="0,0,8,0"/><Button Content="ตั้งเป็น Consent" Click="SetConsent_Click" Margin="0,0,8,0"/><Button Content="ตั้งเป็น Opt-out" Click="SetOptOut_Click" Margin="0"/><Button Content="ลบที่เลือก" Click="DeleteSelectedContacts_Click" Margin="10,0,0,0" Background="#7F1D3A" Foreground="White"/></StackPanel></StackPanel>
-     <DataGrid ColumnHeaderStyle="{StaticResource LightGridHeader}" x:Name="ContactGrid" ItemsSource="{Binding Contacts}" AutoGenerateColumns="False" IsReadOnly="False" SelectionMode="Extended" SelectionUnit="FullRow" CanUserAddRows="False" CanUserDeleteRows="False" Background="#0A1627" Foreground="#AFC3DA" BorderBrush="#203A5D" RowBackground="#0D1A2D" AlternatingRowBackground="#10213A"><DataGrid.Columns><DataGridTemplateColumn Width="55"><DataGridTemplateColumn.HeaderTemplate><DataTemplate><CheckBox Foreground="#0B1B33" Background="#E8F0FA" ToolTip="เลือก/ยกเลิกผู้รับที่มองเห็นทั้งหมด" Click="SelectVisibleContacts_Click" IsThreeState="True"/></DataTemplate></DataGridTemplateColumn.HeaderTemplate><DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox Foreground="#E8F0FA" IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="True" IsHitTestVisible="True" ClickMode="Press" Checked="ContactCheckBox_Click" Unchecked="ContactCheckBox_Click"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn><DataGridTextColumn Header="ชื่อ" Width="*" IsReadOnly="True" Binding="{Binding Name}" ElementStyle="{StaticResource GridTextCell}"/><DataGridTextColumn Header="Telegram ID" Width="120" IsReadOnly="True" Binding="{Binding Id}" ElementStyle="{StaticResource GridTextCell}"/><DataGridTextColumn Header="Username" Width="120" IsReadOnly="True" Binding="{Binding Username}" ElementStyle="{StaticResource GridTextCell}"/><DataGridTextColumn Header="สถานะ" Width="115" IsReadOnly="True" Binding="{Binding Consent}" ElementStyle="{StaticResource GridTextCell}"/></DataGrid.Columns></DataGrid>
+     <DataGrid ColumnHeaderStyle="{StaticResource LightGridHeader}" x:Name="ContactGrid" ItemsSource="{Binding Contacts}" AutoGenerateColumns="False" IsReadOnly="False" SelectionMode="Extended" SelectionUnit="FullRow" CanUserAddRows="False" CanUserDeleteRows="False" Background="#0A1627" Foreground="#AFC3DA" BorderBrush="#203A5D" RowBackground="#0D1A2D" AlternatingRowBackground="#10213A"><DataGrid.Columns><DataGridTemplateColumn Width="55"><DataGridTemplateColumn.HeaderTemplate><DataTemplate><CheckBox Foreground="#0B1B33" Background="#E8F0FA" ToolTip="เลือก/ยกเลิกผู้รับที่มองเห็นทั้งหมด" Click="SelectVisibleContacts_Click" IsThreeState="True"/></DataTemplate></DataGridTemplateColumn.HeaderTemplate><DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox Foreground="#E8F0FA" IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="True" IsHitTestVisible="True" ClickMode="Press" Checked="ContactCheckBox_Click" Unchecked="ContactCheckBox_Click"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn><DataGridTextColumn Header="ชื่อ" Width="*" IsReadOnly="True" Binding="{Binding Name}" ElementStyle="{StaticResource GridTextCell}"><DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="ชื่อ" Foreground="#0B1B33" FontWeight="SemiBold"/></DataTemplate></DataGridTextColumn.HeaderTemplate></DataGridTextColumn><DataGridTextColumn Header="Telegram ID" Width="120" IsReadOnly="True" Binding="{Binding Id}" ElementStyle="{StaticResource GridTextCell}"><DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="Telegram ID" Foreground="#0B1B33" FontWeight="SemiBold"/></DataTemplate></DataGridTextColumn.HeaderTemplate></DataGridTextColumn><DataGridTextColumn Header="Username" Width="120" IsReadOnly="True" Binding="{Binding Username}" ElementStyle="{StaticResource GridTextCell}"><DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="Username" Foreground="#0B1B33" FontWeight="SemiBold"/></DataTemplate></DataGridTextColumn.HeaderTemplate></DataGridTextColumn><DataGridTextColumn Header="สถานะ" Width="115" IsReadOnly="True" Binding="{Binding Consent}" ElementStyle="{StaticResource GridTextCell}"><DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="สถานะ" Foreground="#0B1B33" FontWeight="SemiBold"/></DataTemplate></DataGridTextColumn.HeaderTemplate></DataGridTextColumn></DataGrid.Columns></DataGrid>
      <TextBlock DockPanel.Dock="Bottom" Text="{Binding DataSourceNotice}" Foreground="#FBBF24" Margin="2,12,0,0"/>
     </DockPanel>
    </Border>
