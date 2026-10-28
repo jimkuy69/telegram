@@ -55,7 +55,7 @@ public partial class QueueWindow : Window
         if (!app.TdLibClients.TryGet(_accountId, out var client) || client is null) { MessageBox.Show("บัญชียังไม่ได้เชื่อมต่อกับ Telegram หรือ Session หมดอายุ", "ยังไม่พร้อมส่ง", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
         _runCancellation?.Dispose(); _runCancellation = new CancellationTokenSource();
         try { await new TdLibCampaignJobRunner(_databasePath).RunAsync(client, SelectedJob.Id, _accountId, true, TimeSpan.FromSeconds(2), _runCancellation.Token); }
-        catch (OperationCanceledException) { await new JobRepository(_databasePath).UpdateStatusAsync(SelectedJob.Id, JobStatus.Paused, "Paused by user."); }
+        catch (OperationCanceledException)\n        {\n            // Cancel and Pause share the same cancellation token. Preserve an explicit\n            // Cancelled state instead of racing it back to Paused.\n            var current = await new JobRepository(_databasePath).GetAsync(SelectedJob.Id);\n            if (current?.Status != JobStatus.Cancelled)\n                await new JobRepository(_databasePath).UpdateStatusAsync(SelectedJob.Id, JobStatus.Paused, "Paused by user.");\n        }
         catch (Exception) { await new JobRepository(_databasePath).UpdateStatusAsync(SelectedJob.Id, JobStatus.Failed, "QUEUE_RUN_FAILED"); await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, SelectedJob.Id, "Error", "QueueRunFailed", "Queue runner failed; sensitive data was not logged.", DateTimeOffset.UtcNow)); }
         finally { _runCancellation.Dispose(); _runCancellation = null; await LoadAsync(); }
     }
