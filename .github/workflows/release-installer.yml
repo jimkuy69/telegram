@@ -67,6 +67,27 @@ jobs:
           $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
           if (-not (Test-Path -LiteralPath $iscc)) { throw "ISCC.exe was not found at $iscc" }
           & $iscc installer/TelegramControlStudio.iss
+      - name: Verify installer install and uninstall
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Get-ChildItem artifacts/installer/*.exe | Select-Object -First 1
+          if (-not $installer) { throw 'Installer output was not created.' }
+          $installRoot = Join-Path $env:RUNNER_TEMP 'TelegramControlStudio-install-test'
+          if (Test-Path -LiteralPath $installRoot) { Remove-Item -LiteralPath $installRoot -Recurse -Force }
+          $install = Start-Process -FilePath $installer.FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',"/DIR=$installRoot") -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Installer exited with code $($install.ExitCode)." }
+          $app = Join-Path $installRoot 'TelegramControlStudio.exe'
+          $tdjson = Join-Path $installRoot 'tdjson.dll'
+          $manifest = Join-Path $installRoot 'tdjson.manifest.json'
+          $uninstaller = Join-Path $installRoot 'unins000.exe'
+          foreach ($required in @($app,$tdjson,$manifest,$uninstaller)) {
+            if (-not (Test-Path -LiteralPath $required)) { throw "Installed file is missing: $required" }
+          }
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Uninstaller exited with code $($uninstall.ExitCode)." }
+          if (Test-Path -LiteralPath $installRoot) { throw 'Install directory still exists after uninstall.' }
+
       - name: Hash installer
         shell: pwsh
         run: |
