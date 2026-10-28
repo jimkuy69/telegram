@@ -121,12 +121,6 @@
             <Setter Property="Background" Value="{StaticResource LightSurfaceBrush}" />
         </Style>
 
-        <Style TargetType="CalendarItem">
-            <Setter Property="Foreground" Value="#F4F8FF" />
-            <Setter Property="Background" Value="{StaticResource DarkTabBrush}" />
-            <Setter Property="BorderBrush" Value="#4E86B8" />
-        </Style>
-
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         </Style>
