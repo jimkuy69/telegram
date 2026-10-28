@@ -79,8 +79,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public int SelectedCount => Contacts.Count(contact => contact.Selected);
     public string SelectionSummary => $"เลือกผู้รับ {SelectedCount} รายการ • ผ่าน Consent {ConsentCount} รายการ";
 
-    public string MessageDraft { get; set; } = string.Empty;
-    public string LinkDraft { get; set; } = string.Empty;
+    private string _messageDraft = string.Empty;
+    private string _linkDraft = string.Empty;
+    public string MessageDraft
+    {
+        get => _messageDraft;
+        set { _messageDraft = value ?? string.Empty; OnPropertyChanged(); OnPropertyChanged(nameof(PreviewText)); }
+    }
+    public string LinkDraft
+    {
+        get => _linkDraft;
+        set { _linkDraft = value ?? string.Empty; OnPropertyChanged(); OnPropertyChanged(nameof(PreviewText)); }
+    }
+    public string PreviewText => string.IsNullOrWhiteSpace(LinkDraft)
+        ? (string.IsNullOrWhiteSpace(MessageDraft) ? "ยังไม่มีข้อความสำหรับ Preview" : MessageDraft)
+        : (string.IsNullOrWhiteSpace(MessageDraft) ? LinkDraft : $"{MessageDraft}\\n{LinkDraft}");
 
     public bool CanCreateJob => ActiveAccount is not null && ConsentCount > 0;
 
@@ -257,4 +270,3 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
-
