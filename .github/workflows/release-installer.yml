@@ -84,10 +84,6 @@ jobs:
           foreach ($required in @($app,$tdjson,$manifest,$uninstaller)) {
             if (-not (Test-Path -LiteralPath $required)) { throw "Installed file is missing: $required" }
           }
-          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
-          if ($uninstall.ExitCode -ne 0) { throw "Uninstaller exited with code $($uninstall.ExitCode)." }
-          if (Test-Path -LiteralPath $installRoot) { throw 'Install directory still exists after uninstall.' }
-          if (-not (Test-Path -LiteralPath $installRoot)) { throw 'Install root was not created.' }
       - name: Verify installer upgrade
         shell: pwsh
         run: |
@@ -102,6 +98,10 @@ jobs:
           foreach ($required in @((Join-Path $installRoot 'TelegramControlStudio.exe'),(Join-Path $installRoot 'tdjson.dll'),(Join-Path $installRoot 'tdjson.manifest.json'))) {
             if (-not (Test-Path -LiteralPath $required)) { throw "Upgrade removed required file: $required" }
           }
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Uninstaller exited with code $($uninstall.ExitCode)." }
+          if (Test-Path -LiteralPath $installRoot) { throw 'Install directory still exists after uninstall.' }
+          if (-not (Test-Path -LiteralPath $installRoot)) { throw 'Install root was not created.' }
 
       - name: Hash installer
         shell: pwsh
