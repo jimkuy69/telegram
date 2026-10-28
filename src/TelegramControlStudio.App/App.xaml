@@ -10,6 +10,8 @@
         <SolidColorBrush x:Key="DarkTabBrush" Color="#15365B" />
         <SolidColorBrush x:Key="DarkTabHoverBrush" Color="#24598A" />
         <SolidColorBrush x:Key="DarkTabSelectedBrush" Color="#2D6EA8" />
+        <SolidColorBrush x:Key="LightSurfaceBrush" Color="#B9C7DA" />
+        <SolidColorBrush x:Key="DarkTextBrush" Color="#0B1B33" />
 
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
@@ -52,8 +54,9 @@
                                 <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource DarkTabSelectedBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#29486E" />
-                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#3D5F82" />
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource LightSurfaceBrush}" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#4E86B8" />
+                                <Setter TargetName="ButtonBorder" Property="TextElement.Foreground" Value="{StaticResource DarkTextBrush}" />
                                 <Setter Property="Foreground" Value="#C7D5E6" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -69,35 +72,55 @@
             <Setter Property="BorderBrush" Value="#4E86B8" />
         </Style>
         <Style TargetType="ComboBoxItem">
-            <Setter Property="Foreground" Value="#F4F8FF" />
-            <Setter Property="TextElement.Foreground" Value="#F4F8FF" />
-            <Setter Property="Background" Value="{StaticResource DarkTabBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource LightSurfaceBrush}" />
             <Setter Property="Padding" Value="8,4" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="{StaticResource DarkTabHoverBrush}" />
+                    <Setter Property="Foreground" Value="#FFFFFF" />
+                    <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="{StaticResource DarkTabSelectedBrush}" />
+                    <Setter Property="Foreground" Value="#FFFFFF" />
+                    <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style TargetType="DatePicker">
-            <Setter Property="Foreground" Value="#F4F8FF" />
-            <Setter Property="Background" Value="{StaticResource DarkTabBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource LightSurfaceBrush}" />
             <Setter Property="BorderBrush" Value="#4E86B8" />
         </Style>
         <Style TargetType="DatePickerTextBox">
-            <Setter Property="Foreground" Value="#F4F8FF" />
-            <Setter Property="Background" Value="{StaticResource DarkTabBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource LightSurfaceBrush}" />
             <Setter Property="BorderBrush" Value="#4E86B8" />
         </Style>
         <Style TargetType="Calendar">
-            <Setter Property="Foreground" Value="#F4F8FF" />
-            <Setter Property="Background" Value="{StaticResource DarkTabBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource LightSurfaceBrush}" />
             <Setter Property="BorderBrush" Value="#4E86B8" />
         </Style>
+        <Style TargetType="CalendarItem">
+            <Setter Property="Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource LightSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="#4E86B8" />
+        </Style>
+
+        <Style TargetType="CalendarDayButton">
+            <Setter Property="Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource LightSurfaceBrush}" />
+        </Style>
+
         <Style TargetType="CalendarItem">
             <Setter Property="Foreground" Value="#F4F8FF" />
             <Setter Property="Background" Value="{StaticResource DarkTabBrush}" />
@@ -122,9 +145,9 @@
             <Setter Property="BorderBrush" Value="#29486E" />
         </Style>
         <Style TargetType="DataGridColumnHeader">
-            <Setter Property="Foreground" Value="#F4F8FF" />
-            <Setter Property="TextElement.Foreground" Value="#F4F8FF" />
-            <Setter Property="Background" Value="{StaticResource DarkTabBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource DarkTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource LightSurfaceBrush}" />
             <Setter Property="BorderBrush" Value="#4E86B8" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Template">
@@ -137,7 +160,7 @@
                                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                               RecognizesAccessKey="True"
-                                              TextElement.Foreground="#F4F8FF" />
+                                              TextElement.Foreground="#0B1B33" />
                         </Border>
                     </ControlTemplate>
                 </Setter.Value>

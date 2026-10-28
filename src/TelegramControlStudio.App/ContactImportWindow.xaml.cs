@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using System.Windows;
 using Microsoft.Win32;
 using TelegramControlStudio.Core.Import;
@@ -33,6 +34,24 @@ public partial class ContactImportWindow : Window
         }
         SummaryText.Text = $"ผ่าน {_preview.Valid.Count} รายการ • ผิดพลาด {_preview.Errors.Count} รายการ";
         PreviewText.Text = _preview.Errors.Count == 0 ? "พร้อม Import ทุกแถวที่ผ่านการตรวจ" : string.Join(Environment.NewLine, _preview.Errors);
+    }
+
+    private void DownloadTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            FileName = "telegram-contacts-template.csv",
+            Filter = "CSV files (*.csv)|*.csv",
+            AddExtension = true,
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        const string template =
+            "telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out\r\n" +
+            "123456789,ชื่อ,นามสกุล,example,+66900000000,false,false\r\n";
+        File.WriteAllText(dialog.FileName, template, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        MessageBox.Show("บันทึก Template แล้ว\nกรอกข้อมูลตามหัวตารางและใช้ true/false หรือ 1/0 ในสองคอลัมน์ท้าย", "สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private async void Confirm_Click(object sender, RoutedEventArgs e)
