@@ -10,6 +10,18 @@ Local-first Windows desktop foundation for consent-first Telegram account and ca
 - Latest CI evidence: managed build/test, dependency vulnerability scan, and Gitleaks passed on Commit `e2accb6`. Native TDLib runtime remains a separate artifact-gated check. These results do not prove live Telegram E2E.
 - Account/session, messaging, invitation, and real Telegram calls remain behind TDLib runtime, consent, confirmation, and manual-acceptance gates; no live Telegram E2E is claimed.
 
+## Download the latest Windows installer
+
+1. Open the repository's [Actions page](https://github.com/jimkuy69/telegram/actions).
+2. Open the latest successful **Windows installer release** run.
+3. In **Artifacts**, download `TelegramControlStudio-installer-main`.
+4. Extract the ZIP and run `TelegramControlStudio-installer.exe`.
+5. Keep the installer ZIP and its `release-manifest.json` together for audit/reference.
+
+The artifact is retained by GitHub Actions for 90 days. The installer is self-contained for Windows x64; user data is stored under `%LOCALAPPDATA%\\TelegramControlStudio\\`, not in the install directory.
+
+This build is suitable for local foundation testing. Live Telegram sending, invite operations, clean-machine upgrade validation, and manual pilot acceptance still require the explicit gates in [DEVELOPMENT-PLAN-CHECKLIST.md](DEVELOPMENT-PLAN-CHECKLIST.md).
+
 ## Build
 
 ```powershell
