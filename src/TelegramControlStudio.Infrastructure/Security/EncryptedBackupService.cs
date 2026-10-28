@@ -39,8 +39,10 @@ public sealed class EncryptedBackupService
             // SQLite may retain a native handle briefly after the async connection is disposed.
             // Clear pooled handles before replacing the destination so restore is reliable on Windows.
             SqliteConnection.ClearAllPools();
-            if (File.Exists(databasePath)) File.Delete(databasePath);
-            File.Copy(temporaryPath, databasePath, false);
+            if (File.Exists(databasePath))
+                File.Replace(temporaryPath, databasePath, null, ignoreMetadataErrors: true);
+            else
+                File.Move(temporaryPath, databasePath);
         }
         finally
         {
