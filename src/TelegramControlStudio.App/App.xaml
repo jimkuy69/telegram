@@ -41,11 +41,13 @@
         </Style>
         <Style TargetType="DataGridCell">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="#142742" />
             <Setter Property="BorderBrush" Value="#29486E" />
         </Style>
         <Style TargetType="DataGridColumnHeader">
             <Setter Property="Foreground" Value="#0B1B33" />
+            <Setter Property="TextElement.Foreground" Value="#0B1B33" />
             <Setter Property="Background" Value="#B8C7DA" />
             <Setter Property="BorderBrush" Value="#29486E" />
             <Setter Property="FontWeight" Value="SemiBold" />
