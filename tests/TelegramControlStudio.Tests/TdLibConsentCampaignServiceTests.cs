@@ -9,7 +9,7 @@ namespace TelegramControlStudio.Tests;
 public sealed class TdLibConsentCampaignServiceTests
 {
     [Fact]
-    public async Task SendsOnlyConsentedRecipientsAndStopsAfterFailure()
+    public async Task SendsOnlyConsentedRecipientsAndContinuesAfterFailure()
     {
         var path = Path.Combine(Path.GetTempPath(), $"tg-campaign-send-{Guid.NewGuid():N}.db");
         try
@@ -20,13 +20,16 @@ public sealed class TdLibConsentCampaignServiceTests
             {
                 new Contact(accountId, 1, "A", "", null, null, true, false, DateTimeOffset.UtcNow),
                 new Contact(accountId, 2, "B", "", null, null, false, false, DateTimeOffset.UtcNow),
-                new Contact(accountId, 3, "C", "", null, null, true, true, DateTimeOffset.UtcNow)
+                new Contact(accountId, 3, "C", "", null, null, true, true, DateTimeOffset.UtcNow),
+                new Contact(accountId, 4, "D", "", null, null, true, false, DateTimeOffset.UtcNow)
             };
             var client = new FakeClient();
             var result = await new TdLibConsentCampaignService(path).SendTextAsync(client, accountId, recipients, "hello", true, TimeSpan.Zero);
             Assert.Equal(1, result.Sent);
             Assert.Equal(2, result.Skipped);
-            Assert.Equal([1L], client.ChatIds);
+            Assert.Equal(1, result.Failed);
+            Assert.Equal([4L], result.FailedRecipients);
+            Assert.Equal([1L, 4L], client.ChatIds);
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
@@ -36,8 +39,11 @@ public sealed class TdLibConsentCampaignServiceTests
         public List<long> ChatIds { get; } = [];
         public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
         {
-            ChatIds.Add((long)parameters["chat_id"]!);
-            return Task.FromResult("{\"@type\":\"message\"}");
+            var chatId = (long)parameters["chat_id"]!;
+            ChatIds.Add(chatId);
+            return Task.FromResult(chatId == 4
+                ? "{\"@type\":\"error\",\"code\":429,\"message\":\"TEST_FAILURE\"}"
+                : "{\"@type\":\"message\"}");
         }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
