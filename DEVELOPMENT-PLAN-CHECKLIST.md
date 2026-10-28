@@ -156,7 +156,7 @@
 - [ ] Release verification จาก Artifact TDLib ที่ตรวจสอบ hash/runtime แล้ว (clean-machine ยังไม่ยืนยัน)
 - [x] Installer Compile ด้วย Inno Setup ผ่าน Workflow Run `40157970040` (clean-machine install/uninstall/upgrade ยังไม่ยืนยัน)
 - [x] Installer install/uninstall smoke test ผ่านบน Windows runner จาก Workflow Run `40635348736` (Artifact `12793551332`; install, required files และ uninstaller ตรวจผ่าน; upgrade ยังไม่ยืนยัน)
-- [x] Uninstaller และ Upgrade Test (Windows runner smoke test ผ่านใน Workflow Run `40642958171`; ติดตั้งซ้ำ ตรวจไฟล์สำคัญ และถอนการติดตั้งผ่าน)
+- [x] Uninstaller และ Upgrade Test (Windows runner smoke test ผ่านใน Workflow Run `40643483450`; ติดตั้งซ้ำ ตรวจไฟล์สำคัญ และถอนการติดตั้งผ่าน)
 - [x] Version/Hash ของ Native Dependencies
 - [x] Third-party Notices ตรวจครบทุก Dependency
 - [ ] Backup/Restore ก่อน Release
