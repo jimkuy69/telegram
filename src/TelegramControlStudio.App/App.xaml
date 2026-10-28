@@ -7,6 +7,9 @@
         <SolidColorBrush x:Key="PanelBrush" Color="#1F2937" />
         <SolidColorBrush x:Key="TextBrush" Color="#E8F0FA" />
         <SolidColorBrush x:Key="MutedBrush" Color="#AFC3DA" />
+        <SolidColorBrush x:Key="DarkTabBrush" Color="#15365B" />
+        <SolidColorBrush x:Key="DarkTabHoverBrush" Color="#24598A" />
+        <SolidColorBrush x:Key="DarkTabSelectedBrush" Color="#2D6EA8" />
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         </Style>
@@ -20,13 +23,14 @@
         </Style>
         <Style TargetType="ComboBox">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="Background" Value="#101F35" />
-            <Setter Property="BorderBrush" Value="#29486E" />
+            <Setter Property="Background" Value="{StaticResource DarkTabBrush}" />
+            <Setter Property="BorderBrush" Value="#4E86B8" />
         </Style>
         <Style TargetType="ComboBoxItem">
-            <Setter Property="Foreground" Value="#0B1B33" />
-            <Setter Property="TextElement.Foreground" Value="#0B1B33" />
-            <Setter Property="Background" Value="#E8F0FA" />
+            <Setter Property="Foreground" Value="#F4F8FF" />
+            <Setter Property="TextElement.Foreground" Value="#F4F8FF" />
+            <Setter Property="Background" Value="{StaticResource DarkTabBrush}" />
+            <Setter Property="Padding" Value="8,4" />
         </Style>
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
@@ -46,11 +50,20 @@
             <Setter Property="BorderBrush" Value="#29486E" />
         </Style>
         <Style TargetType="DataGridColumnHeader">
-            <Setter Property="Foreground" Value="#0B1B33" />
-            <Setter Property="TextElement.Foreground" Value="#0B1B33" />
-            <Setter Property="Background" Value="#B8C7DA" />
-            <Setter Property="BorderBrush" Value="#29486E" />
+            <Setter Property="Foreground" Value="#F4F8FF" />
+            <Setter Property="TextElement.Foreground" Value="#F4F8FF" />
+            <Setter Property="Background" Value="{StaticResource DarkTabBrush}" />
+            <Setter Property="BorderBrush" Value="#4E86B8" />
             <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="{x:Type DataGridColumnHeader}"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0,0,1,1" Padding="{TemplateBinding Padding}"><ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" ContentStringFormat="{TemplateBinding ContentStringFormat}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" TextElement.Foreground="#0B1B33"/></Border></ControlTemplate></Setter.Value></Setter></Style>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type DataGridColumnHeader}">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0,0,1,1" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" ContentStringFormat="{TemplateBinding ContentStringFormat}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" TextElement.Foreground="#F4F8FF" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Application.Resources>
 </Application>
