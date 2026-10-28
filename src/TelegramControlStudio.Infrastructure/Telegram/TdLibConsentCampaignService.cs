@@ -40,7 +40,7 @@ public sealed class TdLibConsentCampaignService(string databasePath)
             {
                 failed++;
                 failedRecipients.Add(recipient.TelegramUserId);
-                break;
+                continue;
             }
             if (interval > TimeSpan.Zero) await Task.Delay(interval, cancellationToken);
         }
