@@ -155,6 +155,7 @@
 - [x] Self-contained Windows x64 Publish script และ release workflow
 - [ ] Release verification จาก Artifact TDLib ที่ตรวจสอบ hash/runtime แล้ว (clean-machine ยังไม่ยืนยัน)
 - [x] Installer Compile ด้วย Inno Setup ผ่าน Workflow Run `40157970040` (clean-machine install/uninstall/upgrade ยังไม่ยืนยัน)
+- [x] Installer install/uninstall smoke test ผ่านบน Windows runner จาก Workflow Run `40635348736` (Artifact `12793551332`; install, required files และ uninstaller ตรวจผ่าน; upgrade ยังไม่ยืนยัน)
 - [ ] Uninstaller และ Upgrade Test
 - [x] Version/Hash ของ Native Dependencies
 - [x] Third-party Notices ตรวจครบทุก Dependency
@@ -181,5 +182,5 @@
 - [ ] Authentication จริง
 - [ ] Manual Telegram Acceptance Test
 - [ ] Security Hardening
-- [ ] Installer และ Clean-machine Test
+- [x] Installer install/uninstall smoke test บน Windows runner (Clean-machine manual/upgrade ยังไม่ยืนยัน)
 - [ ] Backup/Restore Drill
