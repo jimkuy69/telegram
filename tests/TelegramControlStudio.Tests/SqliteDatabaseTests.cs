@@ -17,8 +17,8 @@ public sealed class SqliteDatabaseTests
             {
                 await connection.OpenAsync();
                 await using var command = connection.CreateCommand();
-                command.CommandText = "SELECT version FROM schema_migrations;";
-                Assert.Equal(1L, (long)(await command.ExecuteScalarAsync() ?? 0L));
+                command.CommandText = "SELECT MAX(version) FROM schema_migrations;";
+                Assert.Equal(3L, (long)(await command.ExecuteScalarAsync() ?? 0L));
             }
         }
         finally
@@ -54,7 +54,8 @@ public sealed class SqliteDatabaseTests
                     'job_items', 'contacts', 'telegram_groups', 'group_members',
                     'activity_logs', 'message_templates', 'campaigns',
                     'campaign_recipients', 'media_files', 'invite_links',
-                    'join_requests', 'template_media'
+                    'join_requests', 'template_media',
+                    'app_users', 'invites', 'app_settings', 'app_secrets'
                   );
                 """;
 
@@ -63,7 +64,7 @@ public sealed class SqliteDatabaseTests
             while (await reader.ReadAsync())
                 tables.Add(reader.GetString(0));
 
-            Assert.Equal(16, tables.Count);
+            Assert.Equal(20, tables.Count);
         }
         finally
         {

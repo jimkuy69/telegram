@@ -10,6 +10,7 @@ Local-first Windows desktop foundation for consent-first Telegram account and ca
 - Phase 0 send safety: persisted test mode (on by default), per-recipient allowlist, and an emergency stop (kill switch) are enforced before any TDLib transmission.
 - Phase 1 library split: `Core` and `Infrastructure` are UI-agnostic net8.0 libraries; the WPF app and the web host share `StudioHost` and the same policies.
 - Phase 1 web host: ASP.NET Core 8 + Blazor Server surface (dashboard, recipients, compose, queue, settings) that plans jobs and controls send safety against the same local database. Real sending still happens in the desktop app.
+- Phase 2 web access: Telegram Login Widget via the owner's bot, invite-only friend accounts (`app_users`, `invites`), owner/friend route gating, and an owner bot remote (`/status`, `/approve`, `/cancel`, `/kill`, `/invite`). Friends can only see their own consent status and opt in/out.
 - Latest CI evidence: managed build/test, dependency vulnerability scan, and Gitleaks passed on Commit `e2accb6`. Native TDLib runtime remains a separate artifact-gated check. These results do not prove live Telegram E2E.
 - Account/session, messaging, invitation, and real Telegram calls remain behind TDLib runtime, consent, confirmation, and manual-acceptance gates; no live Telegram E2E is claimed.
 
@@ -63,13 +64,19 @@ or use the `http` launch profile (same URL) from an IDE.
 
 | Screen | Purpose |
 |---|---|
-| แดชบอร์ด | account, consent counts, job counts, recent activity |
-| ผู้รับ | search/filter by consent state, explicit selection with paging |
-| เขียนข้อความ | message + link + preview, creates a job in `WaitingForConfirmation` |
-| คิวงาน | confirm a job into `Queued`, cancel, engage/clear the emergency stop |
-| ตั้งค่า | test mode, allowlist, kill switch, account list, machine info |
+| แดชบอร์ด | account, consent counts, job counts, recent activity (owner) |
+| ผู้รับ | search/filter by consent state, explicit selection with paging (owner) |
+| เขียนข้อความ | message + link + preview, creates a job in `WaitingForConfirmation` (owner) |
+| คิวงาน | confirm a job into `Queued`, cancel, engage/clear the emergency stop (owner) |
+| ผู้ใช้และคำเชิญ | invite links, user roles, block/unblock, public base URL (owner) |
+| สถานะของฉัน | own consent status with opt-in / opt-out (every signed-in user) |
+| ตั้งค่า | test mode, allowlist, kill switch, account list, bot commands, machine info (owner) |
 
-- The host is bound to localhost and has **no authentication yet**; do not expose it beyond the machine (or a private Tailscale address) until login/invite support exists.
+- The host is bound to localhost and requires login: Telegram Login Widget via the owner's own bot, verified server-side (`TelegramLoginVerifier`), then an HttpOnly `tcs_auth` cookie. Everyone else joins through a single-use invite link (`/invite/{code}`).
+- The first successful login on an empty `app_users` table becomes **Owner**; all other accounts are **Friend** until an owner invite grants otherwise.
+- Bot token setup: create a bot with @BotFather, run `/setdomain <host>`, then paste the token on `/login`. The token is stored with Windows DPAPI in `app_secrets`; never commit it.
+- The owner bot is a remote control (`/status`, `/jobs`, `/job`, `/approve`, `/cancel`, `/testmode`, `/kill`, `/invite`, `/users`); friends can only use `/me`, `/optin`, `/optout`. The bot only plans and gates work too — sending stays in the desktop app.
+- If the host is exposed through a Cloudflare Tunnel, put Cloudflare Access in front of it as well; the app's own login is the second layer, not a replacement.
 - The web host plans and gates work; TDLib login and every real send stay in the desktop app. A confirmed job waits for the desktop runner.
 - Job creation reuses the desktop idempotency rules, so re-submitting the same recipients/message returns the existing job.
 - Every page shows the current safety state; cancelling or confirming is logged as `JobQueuedWeb`, `JobCancelledWeb`, `EmergencyStopEngaged`, `KillSwitchCleared`, `SendSafetyUpdated`.

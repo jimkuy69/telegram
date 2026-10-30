@@ -1,8 +1,9 @@
 @inherits LayoutComponentBase
+@inject AuthenticationStateProvider Auth
 
 <div class="shell">
     <aside class="sidebar">
-        <a class="brand" href="">
+        <a class="brand" href="@(_isOwner ? "" : "me")">
             <span class="brand-mark">TC</span>
             <span class="brand-text">
                 <strong>Telegram Control</strong>
@@ -11,16 +12,23 @@
         </a>
 
         <nav class="nav">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All"><span class="nav-icon">▦</span> แดชบอร์ด</NavLink>
-            <NavLink class="nav-link" href="recipients"><span class="nav-icon">☰</span> ผู้รับ</NavLink>
-            <NavLink class="nav-link" href="compose"><span class="nav-icon">✎</span> เขียนข้อความ</NavLink>
-            <NavLink class="nav-link" href="queue"><span class="nav-icon">↻</span> คิวงาน</NavLink>
-            <NavLink class="nav-link" href="settings"><span class="nav-icon">⚙</span> ตั้งค่า</NavLink>
+            @if (_isOwner)
+            {
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All"><span class="nav-icon">▦</span> แดชบอร์ด</NavLink>
+                <NavLink class="nav-link" href="recipients"><span class="nav-icon">☰</span> ผู้รับ</NavLink>
+                <NavLink class="nav-link" href="compose"><span class="nav-icon">✎</span> เขียนข้อความ</NavLink>
+                <NavLink class="nav-link" href="queue"><span class="nav-icon">↻</span> คิวงาน</NavLink>
+                <NavLink class="nav-link" href="users"><span class="nav-icon">☺</span> ผู้ใช้และคำเชิญ</NavLink>
+                <NavLink class="nav-link" href="settings"><span class="nav-icon">⚙</span> ตั้งค่า</NavLink>
+            }
+            <NavLink class="nav-link" href="me"><span class="nav-icon">◎</span> สถานะของฉัน</NavLink>
         </nav>
 
         <div class="sidebar-foot">
-            <span class="pill">LOCAL ONLY</span>
-            <p>ข้อมูลอยู่ในเครื่องนี้ • ต้องมี Consent ของผู้รับก่อนส่งทุกครั้ง</p>
+            <span class="pill">@(_isOwner ? "OWNER" : "FRIEND")</span>
+            <p class="signed-in-as">@(_name ?? "—")</p>
+            <p>ล็อกอินด้วย Telegram • ต้องมี Consent ของผู้รับก่อนส่งทุกครั้ง</p>
+            <a class="logout-link" href="/logout">ออกจากระบบ</a>
         </div>
     </aside>
 
@@ -28,3 +36,15 @@
         @Body
     </main>
 </div>
+
+@code {
+    private bool _isOwner;
+    private string? _name;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await Auth.GetAuthenticationStateAsync();
+        _isOwner = state.User.IsInRole("Owner");
+        _name = state.User.Identity?.Name;
+    }
+}

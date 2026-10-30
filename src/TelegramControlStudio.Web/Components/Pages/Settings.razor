@@ -118,6 +118,23 @@ else
         </div>
 
         <div class="card">
+            <h2>บอท Telegram</h2>
+            @if (string.IsNullOrWhiteSpace(_botUsername))
+            {
+                <p class="muted">ยังไม่ได้ตั้งค่าบอท — ไปที่หน้าเข้าสู่ระบบเพื่อใส่ bot token (สร้างบอทกับ @@BotFather)</p>
+            }
+            else
+            {
+                <ul class="list">
+                    <li><span>บอท</span><span class="mono">@("@" + _botUsername)</span></li>
+                    <li><span>คำสั่งเจ้าของ</span><span class="mono">/status /jobs /approve /cancel</span></li>
+                    <li><span>คำสั่งเพื่อน</span><span class="mono">/me /optin /optout</span></li>
+                </ul>
+                <p class="muted small-note">พิมพ์ /help ในแชทบอทเพื่อดูคำสั่งทั้งหมด</p>
+            }
+        </div>
+
+        <div class="card">
             <h2>ข้อมูลเครื่องนี้</h2>
             <ul class="list">
                 <li><span>ฐานข้อมูล</span><span class="mono small-text">@Workspace.DatabasePath</span></li>
@@ -139,6 +156,7 @@ else
     private bool _confirmClear;
     private string? _message;
     private bool _messageIsError;
+    private string? _botUsername;
 
     private IReadOnlySet<long> ParsedAllowlist => SendSafetyPolicy.ParseAllowlist(_allowlistText);
 
@@ -152,6 +170,7 @@ else
             await Workspace.LoadAsync();
             _testMode = Workspace.Safety.TestModeEnabled;
             _allowlistText = SendSafetyPolicy.FormatAllowlist(Workspace.Safety.AllowlistUserIds);
+            _botUsername = await new AppSettingsRepository(Workspace.DatabasePath).GetAsync("bot_username");
         }
         finally
         {

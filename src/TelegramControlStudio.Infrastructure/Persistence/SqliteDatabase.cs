@@ -49,10 +49,16 @@ public sealed class SqliteDatabase
             CREATE TABLE IF NOT EXISTS send_safety_settings (id INTEGER PRIMARY KEY CHECK (id = 1), test_mode_enabled INTEGER NOT NULL DEFAULT 1, allowlist_user_ids TEXT NOT NULL DEFAULT '', kill_switch INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);
             INSERT OR IGNORE INTO send_safety_settings(id, test_mode_enabled, allowlist_user_ids, kill_switch, updated_at)
             VALUES(1, 1, '', 0, '1970-01-01T00:00:00.0000000+00:00');
+            CREATE TABLE IF NOT EXISTS app_users (telegram_user_id INTEGER PRIMARY KEY, first_name TEXT NOT NULL DEFAULT '', last_name TEXT NOT NULL DEFAULT '', username TEXT, role TEXT NOT NULL, is_blocked INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, last_login_at TEXT);
+            CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, role TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', created_by INTEGER, created_at TEXT NOT NULL, expires_at TEXT, used_at TEXT, used_by INTEGER, is_revoked INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS app_secrets (name TEXT PRIMARY KEY, protected_value BLOB NOT NULL, updated_at TEXT NOT NULL);
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(1, CURRENT_TIMESTAMP);
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(2, CURRENT_TIMESTAMP);
+            INSERT OR IGNORE INTO schema_migrations(version, applied_at)
+            VALUES(3, CURRENT_TIMESTAMP);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
         await EnsureColumnAsync(connection, "jobs", "message_text", "TEXT NOT NULL DEFAULT ''", cancellationToken);
