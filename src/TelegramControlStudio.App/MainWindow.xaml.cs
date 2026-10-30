@@ -610,6 +610,16 @@ public partial class MainWindow : Window
                 return;
             }
 
+            if (!app.TryHoldSessionLock(account.Id))
+            {
+                MessageBox.Show(
+                    "เซสชัน Telegram ของบัญชีนี้ถูก Web Host ใช้อยู่ (เปิด \"การส่งผ่านเว็บ\" อยู่)\nปิดการส่งผ่านเว็บในหน้า ตั้งค่า ของเว็บก่อน แล้วจึงเชื่อมต่อจากแอปนี้",
+                    "เซสชันถูกใช้งานอยู่",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             var repository = new AccountRepository(databasePath);
             var sessionDirectory = SessionPathPolicy.GetAccountSessionDirectory(account.Id);
             var bootstrapper = new TdLibSessionBootstrapper(app.TdLibClients, repository);
@@ -630,6 +640,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
+            ((App)Application.Current).ReleaseSessionLock(account.Id);
             MessageBox.Show($"เริ่มเข้าสู่ระบบไม่สำเร็จ\n{exception.Message}", "เชื่อมต่อไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }

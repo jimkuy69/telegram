@@ -39,6 +39,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 builder.Services.AddHttpClient<TelegramBotApiClient>(client => client.Timeout = TimeSpan.FromSeconds(60));
 builder.Services.AddHostedService<BotPollingService>();
+if (OperatingSystem.IsWindows())
+    builder.Services.AddHostedService<WebSendRunnerService>();
 
 var app = builder.Build();
 app.Lifetime.ApplicationStopped.Register(() => studio.DisposeAsync().AsTask().GetAwaiter().GetResult());

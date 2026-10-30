@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -9,10 +10,33 @@ namespace TelegramControlStudio.App;
 public partial class App : Application
 {
     private StudioHost? _host;
+    private readonly ConcurrentDictionary<long, TdLibSessionLock> _sessionLocks = new();
 
     public StudioHost Host => _host ?? throw new InvalidOperationException("Studio host has not started.");
 
     public TdLibAccountClientRegistry TdLibClients => Host.TdLibClients;
+
+    /// <summary>
+    /// Holds the cross-process TDLib session lock for an account. Fails when the web
+    /// host owns the session (web sending enabled); the caller must tell the user to
+    /// turn it off on the web settings page first.
+    /// </summary>
+    public bool TryHoldSessionLock(long accountId)
+    {
+        var sessionLock = TdLibSessionLock.TryAcquire(accountId, TimeSpan.Zero);
+        if (sessionLock is null)
+            return false;
+        if (_sessionLocks.TryAdd(accountId, sessionLock))
+            return true;
+        sessionLock.Dispose();
+        return true;
+    }
+
+    public void ReleaseSessionLock(long accountId)
+    {
+        if (_sessionLocks.TryRemove(accountId, out var sessionLock))
+            sessionLock.Dispose();
+    }
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -57,6 +81,9 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _host?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        foreach (var sessionLock in _sessionLocks.Values)
+            sessionLock.Dispose();
+        _sessionLocks.Clear();
         base.OnExit(e);
     }
 

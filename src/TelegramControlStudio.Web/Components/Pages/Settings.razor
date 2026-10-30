@@ -135,13 +135,26 @@ else
         </div>
 
         <div class="card">
+            <h2>การส่งผ่านเว็บ</h2>
+            <p class="muted small-note">เมื่อเปิด เว็บโฮสต์นี้จะยึดเซสชัน Telegram และส่งข้อความเอง — แอปเดสก์ท็อปจะเชื่อมต่อ TDLib ไม่ได้จนกว่าจะปิดการตั้งค่านี้</p>
+            <label class="check-row">
+                <input type="checkbox" @bind="_webSendingEnabled" />
+                <span>ให้เว็บโฮสต์ส่งข้อความแทนแอปเดสก์ท็อป</span>
+            </label>
+            <div class="row-actions end">
+                <button class="btn primary" @onclick="SaveWebSendingAsync" disabled="@_busy">บันทึกการส่งผ่านเว็บ</button>
+            </div>
+            <p class="muted small-note">สถานะล่าสุดของตัวรัน: @(_webRunnerStatus ?? "ยังไม่มีข้อมูล")</p>
+        </div>
+
+        <div class="card">
             <h2>ข้อมูลเครื่องนี้</h2>
             <ul class="list">
                 <li><span>ฐานข้อมูล</span><span class="mono small-text">@Workspace.DatabasePath</span></li>
                 <li><span>โฮสต์</span><span>Blazor Server (localhost)</span></li>
-                <li><span>การส่งข้อความ</span><span>ทำจากแอปเดสก์ท็อปที่ล็อกอิน TDLib</span></li>
+                <li><span>การส่งข้อความ</span><span>@(_webSendingEnabled ? "เว็บโฮสต์ถือเซสชัน TDLib (web-first)" : "แอปเดสก์ท็อปที่ล็อกอิน TDLib")</span></li>
             </ul>
-            <p class="muted small-note">เว็บโฮสต์นี้ใช้สำหรับจัดการผู้รับ วางแผน และควบคุมความปลอดภัย — ล็อกอิน Telegram และการส่งจริงยังอยู่ในแอปเดสก์ท็อป</p>
+            <p class="muted small-note">เว็บโฮสต์นี้ใช้สำหรับจัดการผู้รับ วางแผน และควบคุมความปลอดภัย — การยืนยันตัวตน Telegram ครั้งแรกทำในแอปเดสก์ท็อปเท่านั้น</p>
         </div>
     </div>
 }
@@ -157,6 +170,8 @@ else
     private string? _message;
     private bool _messageIsError;
     private string? _botUsername;
+    private bool _webSendingEnabled;
+    private string? _webRunnerStatus;
 
     private IReadOnlySet<long> ParsedAllowlist => SendSafetyPolicy.ParseAllowlist(_allowlistText);
 
@@ -170,11 +185,33 @@ else
             await Workspace.LoadAsync();
             _testMode = Workspace.Safety.TestModeEnabled;
             _allowlistText = SendSafetyPolicy.FormatAllowlist(Workspace.Safety.AllowlistUserIds);
-            _botUsername = await new AppSettingsRepository(Workspace.DatabasePath).GetAsync("bot_username");
+            var settings = new AppSettingsRepository(Workspace.DatabasePath);
+            _botUsername = await settings.GetAsync("bot_username");
+            _webSendingEnabled = WebSendSettings.IsEnabled(await settings.GetAsync(WebSendSettings.EnabledKey));
+            _webRunnerStatus = await settings.GetAsync(WebSendSettings.LastActivityKey);
         }
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task SaveWebSendingAsync()
+    {
+        _message = null;
+        _busy = true;
+        try
+        {
+            await new AppSettingsRepository(Workspace.DatabasePath).SetAsync(
+                WebSendSettings.EnabledKey, _webSendingEnabled ? "1" : "0");
+            _message = _webSendingEnabled
+                ? "เปิดการส่งผ่านเว็บแล้ว — เว็บโฮสต์จะยึดเซสชัน Telegram (แอปเดสก์ท็อปเชื่อมต่อไม่ได้จนกว่าจะปิด)"
+                : "ปิดการส่งผ่านเว็บแล้ว — แอปเดสก์ท็อปเชื่อมต่อ TDLib ได้ตามปกติ";
+            _messageIsError = false;
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 

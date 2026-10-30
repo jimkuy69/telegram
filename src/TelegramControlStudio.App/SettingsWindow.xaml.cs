@@ -99,9 +99,15 @@ public partial class SettingsWindow : Window
         if (_nativeDirectory is null || configuration is null) { StatusText.Text = "กรุณาบันทึก API ID, API Hash และเลือก tdjson.dll ก่อนเชื่อมต่อ"; return; }
         try
         {
+            var app = (App)Application.Current;
+            if (!app.TryHoldSessionLock(_accountId))
+            {
+                StatusText.Text = "เซสชัน Telegram ถูก Web Host ใช้อยู่ (เปิด \"การส่งผ่านเว็บ\" อยู่) — ปิดการส่งผ่านเว็บในหน้าตั้งค่าของเว็บก่อน";
+                return;
+            }
+
             var loader = new TdLibNativeLoader();
             var hash = loader.ComputeSha256(_nativeDirectory);
-            var app = (App)Application.Current;
             var repository = new AccountRepository(_databasePath);
             var sessionDirectory = SessionPathPolicy.GetAccountSessionDirectory(_accountId);
             var bootstrapper = new TdLibSessionBootstrapper(app.TdLibClients, repository);
@@ -119,7 +125,7 @@ public partial class SettingsWindow : Window
                 }
             }
         }
-        catch (Exception exception) { ApiHashBox.Clear(); StatusText.Text = $"เชื่อมต่อไม่สำเร็จ: {exception.Message}"; }
+        catch (Exception exception) { ((App)Application.Current).ReleaseSessionLock(_accountId); ApiHashBox.Clear(); StatusText.Text = $"เชื่อมต่อไม่สำเร็จ: {exception.Message}"; }
     }
     private async void Logout_Click(object sender, RoutedEventArgs e)
     {
