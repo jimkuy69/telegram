@@ -1,0 +1,333 @@
+@page "/queue"
+@inject WorkspaceState Workspace
+
+<PageTitle>คิวงาน • Telegram Control Studio</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>คิวงาน</h1>
+        <p class="sub">ยืนยันหรือยกเลิกงาน • การส่งจริงทำจากแอปเดสก์ท็อปที่ล็อกอิน Telegram แล้ว</p>
+    </div>
+    <button class="btn ghost" @onclick="LoadAsync" disabled="@_loading">รีเฟรช</button>
+</div>
+
+<SafetyBanner Settings="Workspace.Safety" />
+
+<div class="card row-actions spread">
+    @if (Workspace.Safety.KillSwitchEngaged)
+    {
+        @if (_confirmClear)
+        {
+            <span class="muted">ยืนยันปลดหยุดฉุกเฉิน? งานที่ค้างอยู่จะกลับมาทำงานต่อได้</span>
+            <span class="row-actions">
+                <button class="btn ghost small" @onclick="() => _confirmClear = false">ยกเลิก</button>
+                <button class="btn primary small" @onclick="ClearEmergencyAsync" disabled="@_busy">ยืนยันปลด</button>
+            </span>
+        }
+        else
+        {
+            <span class="badge danger">หยุดฉุกเฉินอยู่</span>
+            <button class="btn primary small" @onclick="() => _confirmClear = true">ปลดหยุดฉุกเฉิน</button>
+        }
+    }
+    else
+    {
+        @if (_confirmStop)
+        {
+            <span class="muted">ยืนยันหยุดฉุกเฉิน? ระบบจะบล็อกการส่งทั้งหมดทันที</span>
+            <span class="row-actions">
+                <button class="btn ghost small" @onclick="() => _confirmStop = false">ยกเลิก</button>
+                <button class="btn danger small" @onclick="EmergencyStopAsync" disabled="@_busy">ยืนยันหยุดฉุกเฉิน</button>
+            </span>
+        }
+        else
+        {
+            <span class="muted">พร้อมใช้งาน — งานจะถูกส่งเมื่อยืนยันและมี Consent ครบ</span>
+            <button class="btn danger small" @onclick="() => _confirmStop = true">หยุดฉุกเฉิน</button>
+        }
+    }
+</div>
+
+@if (_message is not null)
+{
+    <div class="banner @(_messageIsError ? "danger" : "ok") compact">@_message</div>
+}
+
+@if (_loading)
+{
+    <div class="card muted">กำลังโหลด…</div>
+}
+else if (Workspace.ActiveAccount is null)
+{
+    <div class="card empty">
+        <h2>ยังไม่มีบัญชีในเครื่องนี้</h2>
+        <p>เพิ่มบัญชีและล็อกอิน Telegram จากแอปเดสก์ท็อปก่อน</p>
+    </div>
+}
+else
+{
+    <div class="card toolbar">
+        <label class="field inline">
+            <span>สถานะ</span>
+            <select value="@(_statusFilter?.ToString() ?? "all")" @onchange="StatusFilterChanged">
+                <option value="all">ทั้งหมด (@_jobs.Count)</option>
+                @foreach (var status in Enum.GetValues<JobStatus>())
+                {
+                    var count = _jobs.Count(job => job.Status == status);
+                    @if (count > 0)
+                    {
+                        <option value="@status">@JobStatusLabel(status) (@count)</option>
+                    }
+                }
+            </select>
+        </label>
+        <span class="muted">แสดง @FilteredJobs.Count() จาก @_jobs.Count งาน</span>
+    </div>
+
+    <div class="card table-card">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>สร้างเมื่อ</th>
+                    <th>สถานะ</th>
+                    <th>ผู้รับ</th>
+                    <th>ข้อความ</th>
+                    <th class="actions">การกระทำ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!FilteredJobs.Any())
+                {
+                    <tr><td colspan="5" class="muted center">ยังไม่มีงานในตัวกรองนี้</td></tr>
+                }
+                @foreach (var job in FilteredJobs)
+                {
+                    <tr>
+                        <td class="mono">@job.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                        <td><span class="badge @JobBadgeClass(job.Status)">@JobStatusLabel(job.Status)</span></td>
+                        <td>@job.TargetCount ราย</td>
+                        <td class="message-cell">
+                            @(job.MessageText.Length > 60 ? $"{job.MessageText[..60]}…" : job.MessageText)
+                            @if (!string.IsNullOrWhiteSpace(job.LinkUrl))
+                            {
+                                <span class="badge muted">มีลิงก์</span>
+                            }
+                        </td>
+                        <td class="actions">
+                            @if (job.Status == JobStatus.WaitingForConfirmation)
+                            {
+                                @if (_pendingCancel == job.Id)
+                                {
+                                    <button class="btn ghost small" @onclick="() => _pendingCancel = null">ไม่ใช่</button>
+                                    <button class="btn danger small" @onclick="() => CancelJobAsync(job)" disabled="@_busy">ยืนยันยกเลิก</button>
+                                }
+                                else
+                                {
+                                    <button class="btn primary small" @onclick="() => ConfirmJobAsync(job)" disabled="@(_busy || Workspace.Safety.KillSwitchEngaged)">ยืนยันเข้าคิว</button>
+                                    <button class="btn ghost small" @onclick="() => _pendingCancel = job.Id" disabled="@_busy">ยกเลิก</button>
+                                }
+                            }
+                            else if (job.Status == JobStatus.Queued && _pendingCancel == job.Id)
+                            {
+                                <button class="btn ghost small" @onclick="() => _pendingCancel = null">ไม่ใช่</button>
+                                <button class="btn danger small" @onclick="() => CancelJobAsync(job)" disabled="@_busy">ยืนยันยกเลิก</button>
+                            }
+                            else if (job.Status == JobStatus.Queued)
+                            {
+                                <button class="btn ghost small" @onclick="() => _pendingCancel = job.Id" disabled="@_busy">ยกเลิก</button>
+                            }
+                            else
+                            {
+                                <span class="muted">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="table-foot">
+            <span class="muted">หน้านี้แสดงงานล่าสุดก่อน • งานที่ยืนยันแล้วจะรอให้แอปเดสก์ท็อปส่งจริงตามลำดับคิว</span>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<Job> _jobs = [];
+    private JobStatus? _statusFilter;
+    private bool _loading = true;
+    private bool _busy;
+    private Guid? _pendingCancel;
+    private bool _confirmStop;
+    private bool _confirmClear;
+    private string? _message;
+    private bool _messageIsError;
+
+    private IEnumerable<Job> FilteredJobs =>
+        _statusFilter is { } filter ? _jobs.Where(job => job.Status == filter) : _jobs;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            await Workspace.LoadAsync();
+            if (Workspace.ActiveAccount is { } account)
+            {
+                var repository = new JobRepository(Workspace.DatabasePath);
+                var jobs = await repository.ListAsync(account.Id);
+                var synchronizer = new JobAggregateSynchronizer(Workspace.DatabasePath);
+                foreach (var job in jobs) await synchronizer.SynchronizeAsync(job.Id);
+                _jobs = await repository.ListAsync(account.Id);
+            }
+            else
+            {
+                _jobs = [];
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task StatusFilterChanged(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString();
+        _statusFilter = Enum.TryParse<JobStatus>(value, out var status) ? status : null;
+        await Task.CompletedTask;
+    }
+
+    private async Task ConfirmJobAsync(Job job)
+    {
+        _message = null;
+        _pendingCancel = null;
+
+        if (Workspace.Safety.KillSwitchEngaged)
+        {
+            SetError("หยุดฉุกเฉินอยู่ ต้องปลดหยุดฉุกเฉินก่อนจึงจะยืนยันงานได้");
+            return;
+        }
+        if (job.Status != JobStatus.WaitingForConfirmation)
+        {
+            SetError("งานนี้ไม่ได้อยู่ในสถานะรอยืนยัน");
+            return;
+        }
+        if (Workspace.ActiveAccount is not { } account) return;
+
+        _busy = true;
+        try
+        {
+            var movedItems = await new JobItemRepository(Workspace.DatabasePath)
+                .UpdateStatusForJobAsync(job.Id, JobStatus.WaitingForConfirmation.ToString(), JobStatus.Queued.ToString());
+            if (movedItems == 0)
+            {
+                SetError("งานนี้ยังไม่มีรายการผู้รับที่รอยืนยัน จึงยังเข้าคิวไม่ได้");
+                return;
+            }
+
+            await new JobRepository(Workspace.DatabasePath).UpdateStatusAsync(job.Id, JobStatus.Queued);
+            await LogAsync(account.Id, job.Id, "Info", "JobQueuedWeb", $"Job {job.Id} confirmed from web host and moved to Queued.");
+            _message = $"นำ Job {job.Id} เข้าคิวแล้ว — รอแอปเดสก์ท็อปส่งตามลำดับ";
+            _messageIsError = false;
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CancelJobAsync(Job job)
+    {
+        _message = null;
+        _pendingCancel = null;
+        if (Workspace.ActiveAccount is not { } account) return;
+
+        _busy = true;
+        try
+        {
+            await new JobItemRepository(Workspace.DatabasePath)
+                .UpdateStatusForJobAsync(job.Id, JobStatus.Queued.ToString(), JobStatus.Cancelled.ToString());
+            await new JobRepository(Workspace.DatabasePath).UpdateStatusAsync(job.Id, JobStatus.Cancelled);
+            await LogAsync(account.Id, job.Id, "Info", "JobCancelledWeb", $"Job {job.Id} cancelled from web host.");
+            _message = $"ยกเลิก Job {job.Id} แล้ว";
+            _messageIsError = false;
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task EmergencyStopAsync()
+    {
+        _confirmStop = false;
+        _busy = true;
+        try
+        {
+            await Workspace.SetKillSwitchAsync(true);
+            if (Workspace.ActiveAccount is { } account)
+                await LogAsync(account.Id, null, "Warning", "EmergencyStopEngaged", "Emergency stop engaged from web host.");
+            _message = "หยุดฉุกเฉินแล้ว ระบบบล็อกการส่งทั้งหมด";
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ClearEmergencyAsync()
+    {
+        _confirmClear = false;
+        _busy = true;
+        try
+        {
+            await Workspace.SetKillSwitchAsync(false);
+            if (Workspace.ActiveAccount is { } account)
+                await LogAsync(account.Id, null, "Info", "KillSwitchCleared", "Emergency stop cleared from web host.");
+            _message = "ปลดหยุดฉุกเฉินแล้ว ระบบกลับมาทำงานตามโหมดที่ตั้งไว้";
+            _messageIsError = false;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task LogAsync(long accountId, Guid? jobId, string level, string eventType, string message) =>
+        await new ActivityLogRepository(Workspace.DatabasePath).AppendAsync(new ActivityLog(
+            accountId, jobId, level, eventType, message, DateTimeOffset.UtcNow));
+
+    private void SetError(string message)
+    {
+        _message = message;
+        _messageIsError = true;
+    }
+
+    private static string JobStatusLabel(JobStatus status) => status switch
+    {
+        JobStatus.Draft => "ฉบับร่าง",
+        JobStatus.WaitingForConfirmation => "รอยืนยัน",
+        JobStatus.Queued => "รอคิว",
+        JobStatus.Running => "กำลังทำงาน",
+        JobStatus.Paused => "หยุดชั่วคราว",
+        JobStatus.WaitingForFloodWait => "รอ FloodWait",
+        JobStatus.Completed => "สำเร็จ",
+        JobStatus.PartiallyCompleted => "สำเร็จบางส่วน",
+        JobStatus.Failed => "ล้มเหลว",
+        JobStatus.Cancelled => "ยกเลิก",
+        _ => status.ToString()
+    };
+
+    private static string JobBadgeClass(JobStatus status) => status switch
+    {
+        JobStatus.Completed => "ok",
+        JobStatus.WaitingForConfirmation or JobStatus.Queued or JobStatus.Running => "warn",
+        JobStatus.Failed or JobStatus.Cancelled => "danger",
+        _ => "muted"
+    };
+}

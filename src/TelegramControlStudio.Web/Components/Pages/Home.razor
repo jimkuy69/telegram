@@ -1,0 +1,149 @@
+@page "/"
+@inject WorkspaceState Workspace
+
+<PageTitle>แดชบอร์ด • Telegram Control Studio</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>แดชบอร์ด</h1>
+        <p class="sub">ภาพรวมบัญชี ผู้รับ และคิวงานในเครื่องนี้</p>
+    </div>
+    <button class="btn ghost" @onclick="LoadAsync" disabled="@_loading">รีเฟรช</button>
+</div>
+
+<SafetyBanner Settings="Workspace.Safety" />
+
+@if (_loading)
+{
+    <div class="card muted">กำลังโหลด…</div>
+}
+else if (Workspace.ActiveAccount is null)
+{
+    <div class="card empty">
+        <h2>ยังไม่มีบัญชีในเครื่องนี้</h2>
+        <p>เพิ่มบัญชีและล็อกอิน Telegram ได้จากแอปเดสก์ท็อป (Telegram Control Studio) แล้วกลับมาโหลดหน้านี้อีกครั้ง</p>
+    </div>
+}
+else
+{
+    <div class="card account-bar">
+        <div>
+            <span class="muted">บัญชีที่ใช้งาน</span>
+            <strong>@Workspace.ActiveAccount.DisplayName</strong>
+            <span class="badge muted">@Workspace.ActiveAccount.Status</span>
+        </div>
+        <div class="muted">ซิงก์ล่าสุด: @FormatTime(Workspace.ActiveAccount.LastSyncAt)</div>
+    </div>
+
+    <section class="stats">
+        <div class="stat"><span class="stat-label">ผู้รับทั้งหมด</span><span class="stat-value">@_contacts.Count</span></div>
+        <div class="stat"><span class="stat-label">ให้ความยินยอม</span><span class="stat-value ok">@ConsentedCount</span></div>
+        <div class="stat"><span class="stat-label">ยังไม่อนุญาต</span><span class="stat-value warn">@NotAllowedCount</span></div>
+        <div class="stat"><span class="stat-label">Opt-out</span><span class="stat-value danger">@OptedOutCount</span></div>
+    </section>
+
+    <section class="stats">
+        <div class="stat"><span class="stat-label">งานทั้งหมด</span><span class="stat-value">@_jobCounts.Values.Sum()</span></div>
+        <div class="stat"><span class="stat-label">รอคิว</span><span class="stat-value">@CountOf(JobStatus.Queued)</span></div>
+        <div class="stat"><span class="stat-label">สำเร็จ</span><span class="stat-value ok">@CountOf(JobStatus.Completed)</span></div>
+        <div class="stat"><span class="stat-label">ล้มเหลว</span><span class="stat-value danger">@CountOf(JobStatus.Failed)</span></div>
+    </section>
+
+    <section class="grid-two">
+        <div class="card">
+            <h2>สถานะคิวงาน</h2>
+            @if (_jobCounts.Count == 0)
+            {
+                <p class="muted">ยังไม่มีงานในคิว</p>
+            }
+            else
+            {
+                <ul class="list">
+                    @foreach (var entry in _jobCounts.OrderByDescending(entry => entry.Value))
+                    {
+                        <li><span>@JobStatusLabel(entry.Key)</span><strong>@entry.Value</strong></li>
+                    }
+                </ul>
+            }
+            <a class="btn ghost" href="queue">ไปที่คิวงาน</a>
+        </div>
+
+        <div class="card">
+            <h2>กิจกรรมล่าสุด</h2>
+            @if (_logs.Count == 0)
+            {
+                <p class="muted">ยังไม่มีกิจกรรม</p>
+            }
+            else
+            {
+                <ul class="list activity">
+                    @foreach (var log in _logs)
+                    {
+                        <li>
+                            <span class="muted">@log.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                            <span><span class="badge muted">@log.EventType</span> @log.Message</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<Contact> _contacts = [];
+    private IReadOnlyDictionary<JobStatus, int> _jobCounts = new Dictionary<JobStatus, int>();
+    private IReadOnlyList<ActivityLog> _logs = [];
+    private bool _loading = true;
+
+    private int ConsentedCount => _contacts.Count(contact => ContactConsentPolicy.Classify(contact.HasConsent, contact.IsOptedOut) == ContactConsentState.Consented);
+    private int NotAllowedCount => _contacts.Count(contact => ContactConsentPolicy.Classify(contact.HasConsent, contact.IsOptedOut) == ContactConsentState.NotAllowed);
+    private int OptedOutCount => _contacts.Count(contact => ContactConsentPolicy.Classify(contact.HasConsent, contact.IsOptedOut) == ContactConsentState.OptedOut);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            await Workspace.LoadAsync();
+            if (Workspace.ActiveAccount is { } account)
+            {
+                _contacts = await new ContactRepository(Workspace.DatabasePath).ListAsync(account.Id);
+                _jobCounts = await new JobRepository(Workspace.DatabasePath).CountByStatusAsync(account.Id);
+                _logs = await new ActivityLogRepository(Workspace.DatabasePath).ListAsync(account.Id, limit: 8);
+            }
+            else
+            {
+                _contacts = [];
+                _jobCounts = new Dictionary<JobStatus, int>();
+                _logs = [];
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private int CountOf(JobStatus status) => _jobCounts.GetValueOrDefault(status);
+
+    private static string JobStatusLabel(JobStatus status) => status switch
+    {
+        JobStatus.Draft => "ฉบับร่าง",
+        JobStatus.WaitingForConfirmation => "รอยืนยัน",
+        JobStatus.Queued => "รอคิว",
+        JobStatus.Running => "กำลังทำงาน",
+        JobStatus.Paused => "หยุดชั่วคราว",
+        JobStatus.WaitingForFloodWait => "รอ FloodWait",
+        JobStatus.Completed => "สำเร็จ",
+        JobStatus.PartiallyCompleted => "สำเร็จบางส่วน",
+        JobStatus.Failed => "ล้มเหลว",
+        JobStatus.Cancelled => "ยกเลิก",
+        _ => status.ToString()
+    };
+
+    private static string FormatTime(DateTimeOffset? value) =>
+        value is null ? "ยังไม่เคย" : value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+}

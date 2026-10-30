@@ -1,4 +1,5 @@
 using TelegramControlStudio.Core.Domain;
+using TelegramControlStudio.Core.Safety;
 using TelegramControlStudio.Core.Telegram;
 using TelegramControlStudio.Infrastructure.Persistence;
 using System.Text.RegularExpressions;
@@ -17,6 +18,15 @@ public sealed class TdLibMessageSendService(string databasePath)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(recipient);
+
+        var safety = await new SendSafetyRepository(databasePath).GetAsync(cancellationToken);
+        var decision = SendSafetyPolicy.Evaluate(safety, recipient.TelegramUserId, recipient.HasConsent, recipient.IsOptedOut);
+        if (!decision.CanSend)
+        {
+            await LogAsync(recipient.AccountId, decision.Verdict == SendSafetyVerdict.Block ? "Warning" : "Info", "SendBlocked", $"Send blocked before transmission: {decision.ReasonCode}.", cancellationToken);
+            throw new SendSafetyBlockedException(decision.ReasonCode, decision.Verdict);
+        }
+
         var request = TdLibMessageRequests.SendText(recipient.TelegramUserId, text, recipient.HasConsent, recipient.IsOptedOut, confirmed);
         var response = await client.SendAsync(request.Function, request.Parameters, cancellationToken);
         if (IsTdLibError(response))

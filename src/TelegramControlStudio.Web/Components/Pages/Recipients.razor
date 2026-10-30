@@ -1,0 +1,227 @@
+@page "/recipients"
+@inject WorkspaceState Workspace
+
+<PageTitle>ผู้รับ • Telegram Control Studio</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>ผู้รับ</h1>
+        <p class="sub">เลือกผู้รับที่ให้ความยินยอมแล้ว เพื่อนำไปเขียนข้อความ</p>
+    </div>
+    <button class="btn ghost" @onclick="ReloadAsync" disabled="@_loading">รีเฟรช</button>
+</div>
+
+<SafetyBanner Settings="Workspace.Safety" />
+
+@if (_loading)
+{
+    <div class="card muted">กำลังโหลด…</div>
+}
+else if (Workspace.ActiveAccount is null)
+{
+    <div class="card empty">
+        <h2>ยังไม่มีบัญชีในเครื่องนี้</h2>
+        <p>เพิ่มบัญชีและซิงก์รายชื่อจากแอปเดสก์ท็อปก่อน</p>
+    </div>
+}
+else
+{
+    @if (Workspace.Accounts.Count > 1)
+    {
+        <div class="card account-bar">
+            <label class="field inline">
+                <span>บัญชี</span>
+                <select value="@Workspace.ActiveAccount.Id" @onchange="AccountChangedAsync">
+                    @foreach (var account in Workspace.Accounts)
+                    {
+                        <option value="@account.Id">@account.DisplayName • @account.Status</option>
+                    }
+                </select>
+            </label>
+        </div>
+    }
+
+    <div class="card toolbar">
+        <input class="input grow" type="search" placeholder="ค้นหาชื่อ, Username หรือ Telegram ID" @bind="_search" @bind:event="oninput" />
+
+        <div class="chips">
+            <button class="chip @(_filter is null ? "active" : "")" @onclick="() => SetFilter(null)">ทั้งหมด (@_contacts.Count)</button>
+            <button class="chip @(_filter == ContactConsentState.Consented ? "active" : "")" @onclick="() => SetFilter(ContactConsentState.Consented)">ให้ความยินยอม (@_contacts.Count(c => ConsentState(c) == ContactConsentState.Consented))</button>
+            <button class="chip @(_filter == ContactConsentState.NotAllowed ? "active" : "")" @onclick="() => SetFilter(ContactConsentState.NotAllowed)">ยังไม่อนุญาต (@_contacts.Count(c => ConsentState(c) == ContactConsentState.NotAllowed))</button>
+            <button class="chip @(_filter == ContactConsentState.OptedOut ? "active" : "")" @onclick="() => SetFilter(ContactConsentState.OptedOut)">Opt-out (@_contacts.Count(c => ConsentState(c) == ContactConsentState.OptedOut))</button>
+        </div>
+    </div>
+
+    <div class="card table-card">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th class="check"><input type="checkbox" checked="@AllPageSelected" @onchange="TogglePageAsync" /></th>
+                    <th>ชื่อ</th>
+                    <th>Telegram ID</th>
+                    <th>Username</th>
+                    <th>สถานะ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (PageItems.Count == 0)
+                {
+                    <tr><td colspan="5" class="muted center">ไม่พบผู้รับในตัวกรองนี้</td></tr>
+                }
+                @foreach (var contact in PageItems)
+                {
+                    var state = ConsentState(contact);
+                    <tr class="@(Workspace.IsSelected(contact.TelegramUserId) ? "selected" : "")">
+                        <td class="check">
+                            <input type="checkbox" checked="@Workspace.IsSelected(contact.TelegramUserId)" @onchange="e => SetSelected(contact, (bool)e.Value!)" />
+                        </td>
+                        <td>@($"{contact.FirstName} {contact.LastName}".Trim())</td>
+                        <td class="mono">@contact.TelegramUserId</td>
+                        <td>@(contact.Username is null ? "—" : $"@{contact.Username.TrimStart('@')}")</td>
+                        <td><span class="badge @BadgeClass(state)">@ContactConsentPolicy.Label(state)</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="table-foot">
+            <div class="muted">
+                @PageSummary — เลือกแล้ว <strong>@Workspace.SelectedCount</strong> ราย (ผ่าน Consent @Workspace.SelectedConsentedCount ราย)
+            </div>
+            <div class="row-actions">
+                <button class="btn ghost small" @onclick="SelectFilteredAsync">เลือกทั้งหมดในตัวกรอง (@FilteredCount)</button>
+                <button class="btn ghost small" @onclick="ClearSelection">ล้างการเลือก</button>
+                <a class="btn primary small @(Workspace.SelectedConsentedCount == 0 ? "disabled" : "")" href="compose">ไปเขียนข้อความ</a>
+            </div>
+        </div>
+
+        <div class="pager">
+            <button class="btn ghost small" disabled="@(_page <= 1)" @onclick="() => GoTo(_page - 1)">ก่อนหน้า</button>
+            @foreach (var pageNumber in PagingPolicy.Window(_page, TotalPages))
+            {
+                <button class="page @(pageNumber == _page ? "active" : "")" @onclick="() => GoTo(pageNumber)">@pageNumber</button>
+            }
+            <button class="btn ghost small" disabled="@(_page >= TotalPages)" @onclick="() => GoTo(_page + 1)">ถัดไป</button>
+        </div>
+    </div>
+}
+
+@code {
+    private const int PageSize = PagingPolicy.DefaultPageSize;
+
+    private IReadOnlyList<Contact> _contacts = [];
+    private string _search = string.Empty;
+    private ContactConsentState? _filter;
+    private int _page = 1;
+    private bool _loading = true;
+
+    private IEnumerable<Contact> Filtered
+    {
+        get
+        {
+            IEnumerable<Contact> query = _contacts;
+            if (_filter is { } filter) query = query.Where(contact => ConsentState(contact) == filter);
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                var term = _search.Trim();
+                query = query.Where(contact =>
+                    $"{contact.FirstName} {contact.LastName}".Contains(term, StringComparison.CurrentCultureIgnoreCase) ||
+                    (contact.Username?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    contact.TelegramUserId.ToString().Contains(term, StringComparison.Ordinal));
+            }
+            return query;
+        }
+    }
+
+    private int FilteredCount => Filtered.Count();
+    private int TotalPages => PagingPolicy.TotalPages(FilteredCount, PageSize);
+
+    private IReadOnlyList<Contact> PageItems
+    {
+        get
+        {
+            var (skip, take) = PagingPolicy.Slice(_page, PageSize, FilteredCount);
+            return Filtered.Skip(skip).Take(take).ToArray();
+        }
+    }
+
+    private bool AllPageSelected => PageItems.Count > 0 && PageItems.All(contact => Workspace.IsSelected(contact.TelegramUserId));
+
+    private string PageSummary
+    {
+        get
+        {
+            if (FilteredCount == 0) return "ไม่มีรายชื่อ";
+            var (skip, take) = PagingPolicy.Slice(_page, PageSize, FilteredCount);
+            return $"แสดง {skip + 1}–{skip + take} จาก {FilteredCount} รายชื่อ";
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        try
+        {
+            await Workspace.LoadAsync();
+            await LoadContactsAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadContactsAsync()
+    {
+        _contacts = Workspace.ActiveAccount is { } account
+            ? await new ContactRepository(Workspace.DatabasePath).ListAsync(account.Id)
+            : [];
+        _page = 1;
+    }
+
+    private async Task AccountChangedAsync(ChangeEventArgs args)
+    {
+        if (long.TryParse(args.Value?.ToString(), out var accountId))
+        {
+            Workspace.SetActiveAccount(accountId);
+            await LoadContactsAsync();
+        }
+    }
+
+    private void SetFilter(ContactConsentState? filter)
+    {
+        _filter = filter;
+        _page = 1;
+    }
+
+    private void GoTo(int page) => _page = PagingPolicy.Clamp(page, TotalPages);
+
+    private void SetSelected(Contact contact, bool selected) => Workspace.SetSelected(contact, selected);
+
+    private Task TogglePageAsync(ChangeEventArgs args)
+    {
+        var selectAll = args.Value is true;
+        foreach (var contact in PageItems) Workspace.SetSelected(contact, selectAll);
+        return Task.CompletedTask;
+    }
+
+    private Task SelectFilteredAsync()
+    {
+        Workspace.SelectMany(Filtered);
+        return Task.CompletedTask;
+    }
+
+    private void ClearSelection() => Workspace.ClearSelection();
+
+    private static ContactConsentState ConsentState(Contact contact) =>
+        ContactConsentPolicy.Classify(contact.HasConsent, contact.IsOptedOut);
+
+    private static string BadgeClass(ContactConsentState state) => state switch
+    {
+        ContactConsentState.Consented => "ok",
+        ContactConsentState.NotAllowed => "warn",
+        _ => "danger"
+    };
+}

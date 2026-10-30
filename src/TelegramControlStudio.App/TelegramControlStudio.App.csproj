@@ -5,6 +5,7 @@
     <UseWPF>true</UseWPF>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <AssemblyName>TelegramControlStudio</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\TelegramControlStudio.Core\TelegramControlStudio.Core.csproj" />

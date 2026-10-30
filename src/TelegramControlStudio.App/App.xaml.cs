@@ -1,14 +1,18 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
-using TelegramControlStudio.Infrastructure.Persistence;
+using TelegramControlStudio.Infrastructure.Hosting;
 using TelegramControlStudio.Infrastructure.Telegram;
 
 namespace TelegramControlStudio.App;
 
 public partial class App : Application
 {
-    public TdLibAccountClientRegistry TdLibClients { get; } = new();
+    private StudioHost? _host;
+
+    public StudioHost Host => _host ?? throw new InvalidOperationException("Studio host has not started.");
+
+    public TdLibAccountClientRegistry TdLibClients => Host.TdLibClients;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -36,11 +40,7 @@ public partial class App : Application
 
         try
         {
-            var dataDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "TelegramControlStudio");
-            var database = new SqliteDatabase(Path.Combine(dataDirectory, "telegram-control-studio.db"));
-            await database.InitializeAsync();
+            _host = await StudioHost.StartAsync();
         }
         catch (Exception exception)
         {
@@ -56,7 +56,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        TdLibClients.DisposeAllAsync().GetAwaiter().GetResult();
+        _host?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         base.OnExit(e);
     }
 

@@ -15,7 +15,8 @@ public static class JobAggregateStatusPolicy
         if (completed == items.Count) return JobStatus.Completed;
         if (completed > 0 && completed + failed + cancelled == items.Count)
             return JobStatus.PartiallyCompleted;
-        if (failed + cancelled == items.Count) return JobStatus.Failed;
+        if (failed + cancelled == items.Count)
+            return failed > 0 ? JobStatus.Failed : JobStatus.Cancelled;
         if (items.Any(item => item.Status == "WaitingForConfirmation")) return JobStatus.WaitingForConfirmation;
         if (items.Any(item => item.Status == "WaitingForFloodWait")) return JobStatus.WaitingForFloodWait;
         if (items.Any(item => item.Status == "Running")) return JobStatus.Running;

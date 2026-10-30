@@ -1,4 +1,5 @@
 using TelegramControlStudio.Core.Domain;
+using TelegramControlStudio.Core.Safety;
 using TelegramControlStudio.Core.Telegram;
 using TelegramControlStudio.Infrastructure.Persistence;
 
@@ -23,10 +24,19 @@ public sealed class TdLibConsentCampaignService(string databasePath)
         if (accountId <= 0) throw new ArgumentOutOfRangeException(nameof(accountId));
         if (interval < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(interval));
         var sent = 0; var skipped = 0; var failed = 0; var failedRecipients = new List<long>();
+        var safetyRepository = new SendSafetyRepository(databasePath);
         foreach (var recipient in recipients)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (recipient.AccountId != accountId || !recipient.HasConsent || recipient.IsOptedOut)
+            if (recipient.AccountId != accountId)
+            {
+                skipped++;
+                continue;
+            }
+            var safety = await safetyRepository.GetAsync(cancellationToken);
+            if (safety.KillSwitchEngaged) break;
+            var decision = SendSafetyPolicy.Evaluate(safety, recipient.TelegramUserId, recipient.HasConsent, recipient.IsOptedOut);
+            if (!decision.CanSend)
             {
                 skipped++;
                 continue;
@@ -35,6 +45,11 @@ public sealed class TdLibConsentCampaignService(string databasePath)
             {
                 await new TdLibMessageSendService(databasePath).SendTextAsync(client, recipient, text, true, cancellationToken);
                 sent++;
+            }
+            catch (SendSafetyBlockedException)
+            {
+                skipped++;
+                continue;
             }
             catch
             {

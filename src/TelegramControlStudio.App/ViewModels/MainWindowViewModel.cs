@@ -9,20 +9,28 @@ namespace TelegramControlStudio.App.ViewModels;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
+    public const int PageSize = PagingPolicy.DefaultPageSize;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<ContactRow> Contacts { get; } =
     [
-        new(true, "ตัวอย่างผู้รับ A", 100000001, "@example_a", "ได้รับความยินยอม"),
-        new(false, "ตัวอย่างผู้รับ B", 100000002, "@example_b", "ยังไม่อนุญาต"),
-        new(true, "ตัวอย่างผู้รับ C", 100000003, "@example_c", "ได้รับความยินยอม")
+        new(true, "ตัวอย่างผู้รับ A", 100000001, "@example_a", ContactConsentState.Consented),
+        new(false, "ตัวอย่างผู้รับ B", 100000002, "@example_b", ContactConsentState.NotAllowed),
+        new(true, "ตัวอย่างผู้รับ C", 100000003, "@example_c", ContactConsentState.Consented)
     ];
 
     public ObservableCollection<Account> Accounts { get; } = [];
     public ObservableCollection<string> ActivityLogs { get; } = [];
+    public ObservableCollection<PageNumberItem> PageNumbers { get; } = [];
+
     private Account? _activeAccount;
     private readonly List<ContactRow> _allContactRows = [];
+    private List<ContactRow> _filteredRows = [];
     private string? _contactFilter;
+    private string _sortMode = "name";
+    private int _currentPage = 1;
+
     public Account? ActiveAccount
     {
         get => _activeAccount;
@@ -62,38 +70,105 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public int TotalContactsCount => _allContactRows.Count;
-    public int ConsentContactsCount => _allContactRows.Count(contact => contact.Consent == "ได้รับความยินยอม");
-    public int NotAllowedContactsCount => _allContactRows.Count(contact => contact.Consent == "ยังไม่อนุญาต");
+    public int ConsentContactsCount => _allContactRows.Count(contact => contact.ConsentState == ContactConsentState.Consented);
+    public int NotAllowedContactsCount => _allContactRows.Count(contact => contact.ConsentState == ContactConsentState.NotAllowed);
+    public int OptedOutContactsCount => _allContactRows.Count(contact => contact.ConsentState == ContactConsentState.OptedOut);
 
     public string AllContactsSummary => $"ทั้งหมด ({TotalContactsCount})";
     public string ConsentedContactsSummary => $"ได้รับความยินยอม ({ConsentContactsCount})";
     public string NotAllowedContactsSummary => $"ยังไม่อนุญาต ({NotAllowedContactsCount})";
+    public string OptedOutContactsSummary => $"Opt-out ({OptedOutContactsCount})";
+
     public string SendAvailabilityNotice => ActiveAccount is null
         ? "ยังไม่มีบัญชีที่เลือก • เลือกบัญชีและเข้าสู่ระบบก่อนสร้างงาน"
         : (string.Equals(ActiveAccount.Status, "Ready", StringComparison.OrdinalIgnoreCase) || string.Equals(ActiveAccount.Status, "Authenticated", StringComparison.OrdinalIgnoreCase))
             ? "พร้อมส่งเมื่อผู้รับมี Consent และกดยืนยันงาน • ระบบยังไม่ส่งจนกว่าจะยืนยัน"
             : $"บัญชี {ActiveAccount.DisplayName} ยังไม่พร้อมส่ง • สถานะ: {ActiveAccount.Status}";
 
-    public int ConsentCount => Contacts.Count(contact => contact.Selected && contact.Consent == "ได้รับความยินยอม");
+    public int ConsentCount => _allContactRows.Count(contact => contact.Selected && contact.ConsentState == ContactConsentState.Consented);
+    public int SelectedCount => _allContactRows.Count(contact => contact.Selected);
+    public int SelectedConsentCount => ConsentCount;
+    public int SelectedNotAllowedCount => _allContactRows.Count(contact => contact.Selected && contact.ConsentState == ContactConsentState.NotAllowed);
+    public int SelectedOptOutCount => _allContactRows.Count(contact => contact.Selected && contact.ConsentState == ContactConsentState.OptedOut);
 
-    public int SelectedCount => Contacts.Count(contact => contact.Selected);
-    public string SelectionSummary => $"เลือกผู้รับ {SelectedCount} รายการ • ผ่าน Consent {ConsentCount} รายการ";
+    public bool HasSelection => SelectedCount > 0;
+    public bool HasConsentedSelection => ConsentCount > 0;
+    public bool IsEmpty => Contacts.Count == 0;
+    public bool? PageSelectionState
+    {
+        get
+        {
+            if (Contacts.Count == 0) return false;
+            var selectedOnPage = Contacts.Count(contact => contact.Selected);
+            if (selectedOnPage == 0) return false;
+            return selectedOnPage == Contacts.Count ? true : null;
+        }
+    }
+
+    public IReadOnlyList<ContactRow> SelectedRows =>
+        _allContactRows.Where(contact => contact.Selected).ToArray();
+
+    public IReadOnlyList<ContactRow> SelectedPreviewChips => SelectedRows.Take(2).ToArray();
+    public string SelectedChipsSummary => $"ผู้รับที่เลือก ({SelectedCount} ราย)";
+
+    public string SelectionSummary => $"เลือกแล้ว {SelectedCount} รายชื่อ • ผ่าน Consent {ConsentCount} รายชื่อ";
+
+    public int CurrentPage => _currentPage;
+    public int TotalPages => PagingPolicy.TotalPages(_filteredRows.Count, PageSize);
+    public string PageSummary
+    {
+        get
+        {
+            if (_filteredRows.Count == 0) return "ไม่มีรายชื่อในตัวกรองนี้";
+            var (skip, take) = PagingPolicy.Slice(_currentPage, PageSize, _filteredRows.Count);
+            return $"แสดง {skip + 1}–{skip + take} จาก {_filteredRows.Count} รายชื่อ";
+        }
+    }
 
     private string _messageDraft = string.Empty;
     private string _linkDraft = string.Empty;
+    public const int MessageLimit = 4096;
+
     public string MessageDraft
     {
         get => _messageDraft;
-        set { _messageDraft = value ?? string.Empty; OnPropertyChanged(); OnPropertyChanged(nameof(PreviewText)); }
+        set
+        {
+            _messageDraft = value ?? string.Empty;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(PreviewText));
+            OnPropertyChanged(nameof(PreviewMessage));
+            OnPropertyChanged(nameof(MessageCounter));
+        }
     }
+
     public string LinkDraft
     {
         get => _linkDraft;
-        set { _linkDraft = value ?? string.Empty; OnPropertyChanged(); OnPropertyChanged(nameof(PreviewText)); }
+        set
+        {
+            _linkDraft = value ?? string.Empty;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(PreviewText));
+            OnPropertyChanged(nameof(PreviewLink));
+            OnPropertyChanged(nameof(HasPreviewLink));
+        }
     }
+
+    public string MessageCounter => $"{MessageDraft.Length}/{MessageLimit}";
+
+    public string PreviewMessage => string.IsNullOrWhiteSpace(MessageDraft)
+        ? "พิมพ์ข้อความเพื่อดูตัวอย่างก่อนส่ง"
+        : MessageDraft;
+
+    public string PreviewLink => LinkDraft;
+    public bool HasPreviewLink => !string.IsNullOrWhiteSpace(LinkDraft);
+
     public string PreviewText => string.IsNullOrWhiteSpace(LinkDraft)
         ? (string.IsNullOrWhiteSpace(MessageDraft) ? "ยังไม่มีข้อความสำหรับ Preview" : MessageDraft)
-        : (string.IsNullOrWhiteSpace(MessageDraft) ? LinkDraft : $"{MessageDraft}\\n{LinkDraft}");
+        : string.IsNullOrWhiteSpace(MessageDraft)
+            ? LinkDraft
+            : $"{MessageDraft}{Environment.NewLine}{LinkDraft}";
 
     public bool CanCreateJob => ActiveAccount is not null && ConsentCount > 0;
 
@@ -121,37 +196,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public async Task LoadContactsAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)
     {
         var repository = new ContactRepository(databasePath);
-        ReplaceContacts(repository, await repository.ListAsync(accountId, cancellationToken));
+        ReplaceContacts(await repository.ListAsync(accountId, cancellationToken));
     }
 
     public async Task SearchContactsAsync(string databasePath, long accountId, string? query, CancellationToken cancellationToken = default)
     {
         var repository = new ContactRepository(databasePath);
-        ReplaceContacts(repository, await repository.SearchAsync(accountId, query, cancellationToken));
+        ReplaceContacts(await repository.SearchAsync(accountId, query, cancellationToken));
     }
 
-    private void ReplaceContacts(ContactRepository repository, IReadOnlyList<Contact> contacts)
+    private void ReplaceContacts(IReadOnlyList<Contact> contacts)
     {
         _allContactRows.Clear();
         foreach (var contact in contacts)
         {
-            var row = new ContactRow(false, $"{contact.FirstName} {contact.LastName}".Trim(), contact.TelegramUserId, contact.Username is null ? string.Empty : $"@{contact.Username.TrimStart('@')}", contact.IsOptedOut ? "Opt-out" : contact.HasConsent ? "ได้รับความยินยอม" : "ยังไม่อนุญาต");
+            var state = ContactConsentPolicy.Classify(contact.HasConsent, contact.IsOptedOut);
+            var row = new ContactRow(false, $"{contact.FirstName} {contact.LastName}".Trim(), contact.TelegramUserId, contact.Username is null ? string.Empty : $"@{contact.Username.TrimStart('@')}", state);
             row.PropertyChanged += ContactRow_PropertyChanged;
             _allContactRows.Add(row);
         }
         ApplyContactFilter();
-        OnPropertyChanged(nameof(TotalContactsCount));
-        OnPropertyChanged(nameof(ConsentContactsCount));
-        OnPropertyChanged(nameof(NotAllowedContactsCount));
-        OnPropertyChanged(nameof(AllContactsSummary));
-        OnPropertyChanged(nameof(ConsentedContactsSummary));
-        OnPropertyChanged(nameof(NotAllowedContactsSummary));
+        NotifyCounts();
         OnPropertyChanged(nameof(SendAvailabilityNotice));
-        OnPropertyChanged(nameof(ConsentCount));
-        OnPropertyChanged(nameof(SelectedCount));
-        OnPropertyChanged(nameof(SelectionSummary));
-        OnPropertyChanged(nameof(CanCreateJob));
-        CreateJobCommand.Refresh();
     }
 
     public void SetContactFilter(string? filter)
@@ -160,32 +226,127 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ApplyContactFilter();
     }
 
+    public void SetSort(string? mode)
+    {
+        var normalized = string.Equals(mode, "consent", StringComparison.OrdinalIgnoreCase) ? "consent" : "name";
+        if (_sortMode == normalized) return;
+        _sortMode = normalized;
+        _currentPage = 1;
+        SortFilteredRows();
+        ApplyPage();
+    }
+
+    public void GoToPage(int page)
+    {
+        var clamped = PagingPolicy.Clamp(page, TotalPages);
+        if (clamped == _currentPage) return;
+        _currentPage = clamped;
+        ApplyPage();
+    }
+
+    public void NextPage() => GoToPage(_currentPage + 1);
+    public void PreviousPage() => GoToPage(_currentPage - 1);
+
+    public void SelectAllFiltered()
+    {
+        foreach (var row in _filteredRows) row.Selected = true;
+        NotifyCounts();
+    }
+
+    public void ClearSelection()
+    {
+        foreach (var row in _allContactRows) row.Selected = false;
+        NotifyCounts();
+    }
+
+    public void ClearPageSelection()
+    {
+        foreach (var row in Contacts) row.Selected = false;
+        NotifyCounts();
+    }
+
     private void ApplyContactFilter()
     {
-        var visible = string.IsNullOrWhiteSpace(_contactFilter) ? _allContactRows : _allContactRows.Where(contact => contact.Consent == _contactFilter);
+        _filteredRows = string.IsNullOrWhiteSpace(_contactFilter)
+            ? _allContactRows.ToList()
+            : _allContactRows.Where(contact => contact.Consent == _contactFilter).ToList();
+        _currentPage = 1;
+        SortFilteredRows();
+        ApplyPage();
+    }
+
+    private void SortFilteredRows()
+    {
+        if (_sortMode == "consent")
+        {
+            _filteredRows.Sort((left, right) =>
+            {
+                var rank = ContactConsentPolicy.SortRank(left.ConsentState).CompareTo(ContactConsentPolicy.SortRank(right.ConsentState));
+                return rank != 0 ? rank : string.Compare(left.Name, right.Name, StringComparison.CurrentCultureIgnoreCase);
+            });
+        }
+        else
+        {
+            _filteredRows.Sort((left, right) => string.Compare(left.Name, right.Name, StringComparison.CurrentCultureIgnoreCase));
+        }
+    }
+
+    private void ApplyPage()
+    {
+        var totalPages = TotalPages;
+        if (_currentPage > totalPages) _currentPage = totalPages;
+        if (_currentPage < 1) _currentPage = 1;
+
+        var (skip, take) = PagingPolicy.Slice(_currentPage, PageSize, _filteredRows.Count);
         Contacts.Clear();
-        foreach (var row in visible) Contacts.Add(row);
-        OnPropertyChanged(nameof(TotalContactsCount));
-        OnPropertyChanged(nameof(ConsentContactsCount));
-        OnPropertyChanged(nameof(NotAllowedContactsCount));
-        OnPropertyChanged(nameof(AllContactsSummary));
-        OnPropertyChanged(nameof(ConsentedContactsSummary));
-        OnPropertyChanged(nameof(NotAllowedContactsSummary));
-        OnPropertyChanged(nameof(ConsentCount));
-        OnPropertyChanged(nameof(SelectedCount));
-        OnPropertyChanged(nameof(SelectionSummary));
-        OnPropertyChanged(nameof(CanCreateJob));
-        CreateJobCommand.Refresh();
+        foreach (var row in _filteredRows.Skip(skip).Take(take))
+            Contacts.Add(row);
+
+        RebuildPageNumbers(totalPages);
+        OnPropertyChanged(nameof(CurrentPage));
+        OnPropertyChanged(nameof(TotalPages));
+        OnPropertyChanged(nameof(PageSummary));
+        OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(PageSelectionState));
+    }
+
+    private void RebuildPageNumbers(int totalPages)
+    {
+        PageNumbers.Clear();
+        foreach (var page in PagingPolicy.Window(_currentPage, totalPages))
+            PageNumbers.Add(new PageNumberItem(page, page == _currentPage));
     }
 
     private void ContactRow_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(ContactRow.Selected)) return;
+        NotifyCounts();
+    }
+
+    private void NotifyCounts()
+    {
+        OnPropertyChanged(nameof(TotalContactsCount));
+        OnPropertyChanged(nameof(ConsentContactsCount));
+        OnPropertyChanged(nameof(NotAllowedContactsCount));
+        OnPropertyChanged(nameof(OptedOutContactsCount));
+        OnPropertyChanged(nameof(AllContactsSummary));
+        OnPropertyChanged(nameof(ConsentedContactsSummary));
+        OnPropertyChanged(nameof(NotAllowedContactsSummary));
+        OnPropertyChanged(nameof(OptedOutContactsSummary));
         OnPropertyChanged(nameof(ConsentCount));
         OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(SelectedConsentCount));
+        OnPropertyChanged(nameof(SelectedNotAllowedCount));
+        OnPropertyChanged(nameof(SelectedOptOutCount));
         OnPropertyChanged(nameof(SelectionSummary));
+        OnPropertyChanged(nameof(SelectedRows));
+        OnPropertyChanged(nameof(SelectedPreviewChips));
+        OnPropertyChanged(nameof(SelectedChipsSummary));
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(HasConsentedSelection));
+        OnPropertyChanged(nameof(PageSelectionState));
         OnPropertyChanged(nameof(CanCreateJob));
-        CreateJobCommand.Refresh();
+        CreateJobCommand?.Refresh();
     }
 
     public async Task LoadAccountsAsync(string databasePath, CancellationToken cancellationToken = default)
@@ -249,6 +410,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public MainWindowViewModel()
     {
         CreateJobCommand = new RelayCommand(CreateJob, () => CanCreateJob);
+        _filteredRows = _allContactRows.ToList();
+        ApplyPage();
+        NotifyCounts();
     }
 
     private void CreateJob()

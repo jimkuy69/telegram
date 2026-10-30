@@ -1,8 +1,11 @@
 using System.Windows;
+using System.Windows.Input;
 using System.IO;
 using TelegramControlStudio.Core.Domain;
+using TelegramControlStudio.Core.Operations;
 using TelegramControlStudio.App.ViewModels;
 using TelegramControlStudio.Infrastructure.Persistence;
+using TelegramControlStudio.Infrastructure.Safety;
 using TelegramControlStudio.Core.Export;
 using TelegramControlStudio.Infrastructure.Telegram;
 using TelegramControlStudio.Core.Security;
@@ -13,16 +16,75 @@ namespace TelegramControlStudio.App;
 
 public partial class MainWindow : Window
 {
+    private readonly string _databasePath = AppPaths.ResolveDatabasePath();
+
     public MainWindow()
     {
         InitializeComponent();
         var viewModel = new MainWindowViewModel();
         DataContext = viewModel;
-        var databasePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "TelegramControlStudio",
-            "telegram-control-studio.db");
-        _ = LoadAccountsAsync(viewModel, databasePath);
+        _ = LoadAccountsAsync(viewModel, _databasePath);
+        _ = UpdateSafetyBadgeAsync();
+        Activated += async (_, _) => await UpdateSafetyBadgeAsync();
+    }
+
+    private async Task UpdateSafetyBadgeAsync()
+    {
+        try
+        {
+            var settings = await new SendSafetyRepository(_databasePath).GetAsync();
+            if (settings.KillSwitchEngaged)
+            {
+                SafetyBadge.Background = (System.Windows.Media.Brush)FindResource("DangerSoft");
+                SafetyBadge.BorderBrush = (System.Windows.Media.Brush)FindResource("Danger");
+                SafetyBadgeText.Foreground = (System.Windows.Media.Brush)FindResource("DangerText");
+                SafetyBadgeText.Text = "KILL SWITCH";
+                SafetyBadge.ToolTip = "หยุดฉุกเฉินอยู่: ระบบบล็อกการส่งทั้งหมด";
+            }
+            else if (settings.TestModeEnabled)
+            {
+                SafetyBadge.Background = (System.Windows.Media.Brush)FindResource("WarningSoft");
+                SafetyBadge.BorderBrush = (System.Windows.Media.Brush)FindResource("Warning");
+                SafetyBadgeText.Foreground = (System.Windows.Media.Brush)FindResource("WarningText");
+                SafetyBadgeText.Text = $"TEST MODE ({settings.AllowlistUserIds.Count})";
+                SafetyBadge.ToolTip = "โหมดทดสอบ: ส่งได้เฉพาะ Telegram User ID ใน allowlist";
+            }
+            else
+            {
+                SafetyBadge.Background = (System.Windows.Media.Brush)FindResource("SuccessSoft");
+                SafetyBadge.BorderBrush = (System.Windows.Media.Brush)FindResource("Success");
+                SafetyBadgeText.Foreground = (System.Windows.Media.Brush)FindResource("SuccessText");
+                SafetyBadgeText.Text = "LIVE";
+                SafetyBadge.ToolTip = "โหมดใช้งานจริง: ส่งได้ทุกคนที่ให้ Consent";
+            }
+        }
+        catch
+        {
+            SafetyBadgeText.Text = "SAFETY ?";
+        }
+    }
+
+    private async void EmergencyStop_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show("ยืนยันหยุดฉุกเฉิน? ระบบจะหยุดส่งทันที และบล็อกการส่งใหม่ทั้งหมดจนกว่าจะปลดล็อก", "ยืนยันหยุดฉุกเฉิน", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try
+        {
+            await new SendSafetyRepository(_databasePath).SetKillSwitchAsync(true);
+            EmergencyStopSignal.Trigger();
+            await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(
+                (DataContext as MainWindowViewModel)?.ActiveAccount?.Id ?? 0,
+                null,
+                "Warning",
+                "EmergencyStopEngaged",
+                "Kill switch engaged from the main window.",
+                DateTimeOffset.UtcNow));
+            await UpdateSafetyBadgeAsync();
+            MessageBox.Show("หยุดฉุกเฉินแล้ว งานที่กำลังส่งจะถูกหยุดชั่วคราว รายการที่ยังไม่ส่งยังอยู่ในคิว", "หยุดฉุกเฉิน", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show($"หยุดฉุกเฉินไม่สำเร็จ\n{exception.Message}", "ผิดพลาด", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private static async Task LoadAccountsAsync(MainWindowViewModel viewModel, string databasePath)
@@ -103,7 +165,7 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         new PendingRequestsWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
@@ -114,7 +176,7 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         new InviteLinksWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
@@ -125,14 +187,14 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         new ContactImportWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
     private async void SearchContacts_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null) return;
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         try
         {
             await viewModel.SearchContactsAsync(databasePath, viewModel.ActiveAccount.Id, ContactSearchBox.Text);
@@ -146,7 +208,7 @@ public partial class MainWindow : Window
     private async void RefreshContacts_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null) return;
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
     }
 
@@ -170,7 +232,7 @@ public partial class MainWindow : Window
         }
         try
         {
-            var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+            var databasePath = _databasePath;
             var contacts = await new TdLibContactSyncService(client, databasePath).SyncAsync(viewModel.ActiveAccount.Id);
             await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
             await viewModel.LoadActivityLogsAsync(databasePath, viewModel.ActiveAccount.Id);
@@ -183,18 +245,86 @@ public partial class MainWindow : Window
     }
 
     private ContactRow[] GetCheckedContacts() =>
-        ContactGrid.Items.OfType<ContactRow>().Where(contact => contact.Selected).ToArray();
+        DataContext is MainWindowViewModel viewModel ? viewModel.SelectedRows.ToArray() : [];
+
+    private void SelectAllContacts_Click(object sender, RoutedEventArgs e) => (DataContext as MainWindowViewModel)?.SelectAllFiltered();
+    private void ClearSelection_Click(object sender, RoutedEventArgs e) => (DataContext as MainWindowViewModel)?.ClearSelection();
+    private void ClearPageSelection_Click(object sender, RoutedEventArgs e) => (DataContext as MainWindowViewModel)?.ClearPageSelection();
+    private void PrevPage_Click(object sender, RoutedEventArgs e) => (DataContext as MainWindowViewModel)?.PreviousPage();
+    private void NextPage_Click(object sender, RoutedEventArgs e) => (DataContext as MainWindowViewModel)?.NextPage();
+
+    private void PageNumber_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: int page } && DataContext is MainWindowViewModel viewModel)
+            viewModel.GoToPage(page);
+    }
+
+    private void Sort_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || SortBox.SelectedItem is not System.Windows.Controls.ComboBoxItem item)
+            return;
+        viewModel.SetSort(item.Tag?.ToString());
+    }
+
+    private void ContactSearchBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        SearchContacts_Click(sender, e);
+        e.Handled = true;
+    }
+
+    private void FocusRecipients_Click(object sender, RoutedEventArgs e)
+    {
+        ContactSearchBox.Focus();
+        Keyboard.Focus(ContactSearchBox);
+    }
+
+    private void ContinueToMessage_Click(object sender, RoutedEventArgs e) => RightTabs.SelectedIndex = 1;
+    private void Review_Click(object sender, RoutedEventArgs e) => RightTabs.SelectedIndex = 2;
+    private void BackToRecipients_Click(object sender, RoutedEventArgs e) => RightTabs.SelectedIndex = 0;
+    private void BackToMessage_Click(object sender, RoutedEventArgs e) => RightTabs.SelectedIndex = 1;
+
+    private void ClearLink_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+            viewModel.LinkDraft = string.Empty;
+    }
+
+    private void DeselectChip_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { DataContext: ContactRow row }) return;
+        row.Selected = false;
+        ContactGrid.Items.Refresh();
+    }
+
+    private void ComposeMedia_Click(object sender, RoutedEventArgs e) => MediaLibrary_Click(sender, e);
+
+    private void SaveDraftAsTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(viewModel.MessageDraft))
+        {
+            MessageBox.Show("กรุณากรอกข้อความก่อนบันทึกเป็นเทมเพลต", "ยังไม่มีข้อความ", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var databasePath = _databasePath;
+        new TemplateEditorWindow(databasePath, viewModel.ActiveAccount.Id, viewModel.MessageDraft, viewModel.LinkDraft) { Owner = this }.ShowDialog();
+    }
 
     private void SelectVisibleContacts_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MainWindowViewModel viewModel) return;
+        if (ContactGrid.DataContext is not MainWindowViewModel viewModel) return;
         var checkbox = sender as System.Windows.Controls.CheckBox;
-        var shouldSelect = checkbox?.IsChecked == true;
-        foreach (var contact in ContactGrid.Items.OfType<ContactRow>())
+        var shouldSelect = checkbox?.IsChecked != null;
+        foreach (var contact in viewModel.Contacts)
             contact.Selected = shouldSelect;
         ContactGrid.Items.Refresh();
         if (checkbox is not null)
-            checkbox.IsChecked = shouldSelect ? true : false;
+            checkbox.IsChecked = shouldSelect;
     }
 
     private void ContactCheckBox_Click(object sender, RoutedEventArgs e)
@@ -218,7 +348,7 @@ public partial class MainWindow : Window
         }
         var answer = MessageBox.Show($"ยืนยัน Soft Delete จำนวน {selected.Length} รายการ? ข้อมูลจะไม่ถูกลบถาวร", "ยืนยันการลบ", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (answer != MessageBoxResult.Yes) return;
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         var repository = new ContactRepository(databasePath);
         var logs = new ActivityLogRepository(databasePath);
         foreach (var contact in selected)
@@ -256,7 +386,7 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเลือกรายชื่อก่อนเปลี่ยนสถานะ", "ยังไม่ได้เลือก", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         var repository = new ContactRepository(databasePath);
         var logs = new ActivityLogRepository(databasePath);
         foreach (var contact in selected)
@@ -287,8 +417,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        var selected = viewModel.Contacts
-            .Where(contact => contact.Selected && contact.Consent == "ได้รับความยินยอม")
+        var selected = viewModel.SelectedRows
+            .Where(contact => contact.Selected && contact.ConsentState == ContactConsentState.Consented)
             .ToArray();
         if (selected.Length == 0)
         {
@@ -307,7 +437,7 @@ public partial class MainWindow : Window
         if (MessageBox.Show(preview, "ตรวจสอบก่อนสร้าง Job", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
             return;
 
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         var fingerprint = string.Join("|", selected.Select(contact => contact.Id).OrderBy(id => id));
         var definition = $"{viewModel.ActiveAccount.Id}|{fingerprint}|{viewModel.MessageDraft}|{viewModel.LinkDraft}";
         var idempotencyKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(definition)));
@@ -357,7 +487,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) != true) return;
         try
         {
-            var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+            var databasePath = _databasePath;
             var contacts = await new ContactRepository(databasePath).ListAsync(viewModel.ActiveAccount.Id);
             if (Path.GetExtension(dialog.FileName).Equals(".xlsx", StringComparison.OrdinalIgnoreCase))
             {
@@ -383,7 +513,7 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         new TemplateEditorWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
@@ -394,7 +524,7 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         new MediaLibraryWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
@@ -405,7 +535,7 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         new CampaignWizardWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
@@ -416,7 +546,7 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         new GroupsWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
@@ -427,7 +557,7 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         new QueueWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
@@ -438,7 +568,7 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         new ActivityLogWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
@@ -449,7 +579,7 @@ public partial class MainWindow : Window
             MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         new SettingsWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
@@ -462,7 +592,7 @@ public partial class MainWindow : Window
         }
 
         var account = viewModel.ActiveAccount;
-        var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+        var databasePath = _databasePath;
         try
         {
             var configuration = await new TdLibConfigurationRepository(databasePath).GetAsync(account.Id);
@@ -521,7 +651,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TelegramControlStudio", "telegram-control-studio.db");
+            var databasePath = _databasePath;
             DateTimeOffset? from = StartDateBox.SelectedDate?.Date;
             DateTimeOffset? to = EndDateBox.SelectedDate?.Date.AddDays(1).AddTicks(-1);
             if (from.HasValue && to.HasValue && from > to)

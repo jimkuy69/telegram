@@ -1,0 +1,30 @@
+@{
+    var text = SendSafetyPolicy.Describe(Settings, Settings.AllowlistUserIds.Count);
+}
+
+@if (Settings.KillSwitchEngaged)
+{
+    <div class="banner danger">
+        <strong>หยุดฉุกเฉินอยู่</strong>
+        <span>ระบบบล็อกการส่งทั้งหมด ไปที่หน้า <a href="settings">ตั้งค่า</a> เพื่อปลดหยุดฉุกเฉิน</span>
+    </div>
+}
+else if (Settings.TestModeEnabled)
+{
+    <div class="banner warn">
+        <strong>โหมดทดสอบ</strong>
+        <span>@text — ข้อความจะถูกส่งได้เฉพาะ Telegram User ID ใน allowlist เท่านั้น</span>
+    </div>
+}
+else
+{
+    <div class="banner ok">
+        <strong>โหมดใช้งานจริง</strong>
+        <span>@text — ยังต้องผ่าน Consent และการยืนยันก่อนส่งทุกครั้ง</span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public SendSafetySettings Settings { get; set; } = SendSafetySettings.SafeDefault;
+}

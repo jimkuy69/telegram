@@ -1,6 +1,7 @@
 using System.Windows;
 using System.IO;
 using Microsoft.Win32;
+using TelegramControlStudio.Core.Safety;
 using TelegramControlStudio.Infrastructure.Persistence;
 using TelegramControlStudio.Infrastructure.Security;
 using TelegramControlStudio.Infrastructure.Telegram;
@@ -11,7 +12,57 @@ public partial class SettingsWindow : Window
     private readonly string _databasePath; private readonly long _accountId;
     private string? _nativeDirectory;
     private readonly Task _tdLibLoadTask;
-    public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; _tdLibLoadTask = LoadTdLibIdAsync(); }
+    public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; _tdLibLoadTask = LoadTdLibIdAsync(); _ = LoadSafetyAsync(); }
+    private async Task LoadSafetyAsync()
+    {
+        try
+        {
+            var settings = await new SendSafetyRepository(_databasePath).GetAsync();
+            TestModeBox.IsChecked = settings.TestModeEnabled;
+            AllowlistBox.Text = SendSafetyPolicy.FormatAllowlist(settings.AllowlistUserIds);
+            ClearEmergencyButton.IsEnabled = settings.KillSwitchEngaged;
+            SafetyStatusText.Text = SendSafetyPolicy.Describe(settings, settings.AllowlistUserIds.Count);
+            SafetyStatusText.Foreground = (System.Windows.Media.Brush)FindResource(settings.KillSwitchEngaged ? "DangerText" : settings.TestModeEnabled ? "WarningText" : "SuccessText");
+        }
+        catch (Exception exception) { SafetyStatusText.Text = $"อ่านการตั้งค่าความปลอดภัยไม่สำเร็จ: {exception.Message}"; }
+    }
+    private async void SaveSafety_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var repository = new SendSafetyRepository(_databasePath);
+            var current = await repository.GetAsync();
+            var testMode = TestModeBox.IsChecked == true;
+            if (current.TestModeEnabled && !testMode &&
+                MessageBox.Show("การปิดโหมดทดสอบจะอนุญาตให้ส่งได้กับทุกคนที่ให้ Consent ไม่จำกัดเฉพาะ allowlist ยืนยันหรือไม่?", "ปิดโหมดทดสอบ", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            {
+                TestModeBox.IsChecked = true;
+                return;
+            }
+            var updated = current with
+            {
+                TestModeEnabled = testMode,
+                AllowlistUserIds = SendSafetyPolicy.ParseAllowlist(AllowlistBox.Text)
+            };
+            await repository.SaveAsync(updated);
+            await LogAsync("SendSafetyUpdated", $"TestMode={updated.TestModeEnabled}, AllowlistCount={updated.AllowlistUserIds.Count}");
+            SafetyStatusText.Text = $"บันทึกแล้ว • {SendSafetyPolicy.Describe(updated, updated.AllowlistUserIds.Count)}";
+            SafetyStatusText.Foreground = (System.Windows.Media.Brush)FindResource(updated.TestModeEnabled ? "WarningText" : "SuccessText");
+        }
+        catch (Exception exception) { SafetyStatusText.Text = $"บันทึกความปลอดภัยไม่สำเร็จ: {exception.Message}"; }
+    }
+    private async void ClearEmergency_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show("ปลดหยุดฉุกเฉิน? ระบบจะกลับมาส่งได้ตามโหมดทดสอบหรือโหมดใช้งานจริงที่ตั้งไว้", "ปลดหยุดฉุกเฉิน", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try
+        {
+            await new SendSafetyRepository(_databasePath).SetKillSwitchAsync(false);
+            await LogAsync("KillSwitchCleared", "Kill switch cleared from Settings.");
+            await LoadSafetyAsync();
+            SafetyStatusText.Text = "ปลดหยุดฉุกเฉินแล้ว";
+        }
+        catch (Exception exception) { SafetyStatusText.Text = $"ปลดหยุดฉุกเฉินไม่สำเร็จ: {exception.Message}"; }
+    }
     private async Task LoadTdLibIdAsync()
     {
         try

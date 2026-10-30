@@ -20,6 +20,28 @@
 
 Accounts, TDLib authentication, groups/channels, member observation, contacts, templates, media, consent-first campaigns, invite links, join requests, persistent jobs, audit logs, dashboard, encrypted backup/restore, installer and pilot gates.
 
+## IMPLEMENTED send safety (Phase 0)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Test mode with allowlist | Settings > ความปลอดภัยในการส่ง; Queue banner; main-window badge | ON by default; only allowlisted Telegram user IDs can receive messages |
+| Emergency stop (kill switch) | Main header button, Queue banner, Settings | Durable DB flag; blocks all sends and pauses running jobs until cleared |
+| Blocked-send audit | Activity log | `SendBlocked`, `KillSwitchBlocked`, `KillSwitchPaused`, `EmergencyStopEngaged`, `KillSwitchCleared`, `SendSafetyUpdated` |
+| Policy unit tests | `tests/TelegramControlStudio.Tests` | `SendSafetyPolicyTests`, `SendSafetyRepositoryTests`, runner/send-service safety cases |
+
+## IMPLEMENTED web host (Phase 1)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Five-screen Blazor Server host | `src/TelegramControlStudio.Web` | dashboard, recipients, compose, queue, settings at `http://127.0.0.1:5199` |
+| Consent-first job creation | เขียนข้อความ | recipients without consent are excluded; job is stored as `WaitingForConfirmation` |
+| Queue confirmation and cancel | คิวงาน | confirm moves items to `Queued`; cancel marks items `Cancelled` and the aggregate job `Cancelled` |
+| Safety controls | คิวงาน + ตั้งค่า | test mode, allowlist (live parse count), emergency stop engage/clear persisted in `send_safety_settings` |
+| Shared bootstrap | `StudioHost` | same database, migrations, and TDLib registry as the desktop app; `TELEGRAM_CONTROL_STUDIO_DB` honoured |
+| Web audit events | Activity log | `JobCreatedWeb`, `JobQueuedWeb`, `JobCancelledWeb`, `EmergencyStopEngaged`, `KillSwitchCleared`, `SendSafetyUpdated` |
+
+The web host is localhost-only and unauthenticated; it plans work and gates safety. TDLib login and every real send remain in the desktop app.
+
 ## Screen acceptance rules
 
 1. The active account is visible before account-scoped actions.
@@ -27,3 +49,5 @@ Accounts, TDLib authentication, groups/channels, member observation, contacts, t
 3. `Observed` and incomplete Telegram data are labelled explicitly.
 4. Secrets never appear in UI logs, exports or screenshots.
 5. A green local/mock state is never presented as Telegram E2E success.
+6. Every real send passes test mode, allowlist, consent, and kill-switch checks; each screen that can send shows the current safety state.
+7. The web host never sends Telegram messages itself: it may create, confirm, or cancel jobs and change safety settings, and every page shows the live safety state.

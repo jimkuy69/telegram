@@ -46,8 +46,13 @@ public sealed class SqliteDatabase
             CREATE UNIQUE INDEX IF NOT EXISTS ux_join_requests_account_chat_user ON join_requests(account_id, chat_id, telegram_user_id);
             CREATE TABLE IF NOT EXISTS template_media (template_id INTEGER NOT NULL, media_file_id INTEGER NOT NULL, account_id INTEGER NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(template_id, media_file_id), FOREIGN KEY(template_id) REFERENCES message_templates(id), FOREIGN KEY(media_file_id) REFERENCES media_files(id), FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE INDEX IF NOT EXISTS ix_template_media_order ON template_media(template_id, sort_order);
+            CREATE TABLE IF NOT EXISTS send_safety_settings (id INTEGER PRIMARY KEY CHECK (id = 1), test_mode_enabled INTEGER NOT NULL DEFAULT 1, allowlist_user_ids TEXT NOT NULL DEFAULT '', kill_switch INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);
+            INSERT OR IGNORE INTO send_safety_settings(id, test_mode_enabled, allowlist_user_ids, kill_switch, updated_at)
+            VALUES(1, 1, '', 0, '1970-01-01T00:00:00.0000000+00:00');
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(1, CURRENT_TIMESTAMP);
+            INSERT OR IGNORE INTO schema_migrations(version, applied_at)
+            VALUES(2, CURRENT_TIMESTAMP);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
         await EnsureColumnAsync(connection, "jobs", "message_text", "TEXT NOT NULL DEFAULT ''", cancellationToken);

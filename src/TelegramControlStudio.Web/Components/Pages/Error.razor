@@ -1,0 +1,28 @@
+@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>เกิดข้อผิดพลาด • Telegram Control Studio</PageTitle>
+
+<div class="card empty">
+    <h1>เกิดข้อผิดพลาด</h1>
+    <p class="muted">ขออภัย ระบบไม่สามารถแสดงหน้านี้ได้</p>
+
+    @if (RequestId is not null)
+    {
+        <p class="muted small-note">รหัสอ้างอิง: <span class="mono">@RequestId</span></p>
+    }
+
+    <a class="btn primary" href="">กลับแดชบอร์ด</a>
+</div>
+
+@code {
+    private string? RequestId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+    }
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+}

@@ -15,6 +15,7 @@ public sealed class TdLibConsentCampaignServiceTests
         try
         {
             await new SqliteDatabase(path).InitializeAsync();
+            await new SendSafetyRepository(path).SaveAsync(new TelegramControlStudio.Core.Safety.SendSafetySettings(false, new HashSet<long>(), false, null));
             var accountId = await new AccountRepository(path).CreateAsync("Campaign", "+66000000101");
             var recipients = new[]
             {

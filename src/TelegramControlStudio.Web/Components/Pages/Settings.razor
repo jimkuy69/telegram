@@ -1,0 +1,240 @@
+@page "/settings"
+@inject WorkspaceState Workspace
+
+<PageTitle>ตั้งค่า • Telegram Control Studio</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>ตั้งค่า</h1>
+        <p class="sub">ความปลอดภัยในการส่งและข้อมูลเครื่องนี้</p>
+    </div>
+    <button class="btn ghost" @onclick="LoadAsync" disabled="@_loading">รีเฟรช</button>
+</div>
+
+<SafetyBanner Settings="Workspace.Safety" />
+
+@if (_message is not null)
+{
+    <div class="banner @(_messageIsError ? "danger" : "ok") compact">@_message</div>
+}
+
+@if (_loading)
+{
+    <div class="card muted">กำลังโหลด…</div>
+}
+else
+{
+    <div class="grid-two">
+        <div class="card">
+            <h2>ความปลอดภัยในการส่ง</h2>
+            <p class="muted small-note">@SendSafetyPolicy.Describe(Workspace.Safety, Workspace.Safety.AllowlistUserIds.Count)</p>
+
+            <label class="check-row">
+                <input type="checkbox" @bind="_testMode" />
+                <span>โหมดทดสอบ (ส่งได้เฉพาะ allowlist)</span>
+            </label>
+
+            <label class="field">
+                <span>Allowlist — Telegram User ID (คั่นด้วย comma / ช่องว่าง / ขึ้นบรรทัดใหม่)</span>
+                <textarea class="input mono" rows="6" placeholder="เช่น 123456789, 987654321" @bind="_allowlistText" @bind:event="oninput"></textarea>
+            </label>
+            <p class="muted small-note">พบ @(ParsedAllowlist.Count) ราย — User ID ที่ไม่ถูกต้องจะถูกข้าม</p>
+
+            @if (Workspace.Safety.TestModeEnabled && !_testMode)
+            {
+                <label class="check-row danger-text">
+                    <input type="checkbox" @bind="_liveConfirm" />
+                    <span>ฉันเข้าใจว่าการปิดโหมดทดสอบคือการส่งหาผู้รับจริงทุกคนที่ให้ Consent</span>
+                </label>
+            }
+
+            <div class="row-actions end">
+                <button class="btn primary" @onclick="SaveAsync" disabled="@(_busy || (Workspace.Safety.TestModeEnabled && !_testMode && !_liveConfirm))">บันทึกความปลอดภัย</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>หยุดฉุกเฉิน</h2>
+            @if (Workspace.Safety.KillSwitchEngaged)
+            {
+                <p class="danger-text"><strong>หยุดฉุกเฉินอยู่</strong> — ระบบบล็อกการส่งทั้งหมด</p>
+                @if (_confirmClear)
+                {
+                    <div class="row-actions end">
+                        <button class="btn ghost" @onclick="() => _confirmClear = false">ยกเลิก</button>
+                        <button class="btn primary" @onclick="ClearEmergencyAsync" disabled="@_busy">ยืนยันปลดหยุดฉุกเฉิน</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="row-actions end">
+                        <button class="btn primary" @onclick="() => _confirmClear = true">ปลดหยุดฉุกเฉิน</button>
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="muted">สถานะปกติ — กดเพื่อบล็อกการส่งทั้งหมดทันที</p>
+                @if (_confirmEngage)
+                {
+                    <div class="row-actions end">
+                        <button class="btn ghost" @onclick="() => _confirmEngage = false">ยกเลิก</button>
+                        <button class="btn danger" @onclick="EmergencyStopAsync" disabled="@_busy">ยืนยันหยุดฉุกเฉิน</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="row-actions end">
+                        <button class="btn danger" @onclick="() => _confirmEngage = true">หยุดฉุกเฉิน</button>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="grid-two">
+        <div class="card">
+            <h2>บัญชีในเครื่องนี้</h2>
+            @if (Workspace.Accounts.Count == 0)
+            {
+                <p class="muted">ยังไม่มีบัญชี — เพิ่มและล็อกอินจากแอปเดสก์ท็อป</p>
+            }
+            else
+            {
+                <table class="table">
+                    <thead><tr><th>ชื่อ</th><th>เบอร์โทร</th><th>สถานะ</th></tr></thead>
+                    <tbody>
+                        @foreach (var account in Workspace.Accounts)
+                        {
+                            <tr>
+                                <td>@account.DisplayName</td>
+                                <td class="mono">@account.PhoneNumber</td>
+                                <td><span class="badge muted">@account.Status</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <div class="card">
+            <h2>ข้อมูลเครื่องนี้</h2>
+            <ul class="list">
+                <li><span>ฐานข้อมูล</span><span class="mono small-text">@Workspace.DatabasePath</span></li>
+                <li><span>โฮสต์</span><span>Blazor Server (localhost)</span></li>
+                <li><span>การส่งข้อความ</span><span>ทำจากแอปเดสก์ท็อปที่ล็อกอิน TDLib</span></li>
+            </ul>
+            <p class="muted small-note">เว็บโฮสต์นี้ใช้สำหรับจัดการผู้รับ วางแผน และควบคุมความปลอดภัย — ล็อกอิน Telegram และการส่งจริงยังอยู่ในแอปเดสก์ท็อป</p>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _busy;
+    private bool _testMode = true;
+    private string _allowlistText = string.Empty;
+    private bool _liveConfirm;
+    private bool _confirmEngage;
+    private bool _confirmClear;
+    private string? _message;
+    private bool _messageIsError;
+
+    private IReadOnlySet<long> ParsedAllowlist => SendSafetyPolicy.ParseAllowlist(_allowlistText);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            await Workspace.LoadAsync();
+            _testMode = Workspace.Safety.TestModeEnabled;
+            _allowlistText = SendSafetyPolicy.FormatAllowlist(Workspace.Safety.AllowlistUserIds);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _message = null;
+        var disablingTestMode = Workspace.Safety.TestModeEnabled && !_testMode;
+        if (disablingTestMode && !_liveConfirm)
+        {
+            SetError("กรุณาติ๊กยืนยันก่อนปิดโหมดทดสอบ");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var settings = new SendSafetySettings(_testMode, ParsedAllowlist, Workspace.Safety.KillSwitchEngaged, null);
+            await new SendSafetyRepository(Workspace.DatabasePath).SaveAsync(settings);
+            if (Workspace.ActiveAccount is { } account)
+            {
+                await new ActivityLogRepository(Workspace.DatabasePath).AppendAsync(new ActivityLog(
+                    account.Id, null, "Info", "SendSafetyUpdated",
+                    $"Send safety saved from web host (test mode: {settings.TestModeEnabled}, allowlist: {settings.AllowlistUserIds.Count}).",
+                    DateTimeOffset.UtcNow));
+            }
+            await Workspace.ReloadSafetyAsync();
+            _liveConfirm = false;
+            _message = $"บันทึกแล้ว • {SendSafetyPolicy.Describe(Workspace.Safety, Workspace.Safety.AllowlistUserIds.Count)}";
+            _messageIsError = false;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task EmergencyStopAsync()
+    {
+        _confirmEngage = false;
+        _busy = true;
+        try
+        {
+            await Workspace.SetKillSwitchAsync(true);
+            if (Workspace.ActiveAccount is { } account)
+                await LogAsync(account.Id, "Warning", "EmergencyStopEngaged", "Emergency stop engaged from web settings.");
+            _message = "หยุดฉุกเฉินแล้ว ระบบบล็อกการส่งทั้งหมด";
+            _messageIsError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ClearEmergencyAsync()
+    {
+        _confirmClear = false;
+        _busy = true;
+        try
+        {
+            await Workspace.SetKillSwitchAsync(false);
+            if (Workspace.ActiveAccount is { } account)
+                await LogAsync(account.Id, "Info", "KillSwitchCleared", "Emergency stop cleared from web settings.");
+            _message = "ปลดหยุดฉุกเฉินแล้ว";
+            _messageIsError = false;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task LogAsync(long accountId, string level, string eventType, string message) =>
+        await new ActivityLogRepository(Workspace.DatabasePath).AppendAsync(new ActivityLog(
+            accountId, null, level, eventType, message, DateTimeOffset.UtcNow));
+
+    private void SetError(string message)
+    {
+        _message = message;
+        _messageIsError = true;
+    }
+}

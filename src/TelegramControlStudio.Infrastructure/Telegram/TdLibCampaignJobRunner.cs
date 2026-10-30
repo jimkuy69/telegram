@@ -1,6 +1,8 @@
 using TelegramControlStudio.Core.Domain;
+using TelegramControlStudio.Core.Safety;
 using TelegramControlStudio.Core.Telegram;
 using TelegramControlStudio.Infrastructure.Persistence;
+using TelegramControlStudio.Infrastructure.Safety;
 
 namespace TelegramControlStudio.Infrastructure.Telegram;
 
@@ -19,41 +21,118 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
     public async Task<JobStatus> RunAsync(ITdLibClient client, Guid jobId, long accountId, string text, bool confirmed, TimeSpan interval, CancellationToken cancellationToken = default)
     {
         if (!confirmed) throw new InvalidOperationException("CONFIRMATION_REQUIRED");
-        var items = await new JobItemRepository(databasePath).ListAsync(jobId, cancellationToken);
-        var contacts = (await new ContactRepository(databasePath).ListAsync(accountId, cancellationToken)).ToDictionary(item => item.TelegramUserId);
+        var jobRepository = new JobRepository(databasePath);
         var itemRepository = new JobItemRepository(databasePath);
-        await new JobRepository(databasePath).UpdateStatusAsync(jobId, JobStatus.Running, cancellationToken: cancellationToken);
-        foreach (var item in items)
+        var safetyRepository = new SendSafetyRepository(databasePath);
+        var emergencyToken = EmergencyStopSignal.Token;
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, emergencyToken);
+        var token = linkedCancellation.Token;
+
+        var safety = await safetyRepository.GetAsync(token);
+        if (safety.KillSwitchEngaged)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (item.Status is "Completed" or "Cancelled") continue;
-            if (!contacts.TryGetValue(item.TargetId, out var contact) || !contact.HasConsent || contact.IsOptedOut)
+            await LogAsync(accountId, jobId, "KillSwitchBlocked", "Job start blocked by kill switch.");
+            await jobRepository.UpdateStatusAsync(jobId, JobStatus.Paused, SendSafetyPolicy.KillSwitchReason, cancellationToken: CancellationToken.None);
+            return JobStatus.Paused;
+        }
+
+        var items = await itemRepository.ListAsync(jobId, token);
+        var contacts = (await new ContactRepository(databasePath).ListAsync(accountId, token)).ToDictionary(item => item.TelegramUserId);
+        await jobRepository.UpdateStatusAsync(jobId, JobStatus.Running, cancellationToken: token);
+
+        try
+        {
+            foreach (var item in items)
             {
-                await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Skipped", "CONSENT_REQUIRED_OR_OPTED_OUT", cancellationToken: cancellationToken);
-                continue;
-            }
-            try
-            {
-                await new TdLibMessageSendService(databasePath).SendTextAsync(client, contact, text, true, cancellationToken);
-                await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Completed", cancellationToken: cancellationToken);
-            }
-            catch (Exception exception)
-            {
-                if (exception is TdLibFloodWaitException floodWait)
+                token.ThrowIfCancellationRequested();
+                if (item.Status is "Completed" or "Cancelled") continue;
+                if (!contacts.TryGetValue(item.TargetId, out var contact))
+                {
+                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Skipped", "CONTACT_NOT_FOUND", cancellationToken: token);
+                    continue;
+                }
+
+                safety = await safetyRepository.GetAsync(token);
+                var decision = SendSafetyPolicy.Evaluate(safety, contact.TelegramUserId, contact.HasConsent, contact.IsOptedOut);
+                if (!decision.CanSend)
+                {
+                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Skipped", decision.ReasonCode, cancellationToken: token);
+                    if (decision.Verdict == SendSafetyVerdict.Block)
+                    {
+                        await PauseForKillSwitchAsync(jobRepository, accountId, jobId);
+                        return JobStatus.Paused;
+                    }
+                    continue;
+                }
+
+                try
+                {
+                    await new TdLibMessageSendService(databasePath).SendTextAsync(client, contact, text, true, token);
+                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Completed", cancellationToken: token);
+                }
+                catch (SendSafetyBlockedException blocked) when (blocked.Verdict == SendSafetyVerdict.Block)
+                {
+                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Queued", blocked.ReasonCode, cancellationToken: CancellationToken.None);
+                    await PauseForKillSwitchAsync(jobRepository, accountId, jobId);
+                    return JobStatus.Paused;
+                }
+                catch (SendSafetyBlockedException blocked)
+                {
+                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Skipped", blocked.ReasonCode, cancellationToken: token);
+                    continue;
+                }
+                catch (OperationCanceledException) when (emergencyToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Queued", SendSafetyPolicy.KillSwitchReason, cancellationToken: CancellationToken.None);
+                    await PauseForKillSwitchAsync(jobRepository, accountId, jobId);
+                    return JobStatus.Paused;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (TdLibFloodWaitException floodWait)
                 {
                     var until = DateTimeOffset.UtcNow.AddSeconds(floodWait.Seconds);
-                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "WaitingForFloodWait", floodWait.Message, cancellationToken: cancellationToken);
-                    await new JobRepository(databasePath).UpdateStatusAsync(jobId, JobStatus.WaitingForFloodWait, floodWait.Message, until, cancellationToken);
+                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "WaitingForFloodWait", floodWait.Message, cancellationToken: token);
+                    await jobRepository.UpdateStatusAsync(jobId, JobStatus.WaitingForFloodWait, floodWait.Message, until, token);
                     return JobStatus.WaitingForFloodWait;
                 }
-                await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Failed", "TDLIB_MESSAGE_SEND_FAILED", incrementRetry: true, cancellationToken: cancellationToken);
-                await new JobRepository(databasePath).UpdateStatusAsync(jobId, JobStatus.PartiallyCompleted, exception.Message, cancellationToken: cancellationToken);
-                return JobStatus.PartiallyCompleted;
+                catch (Exception exception)
+                {
+                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Failed", "TDLIB_MESSAGE_SEND_FAILED", incrementRetry: true, cancellationToken: token);
+                    await jobRepository.UpdateStatusAsync(jobId, JobStatus.PartiallyCompleted, exception.Message, cancellationToken: token);
+                    return JobStatus.PartiallyCompleted;
+                }
+                if (interval > TimeSpan.Zero) await Task.Delay(interval, token);
             }
-            if (interval > TimeSpan.Zero) await Task.Delay(interval, cancellationToken);
         }
-        var finalStatus = (await new JobItemRepository(databasePath).ListAsync(jobId, cancellationToken)).Any(item => item.Status == "Failed") ? JobStatus.PartiallyCompleted : JobStatus.Completed;
-        await new JobRepository(databasePath).UpdateStatusAsync(jobId, finalStatus, cancellationToken: cancellationToken);
+        catch (OperationCanceledException) when (emergencyToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            await itemRepository.UpdateStatusForJobAsync(jobId, "Running", "Queued", CancellationToken.None);
+            await PauseForKillSwitchAsync(jobRepository, accountId, jobId);
+            return JobStatus.Paused;
+        }
+
+        var remaining = await itemRepository.ListAsync(jobId, token);
+        if (remaining.Count > 0 && remaining.All(item => item.Status is "Skipped" or "Cancelled") &&
+            remaining.Any(item => item.Status == "Skipped" && item.LastError == SendSafetyPolicy.TestModeReason))
+        {
+            await jobRepository.UpdateStatusAsync(jobId, JobStatus.Paused, SendSafetyPolicy.TestModeReason, cancellationToken: CancellationToken.None);
+            return JobStatus.Paused;
+        }
+
+        var finalStatus = remaining.Any(item => item.Status == "Failed") ? JobStatus.PartiallyCompleted : JobStatus.Completed;
+        await jobRepository.UpdateStatusAsync(jobId, finalStatus, cancellationToken: token);
         return finalStatus;
     }
+
+    private async Task PauseForKillSwitchAsync(JobRepository jobRepository, long accountId, Guid jobId)
+    {
+        await jobRepository.UpdateStatusAsync(jobId, JobStatus.Paused, SendSafetyPolicy.KillSwitchReason, cancellationToken: CancellationToken.None);
+        await LogAsync(accountId, jobId, "KillSwitchPaused", "Job paused by kill switch.");
+    }
+
+    private Task LogAsync(long accountId, Guid jobId, string eventType, string message) =>
+        new ActivityLogRepository(databasePath).AppendAsync(new ActivityLog(accountId, jobId, "Warning", eventType, message, DateTimeOffset.UtcNow));
 }

@@ -1,0 +1,30 @@
+@inherits LayoutComponentBase
+
+<div class="shell">
+    <aside class="sidebar">
+        <a class="brand" href="">
+            <span class="brand-mark">TC</span>
+            <span class="brand-text">
+                <strong>Telegram Control</strong>
+                <small>Studio • Web</small>
+            </span>
+        </a>
+
+        <nav class="nav">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All"><span class="nav-icon">▦</span> แดชบอร์ด</NavLink>
+            <NavLink class="nav-link" href="recipients"><span class="nav-icon">☰</span> ผู้รับ</NavLink>
+            <NavLink class="nav-link" href="compose"><span class="nav-icon">✎</span> เขียนข้อความ</NavLink>
+            <NavLink class="nav-link" href="queue"><span class="nav-icon">↻</span> คิวงาน</NavLink>
+            <NavLink class="nav-link" href="settings"><span class="nav-icon">⚙</span> ตั้งค่า</NavLink>
+        </nav>
+
+        <div class="sidebar-foot">
+            <span class="pill">LOCAL ONLY</span>
+            <p>ข้อมูลอยู่ในเครื่องนี้ • ต้องมี Consent ของผู้รับก่อนส่งทุกครั้ง</p>
+        </div>
+    </aside>
+
+    <main class="main">
+        @Body
+    </main>
+</div>

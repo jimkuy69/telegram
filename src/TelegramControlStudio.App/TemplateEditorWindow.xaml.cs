@@ -14,13 +14,16 @@ public partial class TemplateEditorWindow : Window
     private readonly string _databasePath;
     private readonly long _accountId;
     private string? _selectedMediaPath;
-    public TemplateEditorWindow(string databasePath, long accountId)
+    public TemplateEditorWindow(string databasePath, long accountId, string? body = null, string? link = null)
     {
         InitializeComponent();
         _databasePath = databasePath;
         _accountId = accountId;
+        BodyBox.Text = body ?? string.Empty;
+        LinkBox.Text = link ?? string.Empty;
         BodyBox.TextChanged += (_, _) => UpdatePreview();
         LinkBox.TextChanged += (_, _) => UpdatePreview();
+        UpdatePreview();
     }
 
     private void Preview_Click(object sender, RoutedEventArgs e) => UpdatePreview();
