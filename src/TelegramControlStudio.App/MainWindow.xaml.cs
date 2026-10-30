@@ -700,6 +700,37 @@ public partial class MainWindow : Window
         new QueueWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
+    private void RequestConsent_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var selected = viewModel.SelectedRows.Select(contact => contact.Id).ToArray();
+        if (selected.Length == 0)
+        {
+            MessageBox.Show("กรุณาเลือกรายชื่อที่ต้องการขอความยินยอมก่อน", "ยังไม่ได้เลือก", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        new ConsentRequestWindow(_databasePath, viewModel.ActiveAccount.Id, selected) { Owner = this }.ShowDialog();
+        _ = RefreshConsentRequestStatesAsync(viewModel, viewModel.ActiveAccount.Id);
+    }
+
+    private void ConsentInbox_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        new ConsentInboxWindow(_databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
+        _ = RefreshConsentRequestStatesAsync(viewModel, viewModel.ActiveAccount.Id);
+    }
+
+    private Task RefreshConsentRequestStatesAsync(MainWindowViewModel viewModel, long accountId) =>
+        viewModel.ApplyConsentRequestStatesAsync(_databasePath, accountId);
+
     private void History_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)

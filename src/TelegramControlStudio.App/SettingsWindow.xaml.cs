@@ -12,7 +12,35 @@ public partial class SettingsWindow : Window
     private readonly string _databasePath; private readonly long _accountId;
     private string? _nativeDirectory;
     private readonly Task _tdLibLoadTask;
-    public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; _tdLibLoadTask = LoadTdLibIdAsync(); _ = LoadSafetyAsync(); }
+    public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; _tdLibLoadTask = LoadTdLibIdAsync(); _ = LoadSafetyAsync(); _ = LoadConsentLimitsAsync(); }
+    private async Task LoadConsentLimitsAsync()
+    {
+        try
+        {
+            var settings = await new ConsentRequestSettingsRepository(_databasePath).GetAsync();
+            ConsentCooldownBox.Text = settings.CooldownDays.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            ConsentDailyLimitBox.Text = settings.DailyLimit.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            ConsentLimitsStatusText.Text = $"ค่าปัจจุบัน: ถามคนเดิมได้ทุก {settings.CooldownDays} วัน • ไม่เกิน {settings.DailyLimit} คนต่อวัน";
+        }
+        catch (Exception exception) { ConsentLimitsStatusText.Text = $"อ่านขีดจำกัด Opt-in ไม่สำเร็จ: {exception.Message}"; }
+    }
+    private async void SaveConsentLimits_Click(object sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(ConsentCooldownBox.Text.Trim(), out var cooldown) || !int.TryParse(ConsentDailyLimitBox.Text.Trim(), out var dailyLimit))
+        {
+            ConsentLimitsStatusText.Text = "กรุณากรอกจำนวนวันและจำนวนครั้งเป็นตัวเลข";
+            return;
+        }
+        try
+        {
+            await new ConsentRequestSettingsRepository(_databasePath).SetAsync(new TelegramControlStudio.Core.Domain.ConsentRequestSettings(cooldown, dailyLimit));
+            await LogAsync("ConsentRequestLimitsUpdated", $"CooldownDays={cooldown}, DailyLimit={dailyLimit}");
+            ConsentLimitsStatusText.Text = dailyLimit == 0
+                ? "บันทึกแล้ว • ตั้งเป็น 0 จึงไม่มีคำสั่งขอความยินยอมถูกส่งออกไป"
+                : $"บันทึกแล้ว • ถามคนเดิมได้ทุก {cooldown} วัน • ไม่เกิน {dailyLimit} คนต่อวัน";
+        }
+        catch (Exception exception) { ConsentLimitsStatusText.Text = $"บันทึกขีดจำกัดไม่สำเร็จ: {exception.Message}"; }
+    }
     private async Task LoadSafetyAsync()
     {
         try

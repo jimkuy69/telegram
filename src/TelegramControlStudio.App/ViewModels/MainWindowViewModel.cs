@@ -237,12 +237,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var repository = new ContactRepository(databasePath);
         ReplaceContacts(await repository.ListAsync(accountId, cancellationToken));
+        await ApplyConsentRequestStatesAsync(databasePath, accountId, cancellationToken);
     }
 
     public async Task SearchContactsAsync(string databasePath, long accountId, string? query, CancellationToken cancellationToken = default)
     {
         var repository = new ContactRepository(databasePath);
         ReplaceContacts(await repository.SearchAsync(accountId, query, cancellationToken));
+        await ApplyConsentRequestStatesAsync(databasePath, accountId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Overlays the request trail on the rows already on screen. It is a separate step because the
+    /// evidence lives in its own append-only table and a contact list must still load when it cannot be read.
+    /// </summary>
+    public async Task ApplyConsentRequestStatesAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)
+    {
+        var latest = await new ConsentRequestRepository(databasePath).LatestByContactAsync(accountId, cancellationToken);
+        foreach (var row in _allContactRows)
+        {
+            latest.TryGetValue(row.Id, out var request);
+            row.RequestState = ConsentRequestDisplay.DescribeLatestEvent(request?.Kind, request?.OccurredAt);
+        }
     }
 
     private void ReplaceContacts(IReadOnlyList<Contact> contacts)

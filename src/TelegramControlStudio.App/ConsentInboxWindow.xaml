@@ -1,0 +1,48 @@
+<Window x:Class="TelegramControlStudio.App.ConsentInboxWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Consent Inbox" Width="1020" Height="640" Background="{StaticResource WindowBg}" Foreground="{StaticResource TextPrimary}" WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style x:Key="Cell" TargetType="{x:Type TextBlock}">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+        </Style>
+    </Window.Resources>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="กล่องรับคำตอบเรื่องความยินยอม" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock x:Name="SummaryText" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+        </StackPanel>
+
+        <DockPanel Grid.Row="1" Margin="0,14,0,10">
+            <TextBlock Text="กรองตามสถานะ" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+            <ComboBox x:Name="KindBox" Width="220" Margin="12,0,0,0" HorizontalAlignment="Left" SelectionChanged="Filter_Changed" />
+            <Button Content="โหลดใหม่" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Right" Click="Refresh_Click" />
+        </DockPanel>
+
+        <DataGrid x:Name="EventsGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended"
+                  Background="#0D1A2D" Foreground="{StaticResource TextSecondary}" BorderBrush="{StaticResource Border}"
+                  RowBackground="#0D1A2D" AlternatingRowBackground="#10213A">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Telegram ID" Binding="{Binding TelegramUserId}" Width="120" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="ชื่อ" Binding="{Binding DisplayName}" Width="*" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="สถานะ" Binding="{Binding Kind}" Width="120" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="เวลา" Binding="{Binding OccurredAt}" Width="180" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="คำที่จับได้จากคำตอบ" Binding="{Binding MatchedKeyword}" Width="180" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="ที่มา" Binding="{Binding Source}" Width="130" ElementStyle="{StaticResource Cell}" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="3" Margin="0,12,0,0">
+            <TextBlock x:Name="StatusText" Foreground="{StaticResource InfoText}" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <StackPanel Orientation="Horizontal">
+                <Button Content="ขอยินยอมคนที่เลือก" Style="{StaticResource PrimaryButton}" Height="40" Padding="16,0" Click="AskAgain_Click" />
+                <Button Content="ปิด" Style="{StaticResource GhostButton}" Height="40" Margin="10,0,0,0" Click="Close_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

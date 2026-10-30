@@ -6,6 +6,7 @@ namespace TelegramControlStudio.App.ViewModels;
 public sealed class ContactRow : INotifyPropertyChanged
 {
     private bool _selected;
+    private string _requestState = ConsentRequestDisplay.DescribeLatestEvent(null, null);
 
     public ContactRow(bool selected, string name, long id, string username, ContactConsentState consentState)
     {
@@ -35,6 +36,18 @@ public sealed class ContactRow : INotifyPropertyChanged
     public ContactConsentState ConsentState { get; }
     public string Consent { get; }
     public string Initials { get; }
+
+    /// <summary>The last thing the request trail knows about this person, so an unanswered ask is visible in the list.</summary>
+    public string RequestState
+    {
+        get => _requestState;
+        set
+        {
+            if (_requestState == value) return;
+            _requestState = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RequestState)));
+        }
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

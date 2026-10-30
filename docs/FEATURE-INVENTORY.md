@@ -29,6 +29,20 @@ Accounts, TDLib authentication, groups/channels, member observation, contacts, t
 | Blocked-send audit | Activity log | `SendBlocked`, `KillSwitchBlocked`, `KillSwitchPaused`, `EmergencyStopEngaged`, `KillSwitchCleared`, `SendSafetyUpdated` |
 | Policy unit tests | `tests/TelegramControlStudio.Tests` | `SendSafetyPolicyTests`, `SendSafetyRepositoryTests`, runner/send-service safety cases |
 
+## IMPLEMENTED consent requests (opt-in)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Request plan before queueing | ขอยินยอม (Opt-in) window | shows askable/excluded recipients with a Thai reason each, plus the daily quota left and the cooldown, computed by the same gate the runner applies |
+| Request eligibility ladder | `ConsentRequestPolicy` | own phone number required, opt-out outranks consent, already-consented skipped, previously declined never re-asked, per-person cooldown (default 30 days), per-day quota (default 20, `0` disables asking) |
+| Queueing, not sending | Queue window | the plan becomes a `ConsentRequest` job whose items wait for confirmation; the auto runner sends with flood-wait, pause and history like any campaign |
+| Consent evidence | `consent_requests` table | append-only: kind, timestamp, message id, chat id, template id, body sha256, matched keyword, source. Chat text is never stored |
+| Reply watcher | inbound TDLib updates | affirmative reply in the chat the request was sent in sets `has_consent`; an opt-out phrase sets `is_opted_out` and always wins; work runs on a bounded pump off the receive loop |
+| Per-contact state and inbox | contacts grid column "การขอความยินยอม", กล่องคำตอบ Consent | shows the last event per contact and filters the trail by status |
+| Limits editor | Settings > การขอความยินยอม (Opt-in) | cooldown days and daily limit persisted in `app_settings`; invalid values fall back to the shipped defaults |
+| Sandbox UI check | `scripts/consent-ui-check.ps1` | drives the real app against a throwaway database copy with the kill switch engaged |
+| Tests | `ConsentRequestPolicyTests`, `ConsentRequestQueueServiceTests`, `ConsentRequestRepositoryTests`, `ConsentReplyUpdateParserTests`, `ConsentReplyPolicyTests`, `TdLibConsentReplyHandlerTests` | ladder, quota ceiling, evidence trail, reply parsing and auto-grant/opt-out |
+
 ## IMPLEMENTED web host (Phase 1)
 
 | Feature | Where | Notes |

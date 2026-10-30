@@ -118,6 +118,8 @@
                             <Button Style="{StaticResource NavButton}" Tag="&#xE8A5;" Content="เทมเพลตและมีเดีย" Click="TemplateEditor_Click" />
                             <Button Style="{StaticResource NavButton}" Tag="&#xE8B7;" Content="Media Library" Click="MediaLibrary_Click" />
                             <Button Style="{StaticResource NavButton}" Tag="&#xE7C3;" Content="Campaign Wizard" Click="CampaignWizard_Click" />
+                            <Button Style="{StaticResource NavButton}" Tag="&#xE768;" Content="ขอยินยอม (Opt-in)" Click="RequestConsent_Click" ToolTip="ส่งคำขอความยินยอมให้ผู้ติดต่อที่มีเบอร์ของเราและยังไม่มี Consent" />
+                            <Button Style="{StaticResource NavButton}" Tag="&#xE8A7;" Content="กล่องคำตอบ Consent" Click="ConsentInbox_Click" ToolTip="ดูประวัติคำขอและคำตอบ พร้อมอนุมัติ/ปฏิเสธอัตโนมัติ" />
                             <Button Style="{StaticResource NavButton}" Tag="&#xE71B;" Content="Invite Links" Click="InviteLinks_Click" />
                             <Button Style="{StaticResource NavButton}" Tag="&#xE823;" Content="Pending Requests" Click="PendingRequests_Click" />
 
@@ -304,6 +306,8 @@
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
+
+                                        <DataGridTextColumn Header="การขอความยินยอม" Binding="{Binding RequestState}" Width="170" ElementStyle="{StaticResource GridTextCell}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <TextBlock Text="ไม่พบรายชื่อในตัวกรองนี้" Foreground="{StaticResource TextMuted}"
@@ -381,6 +385,8 @@
 
                                         <Border Height="1" Background="{StaticResource Border}" Margin="0,14,0,14" />
 
+                                        <Button Content="ขอยินยอมคนที่เลือก" Style="{StaticResource PrimaryButton}" Click="RequestConsent_Click" Margin="0,0,0,8"
+                                                ToolTip="ตรวจแผนการขอความยินยอมก่อนเข้าคิว ยังไม่ส่งจนกว่าจะยืนยันในหน้าต่างคิวงาน" />
                                         <Button Content="ตั้งเป็น Consent" Style="{StaticResource SecondaryButton}" Click="SetConsent_Click" Margin="0,0,0,8" />
                                         <Button Content="ตั้งเป็น Opt-out" Style="{StaticResource SecondaryButton}" Click="SetOptOut_Click" Margin="0,0,0,8" />
                                         <Button Content="ลบที่เลือก (Soft Delete)" Style="{StaticResource DangerButton}" Click="DeleteSelectedContacts_Click" Margin="0,0,0,12" />
