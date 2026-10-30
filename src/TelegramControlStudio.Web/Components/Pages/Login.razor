@@ -64,6 +64,14 @@ else
             ถ้าปุ่มขึ้นว่า <span class="mono">Bot domain invalid</span> แปลว่ายังไม่ได้ตั้งโดเมนให้ตรงกับ
             <span class="mono">@_host</span> — เปิด <strong>@@BotFather</strong> → <span class="mono">/setdomain</span> → พิมพ์ <span class="mono">@_host</span> แล้วรีเฟรชหน้านี้
         </p>
+        <p class="muted small-note">
+            ทางเลือกที่ไม่ต้องใช้ปุ่ม: พิมพ์ <span class="mono">/login</span> ในแชทบอท
+            @if (!string.IsNullOrWhiteSpace(_botUsername))
+            {
+                <span>— <a href="https://t.me/@_botUsername" target="_blank" rel="noopener">@@@_botUsername</a></span>
+            }
+            แล้วบอทจะส่งลิงก์ใช้ครั้งเดียว (หมดอายุ 5 นาที) กลับมา
+        </p>
         <p class="muted small-note"><a href="/login?setup=reset">เปลี่ยน bot token</a></p>
     </div>
 }
@@ -98,6 +106,7 @@ else
         "botapi" => "ติดต่อ Telegram ไม่สำเร็จ — ตรวจ token แล้วลองใหม่",
         "already" => "มี bot token ที่ใช้งานได้อยู่แล้ว — ถ้าต้องการเปลี่ยน ใช้ลิงก์ «เปลี่ยน bot token» ด้านล่าง",
         "previous" => "token เดิมไม่ถูกต้อง — ต้องกรอก token เดิมที่ระบบเก็บไว้เพื่อยืนยันตัวตน",
+        "link" => "ลิงก์เข้าสู่ระบบไม่ถูกต้อง ใช้ไปแล้ว หรือหมดอายุ — พิมพ์ /login ในแชทบอทเพื่อขอลิงก์ใหม่",
         _ => Setup == "ok" ? "บันทึก token แล้ว — ล็อกอินด้วย Telegram ได้เลย"
             : Invited == "1" ? "ลิงก์เชิญถูกต้อง — ล็อกอินเพื่อเข้าระบบ"
             : Bye == "1" ? "ออกจากระบบแล้ว"

@@ -176,19 +176,26 @@ app.MapGet("/auth/telegram", async (HttpContext context, StudioHost host) =>
 
     await users.TouchLoginAsync(telegramUserId, firstName, lastName, username, now, context.RequestAborted);
 
-    var claims = new List<Claim>
-    {
-        new(ClaimTypes.NameIdentifier, telegramUserId.ToString()),
-        new(ClaimTypes.Name, user.DisplayName),
-        new(ClaimTypes.Role, user.Role.ToString()),
-        new("tcs:username", username ?? string.Empty)
-    };
-    var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
-    await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties
-    {
-        IsPersistent = true,
-        ExpiresUtc = now.AddHours(24)
-    });
+    await SignInAsync(context, user, now);
+
+    context.Response.Cookies.Delete("tcs_invite");
+    return Results.Redirect(user.Role == AppUserRole.Owner ? "/" : "/me");
+});
+
+app.MapGet("/auth/bot/{code}", async (string code, HttpContext context, StudioHost host) =>
+{
+    var telegramUserId = await new BotLoginCodeRepository(host.DatabasePath)
+        .ConsumeAsync(code, DateTimeOffset.UtcNow, context.RequestAborted);
+    if (telegramUserId is null) return Results.Redirect("/login?error=link");
+
+    var users = new AppUserRepository(host.DatabasePath);
+    var user = await users.GetAsync(telegramUserId.Value, context.RequestAborted);
+    if (user is null) return Results.Redirect("/login?error=link");
+    if (user.IsBlocked) return Results.Redirect("/login?error=blocked");
+
+    var now = DateTimeOffset.UtcNow;
+    await users.TouchLoginAsync(user.TelegramUserId, user.FirstName, user.LastName, user.Username, now, context.RequestAborted);
+    await SignInAsync(context, user, now);
 
     context.Response.Cookies.Delete("tcs_invite");
     return Results.Redirect(user.Role == AppUserRole.Owner ? "/" : "/me");
@@ -254,4 +261,21 @@ static async Task<bool> IsTokenAcceptedAsync(TelegramBotApiClient client, string
     {
         return false;
     }
+}
+
+static async Task SignInAsync(HttpContext context, AppUser user, DateTimeOffset now)
+{
+    var claims = new List<Claim>
+    {
+        new(ClaimTypes.NameIdentifier, user.TelegramUserId.ToString()),
+        new(ClaimTypes.Name, user.DisplayName),
+        new(ClaimTypes.Role, user.Role.ToString()),
+        new("tcs:username", user.Username ?? string.Empty)
+    };
+    var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
+    await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties
+    {
+        IsPersistent = true,
+        ExpiresUtc = now.AddHours(24)
+    });
 }

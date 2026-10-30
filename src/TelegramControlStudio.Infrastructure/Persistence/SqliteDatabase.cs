@@ -53,12 +53,16 @@ public sealed class SqliteDatabase
             CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, role TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', created_by INTEGER, created_at TEXT NOT NULL, expires_at TEXT, used_at TEXT, used_by INTEGER, is_revoked INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS app_secrets (name TEXT PRIMARY KEY, protected_value BLOB NOT NULL, updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS bot_login_codes (code_hash TEXT PRIMARY KEY, telegram_user_id INTEGER NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, used_at TEXT);
+            CREATE INDEX IF NOT EXISTS ix_bot_login_codes_user ON bot_login_codes(telegram_user_id, expires_at);
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(1, CURRENT_TIMESTAMP);
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(2, CURRENT_TIMESTAMP);
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(3, CURRENT_TIMESTAMP);
+            INSERT OR IGNORE INTO schema_migrations(version, applied_at)
+            VALUES(4, CURRENT_TIMESTAMP);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
         await EnsureColumnAsync(connection, "jobs", "message_text", "TEXT NOT NULL DEFAULT ''", cancellationToken);

@@ -73,6 +73,7 @@ or use the `http` launch profile (same URL) from an IDE.
 | ตั้งค่า | test mode, allowlist, kill switch, account list, bot commands, machine info (owner) |
 
 - The host is bound to localhost and requires login: Telegram Login Widget via the owner's own bot, verified server-side (`TelegramLoginVerifier`), then an HttpOnly `tcs_auth` cookie. Everyone else joins through a single-use invite link (`/invite/{code}`).
+- Widget-free login: send `/login` (or `/start`) to the bot and it replies with a single-use `/auth/bot/{code}` link that expires in 5 minutes. Only the SHA-256 of a code is stored, so a database copy cannot be replayed. Use this when the bot has no `/setdomain` yet, or when the widget shows `Bot domain invalid`.
 - The first successful login on an empty `app_users` table becomes **Owner**; all other accounts are **Friend** until an owner invite grants otherwise.
 - Bot token setup: create a bot with @BotFather, run `/setdomain <host>`, then paste the token on `/login`. The token is stored with Windows DPAPI in `app_secrets`; never commit it.
 - Token rotation: revoke with @BotFather `/revoke`, then open `/login?setup=reset`. A stored token that still works cannot be replaced (the page answers `already`); once it fails against Telegram, replacing it needs the previous token as proof — or no accounts at all.

@@ -26,6 +26,8 @@ public sealed class BotCommandRouter(string databasePath)
 
         var users = new AppUserRepository(databasePath);
         var user = await users.GetAsync(message.FromId, cancellationToken);
+        if (user is null && command is "/login" or "/start" && await users.CountAsync(cancellationToken) == 0)
+            user = await BootstrapOwnerAsync(message, users, cancellationToken);
         if (user is null)
             return $"""
                 บัญชีนี้ยังไม่ได้รับเชิญ
@@ -48,10 +50,13 @@ public sealed class BotCommandRouter(string databasePath)
             case "/help":
                 return """
                     Telegram Control Studio (เพื่อน)
+                    /login — ขอลิงก์เข้าสู่ระบบเว็บ
                     /me — ดูสถานะความยินยอมของคุณ
                     /optin — ให้ความยินยอมรับข้อความ
                     /optout — ถอนความยินยอม (หยุดรับข้อความ)
                     """;
+            case "/login":
+                return await CreateLoginLinkAsync(user, cancellationToken);
             case "/me":
                 return await DescribeSelfAsync(user, cancellationToken);
             case "/optin":
@@ -80,11 +85,14 @@ public sealed class BotCommandRouter(string databasePath)
                     /kill on|off — เปิด/ปลดหยุดฉุกเฉิน
                     /invite — สร้างรหัสเชิญเพื่อน
                     /users — รายชื่อผู้ใช้เว็บ
+                    /login — ขอลิงก์เข้าสู่ระบบเว็บ
                     /me — ดูสถานะความยินยอมของคุณเอง
                     /whoami — ข้อมูลบัญชีคุณ
                     """;
             case "/whoami":
                 return $"คุณคือ {user.DisplayName} (id {user.TelegramUserId})\nบทบาท: {user.Role}";
+            case "/login":
+                return await CreateLoginLinkAsync(user, cancellationToken);
             case "/status":
                 return await DescribeStatusAsync(cancellationToken);
             case "/jobs":
@@ -224,6 +232,33 @@ public sealed class BotCommandRouter(string databasePath)
             รหัส: {invite.Code}
             ลิงก์: {root}/invite/{invite.Code}
             """;
+    }
+
+    private async Task<string> CreateLoginLinkAsync(AppUser user, CancellationToken cancellationToken)
+    {
+        var code = await new BotLoginCodeRepository(databasePath).CreateAsync(user.TelegramUserId, cancellationToken: cancellationToken);
+        var baseUrl = await new AppSettingsRepository(databasePath).GetAsync("public_base_url", cancellationToken);
+        var root = string.IsNullOrWhiteSpace(baseUrl) ? FallbackPublicBaseUrl : baseUrl.TrimEnd('/');
+        return $"""
+            ลิงก์เข้าสู่ระบบ (ใช้ได้ครั้งเดียว, หมดอายุใน 5 นาที)
+            {root}/auth/bot/{code}
+            """;
+    }
+
+    private static async Task<AppUser> BootstrapOwnerAsync(BotMessage message, AppUserRepository users, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var owner = new AppUser(
+            message.FromId,
+            message.FromFirstName,
+            string.Empty,
+            message.FromUsername,
+            AppUserRole.Owner,
+            false,
+            now,
+            now);
+        await users.UpsertAsync(owner, cancellationToken);
+        return owner;
     }
 
     private async Task<string> DescribeUsersAsync(CancellationToken cancellationToken)
