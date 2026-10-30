@@ -113,6 +113,33 @@ public sealed class TdLibMessageSendServiceTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
 
+    [Fact]
+    public async Task ConsentRequestIsSentToANonConsentedContactAndRecordedAsEvidence()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-consent-send-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            await DisableTestModeAsync(path);
+            var client = new FakeClient("{\"@type\":\"message\",\"id\":987,\"chat_id\":6001}");
+            var accountId = await new AccountRepository(path).CreateAsync("OptIn", "+66000000094");
+            var recipient = new Contact(accountId, 322, "A", "B", null, "+66000000322", false, false, DateTimeOffset.UtcNow);
+
+            await new TdLibMessageSendService(path).SendConsentRequestAsync(client, recipient, "ขอความยินยอมได้ไหม", 7);
+
+            Assert.Equal("sendMessage", client.Function);
+            var request = Assert.Single(await new ConsentRequestRepository(path).ListAsync(accountId));
+            Assert.Equal(ConsentRequestKinds.Requested, request.Kind);
+            Assert.Equal(322, request.TelegramUserId);
+            Assert.Equal(987, request.MessageId);
+            Assert.Equal(6001, request.ChatId);
+            Assert.Equal(7, request.TemplateId);
+            Assert.Equal(ConsentRequestSources.JobRunner, request.Source);
+            Assert.False(string.IsNullOrWhiteSpace(request.BodySha256));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
     private static Task DisableTestModeAsync(string path) =>
         new SendSafetyRepository(path).SaveAsync(new SendSafetySettings(false, new HashSet<long>(), false, null));
 

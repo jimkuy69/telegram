@@ -110,7 +110,7 @@ public partial class SettingsWindow : Window
             var hash = loader.ComputeSha256(_nativeDirectory);
             var repository = new AccountRepository(_databasePath);
             var sessionDirectory = SessionPathPolicy.GetAccountSessionDirectory(_accountId);
-            var bootstrapper = new TdLibSessionBootstrapper(app.TdLibClients, repository);
+            var bootstrapper = new TdLibSessionBootstrapper(app.TdLibClients, repository, app.ConsentReplySinkFactory);
             await bootstrapper.ConnectAsync(_accountId, _nativeDirectory, hash, configuration.Value.ApiId, configuration.Value.ApiHash, sessionDirectory);
             ApiHashBox.Clear();
             StatusText.Text = $"Native TDLib เชื่อมต่อแล้ว\nSHA-256: {hash}";

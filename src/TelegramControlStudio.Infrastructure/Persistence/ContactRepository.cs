@@ -136,6 +136,35 @@ public sealed class ContactRepository(string databasePath)
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
+    /// <summary>
+    /// Applies the answer a person gave. Only an existing, not-deleted contact row can change, so a
+    /// message from a stranger can never invent a recipient; false is returned when nothing moved.
+    /// </summary>
+    public async Task<bool> SetConsentAsync(
+        long accountId,
+        long telegramUserId,
+        bool hasConsent,
+        bool isOptedOut,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE contacts
+            SET has_consent = $has_consent, is_opted_out = $is_opted_out, updated_at = $updated_at
+            WHERE account_id = $account_id
+              AND telegram_user_id = $telegram_user_id
+              AND deleted_at IS NULL;
+            """;
+        command.Parameters.AddWithValue("$has_consent", hasConsent ? 1 : 0);
+        command.Parameters.AddWithValue("$is_opted_out", isOptedOut ? 1 : 0);
+        command.Parameters.AddWithValue("$updated_at", DateTimeOffset.UtcNow.ToString("O"));
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$telegram_user_id", telegramUserId);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
+
     public async Task<IReadOnlyList<Contact>> SearchAsync(long accountId, string? query, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);

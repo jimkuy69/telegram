@@ -18,6 +18,16 @@ public enum SendSafetyVerdict
     Block
 }
 
+/// <summary>
+/// Why a message is going out. A campaign message may only follow consent; a consent request is
+/// the one message that precedes it and is policed by <see cref="ConsentRequestPolicy"/> instead.
+/// </summary>
+public enum SendPurpose
+{
+    Campaign,
+    ConsentRequest
+}
+
 public sealed record SendSafetyDecision(SendSafetyVerdict Verdict, string ReasonCode)
 {
     public bool CanSend => Verdict == SendSafetyVerdict.Allow;
@@ -44,6 +54,25 @@ public static class SendSafetyPolicy
         if (!hasConsent || isOptedOut)
             return new(SendSafetyVerdict.Skip, ConsentReason);
         if (settings.TestModeEnabled && !settings.AllowlistUserIds.Contains(telegramUserId))
+            return new(SendSafetyVerdict.Skip, TestModeReason);
+        return new(SendSafetyVerdict.Allow, AllowedReason);
+    }
+
+    /// <summary>
+    /// The gate for an opt-in request. The kill switch and the test-mode allowlist still apply,
+    /// but the consent requirement is replaced by the narrower request rules.
+    /// </summary>
+    public static SendSafetyDecision EvaluateConsentRequest(
+        SendSafetySettings settings,
+        ConsentRequestEligibility eligibility)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        if (settings.KillSwitchEngaged)
+            return new(SendSafetyVerdict.Block, KillSwitchReason);
+        var requestDecision = ConsentRequestPolicy.Evaluate(eligibility);
+        if (!requestDecision.CanSend)
+            return requestDecision;
+        if (settings.TestModeEnabled && !settings.AllowlistUserIds.Contains(eligibility.TelegramUserId))
             return new(SendSafetyVerdict.Skip, TestModeReason);
         return new(SendSafetyVerdict.Allow, AllowedReason);
     }

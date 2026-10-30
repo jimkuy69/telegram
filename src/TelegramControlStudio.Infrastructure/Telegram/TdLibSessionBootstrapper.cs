@@ -8,7 +8,15 @@ namespace TelegramControlStudio.Infrastructure.Telegram;
 /// Attaches one verified native TDLib session to one local account.
 /// Secrets are accepted in memory only and are never logged or persisted here.
 /// </summary>
-public sealed class TdLibSessionBootstrapper(TdLibAccountClientRegistry registry, AccountRepository accounts)
+/// <param name="inboundUpdateSinkFactory">
+/// Builds the callback that receives every update the authorization router does not recognise —
+/// consent replies arrive this way. It is invoked on the TDLib receive thread, so it must return
+/// immediately.
+/// </param>
+public sealed class TdLibSessionBootstrapper(
+    TdLibAccountClientRegistry registry,
+    AccountRepository accounts,
+    Func<long, Action<string>?>? inboundUpdateSinkFactory = null)
 {
     private readonly System.Collections.Concurrent.ConcurrentDictionary<long, AuthorizationStateMachine> _stateMachines = new();
 
@@ -40,7 +48,8 @@ public sealed class TdLibSessionBootstrapper(TdLibAccountClientRegistry registry
 
         try
         {
-            session = await TdLibNativeSession.CreateAsync(nativeDirectory, expectedSha256, parameters, router, null, cancellationToken);
+            var inboundSink = inboundUpdateSinkFactory?.Invoke(accountId);
+            session = await TdLibNativeSession.CreateAsync(nativeDirectory, expectedSha256, parameters, router, inboundSink, cancellationToken);
 
             if (!registry.Register(accountId, session))
             {

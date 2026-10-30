@@ -1,4 +1,5 @@
 using TelegramControlStudio.Core.Domain;
+using TelegramControlStudio.Core.Operations;
 using TelegramControlStudio.Core.Safety;
 using TelegramControlStudio.Core.Telegram;
 using TelegramControlStudio.Infrastructure.Persistence;
@@ -15,15 +16,24 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
         var text = job.MessageText;
         if (string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("JOB_MESSAGE_EMPTY");
         if (!string.IsNullOrWhiteSpace(job.LinkUrl)) text = $"{text}\n\n{job.LinkUrl}";
-        return await RunAsync(client, jobId, accountId, text, confirmed, interval, cancellationToken);
+        return await RunAsync(client, jobId, accountId, text, confirmed, interval, JobTargetTypes.PurposeOf(job.TargetType), cancellationToken);
     }
 
-    public async Task<JobStatus> RunAsync(ITdLibClient client, Guid jobId, long accountId, string text, bool confirmed, TimeSpan interval, CancellationToken cancellationToken = default)
+    public async Task<JobStatus> RunAsync(
+        ITdLibClient client,
+        Guid jobId,
+        long accountId,
+        string text,
+        bool confirmed,
+        TimeSpan interval,
+        SendPurpose purpose = SendPurpose.Campaign,
+        CancellationToken cancellationToken = default)
     {
         if (!confirmed) throw new InvalidOperationException("CONFIRMATION_REQUIRED");
         var jobRepository = new JobRepository(databasePath);
         var itemRepository = new JobItemRepository(databasePath);
         var safetyRepository = new SendSafetyRepository(databasePath);
+        var sender = new TdLibMessageSendService(databasePath);
         var emergencyToken = EmergencyStopSignal.Token;
         using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, emergencyToken);
         var token = linkedCancellation.Token;
@@ -58,8 +68,12 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
                     continue;
                 }
 
+                // An opt-in request replaces the campaign gate with the request gate; both are
+                // evaluated before transmission so a blocked recipient is skipped without a network call.
                 safety = await safetyRepository.GetAsync(token);
-                var decision = SendSafetyPolicy.Evaluate(safety, contact.TelegramUserId, contact.HasConsent, contact.IsOptedOut);
+                var decision = purpose == SendPurpose.ConsentRequest
+                    ? await EvaluateConsentRequestAsync(contact, safety, token)
+                    : SendSafetyPolicy.Evaluate(safety, contact.TelegramUserId, contact.HasConsent, contact.IsOptedOut);
                 if (!decision.CanSend)
                 {
                     await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Skipped", decision.ReasonCode, cancellationToken: token);
@@ -73,7 +87,14 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
 
                 try
                 {
-                    await new TdLibMessageSendService(databasePath).SendTextAsync(client, contact, text, true, token);
+                    if (purpose == SendPurpose.ConsentRequest)
+                    {
+                        await sender.SendConsentRequestAsync(client, contact, text, JobTargetTypes.TemplateIdOf(liveJob?.TargetType), token);
+                    }
+                    else
+                    {
+                        await sender.SendTextAsync(client, contact, text, true, token);
+                    }
                     await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Completed", cancellationToken: token);
                 }
                 catch (SendSafetyBlockedException blocked) when (blocked.Verdict == SendSafetyVerdict.Block)
@@ -131,6 +152,24 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
         var finalStatus = remaining.Any(item => item.Status == "Failed") ? JobStatus.PartiallyCompleted : JobStatus.Completed;
         await jobRepository.UpdateStatusAsync(jobId, finalStatus, cancellationToken: token);
         return finalStatus;
+    }
+
+    private async Task<SendSafetyDecision> EvaluateConsentRequestAsync(Contact contact, SendSafetySettings safety, CancellationToken token)
+    {
+        var limits = await new ConsentRequestSettingsRepository(databasePath).GetAsync(token);
+        var requests = new ConsentRequestRepository(databasePath);
+        var now = DateTimeOffset.UtcNow;
+        var eligibility = new ConsentRequestEligibility(
+            contact.TelegramUserId,
+            !string.IsNullOrWhiteSpace(contact.PhoneNumber),
+            contact.HasConsent,
+            contact.IsOptedOut,
+            await requests.LastRequestedAtAsync(contact.AccountId, contact.TelegramUserId, token),
+            await requests.CountRequestedSinceAsync(contact.AccountId, now.AddDays(-1), token),
+            limits.CooldownDays,
+            limits.DailyLimit,
+            now);
+        return SendSafetyPolicy.EvaluateConsentRequest(safety, eligibility);
     }
 
     private async Task PauseForKillSwitchAsync(JobRepository jobRepository, long accountId, Guid jobId)

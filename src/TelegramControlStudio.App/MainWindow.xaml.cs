@@ -761,7 +761,7 @@ public partial class MainWindow : Window
 
             var repository = new AccountRepository(databasePath);
             var sessionDirectory = SessionPathPolicy.GetAccountSessionDirectory(account.Id);
-            var bootstrapper = new TdLibSessionBootstrapper(app.TdLibClients, repository);
+            var bootstrapper = new TdLibSessionBootstrapper(app.TdLibClients, repository, app.ConsentReplySinkFactory);
             await bootstrapper.ConnectAsync(account.Id, native.Value.Directory, native.Value.Sha256, configuration.Value.ApiId, configuration.Value.ApiHash, sessionDirectory);
 
             if (bootstrapper.TryGetStateMachine(account.Id, out var machine) && machine is not null)

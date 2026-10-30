@@ -16,6 +16,7 @@ public partial class App : Application
     private StudioHost? _host;
     private readonly ConcurrentDictionary<long, TdLibSessionLock> _sessionLocks = new();
     private readonly JobInFlightGate _jobGate = new();
+    private ConsentReplyDispatcher? _consentReplies;
     private CancellationTokenSource? _autoRunCancellation;
     private Task? _autoRunLoop;
 
@@ -25,6 +26,18 @@ public partial class App : Application
 
     /// <summary>Shared by the queue window, the campaign wizard, and the auto runner.</summary>
     public JobInFlightGate JobGate => _jobGate;
+
+    /// <summary>
+    /// Gives every session the callback that turns inbound Telegram messages into consent answers.
+    /// It is one dispatcher for the whole app, so reconnecting an account cannot stack pumps.
+    /// </summary>
+    public Func<long, Action<string>?> ConsentReplySinkFactory =>
+        accountId => (_consentReplies ??= new ConsentReplyDispatcher(Host.DatabasePath)).SinkFor(accountId);
+
+    public async Task StopConsentReplyWatchAsync(long accountId)
+    {
+        if (_consentReplies is not null) await _consentReplies.StopAsync(accountId);
+    }
 
     /// <summary>
     /// Holds the cross-process TDLib session lock for an account so two instances of
@@ -69,6 +82,7 @@ public partial class App : Application
         try
         {
             var removed = await Host.TdLibClients.RemoveAsync(accountId);
+            await StopConsentReplyWatchAsync(accountId);
             ReleaseSessionLock(accountId);
             return removed;
         }
@@ -135,6 +149,7 @@ public partial class App : Application
             // The loop reports shutdown races through the awaited task; exit must continue.
         }
         _autoRunCancellation?.Dispose();
+        _consentReplies?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _host?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         foreach (var sessionLock in _sessionLocks.Values)
             sessionLock.Dispose();

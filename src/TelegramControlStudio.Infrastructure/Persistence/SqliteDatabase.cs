@@ -44,6 +44,9 @@ public sealed class SqliteDatabase
             CREATE UNIQUE INDEX IF NOT EXISTS ux_invite_links_account_url ON invite_links(account_id, invite_url);
             CREATE TABLE IF NOT EXISTS join_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, chat_id INTEGER NOT NULL, telegram_user_id INTEGER NOT NULL, status TEXT NOT NULL, requested_at TEXT NOT NULL, decision_at TEXT, decision_reason TEXT, FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE UNIQUE INDEX IF NOT EXISTS ux_join_requests_account_chat_user ON join_requests(account_id, chat_id, telegram_user_id);
+            CREATE TABLE IF NOT EXISTS consent_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, telegram_user_id INTEGER NOT NULL, kind TEXT NOT NULL, occurred_at TEXT NOT NULL, message_id INTEGER, chat_id INTEGER, template_id INTEGER, body_sha256 TEXT, matched_keyword TEXT, source TEXT NOT NULL, FOREIGN KEY(account_id) REFERENCES accounts(id));
+            CREATE INDEX IF NOT EXISTS ix_consent_requests_account_user_time ON consent_requests(account_id, telegram_user_id, occurred_at);
+            CREATE INDEX IF NOT EXISTS ix_consent_requests_account_kind_time ON consent_requests(account_id, kind, occurred_at);
             CREATE TABLE IF NOT EXISTS template_media (template_id INTEGER NOT NULL, media_file_id INTEGER NOT NULL, account_id INTEGER NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(template_id, media_file_id), FOREIGN KEY(template_id) REFERENCES message_templates(id), FOREIGN KEY(media_file_id) REFERENCES media_files(id), FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE INDEX IF NOT EXISTS ix_template_media_order ON template_media(template_id, sort_order);
             CREATE TABLE IF NOT EXISTS send_safety_settings (id INTEGER PRIMARY KEY CHECK (id = 1), test_mode_enabled INTEGER NOT NULL DEFAULT 1, allowlist_user_ids TEXT NOT NULL DEFAULT '', kill_switch INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);
@@ -59,6 +62,8 @@ public sealed class SqliteDatabase
             VALUES(2, CURRENT_TIMESTAMP);
             INSERT OR IGNORE INTO schema_migrations(version, applied_at)
             VALUES(3, CURRENT_TIMESTAMP);
+            INSERT OR IGNORE INTO schema_migrations(version, applied_at)
+            VALUES(4, CURRENT_TIMESTAMP);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
         await EnsureColumnAsync(connection, "jobs", "message_text", "TEXT NOT NULL DEFAULT ''", cancellationToken);

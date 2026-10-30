@@ -169,6 +169,132 @@ public sealed class TdLibCampaignJobRunnerTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
 
+    [Fact]
+    public async Task ConsentRequestJobSendsOnlyToReachableNonConsentedContactsAndRecordsEvidence()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-job-runner-consent-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            await ConfigureSafetyAsync(path, testMode: false);
+            var accountId = await new AccountRepository(path).CreateAsync("Consent", "+66000000108");
+            await new ContactRepository(path).UpsertManyAsync([
+                new Contact(accountId, 40, "New", "Number", null, "+66000000040", false, false, DateTimeOffset.UtcNow),
+                new Contact(accountId, 41, "No", "Phone", null, null, false, false, DateTimeOffset.UtcNow),
+                new Contact(accountId, 42, "Already", "Yes", null, "+66000000042", true, false, DateTimeOffset.UtcNow),
+                new Contact(accountId, 43, "Said", "Stop", null, "+66000000043", false, true, DateTimeOffset.UtcNow)]);
+            var jobId = await new JobRepository(path).CreateAsync(accountId, "ConsentRequest:7", 4, "runner-consent", "ขอความยินยอมได้ไหม");
+            await new JobItemRepository(path).CreateAsync(new[] { 40L, 41L, 42L, 43L }.Select(userId =>
+                new JobItem(jobId, accountId, userId, "Queued", 0, $"consent-item-{userId}", null, DateTimeOffset.UtcNow)));
+            var client = new FakeClient("{\"@type\":\"message\",\"id\":987}");
+
+            var result = await new TdLibCampaignJobRunner(path).RunAsync(client, jobId, accountId, true, TimeSpan.Zero);
+
+            var items = await new JobItemRepository(path).ListAsync(jobId);
+            var evidence = await new ConsentRequestRepository(path).ListAsync(accountId);
+            Assert.Equal(JobStatus.Completed, result);
+            Assert.Equal(1, client.CallCount);
+            Assert.Equal("Completed", items.Single(item => item.TargetId == 40).Status);
+            Assert.Equal(ConsentRequestPolicy.NoOwnNumberReason, items.Single(item => item.TargetId == 41).LastError);
+            Assert.Equal(ConsentRequestPolicy.AlreadyConsentedReason, items.Single(item => item.TargetId == 42).LastError);
+            Assert.Equal(ConsentRequestPolicy.OptedOutReason, items.Single(item => item.TargetId == 43).LastError);
+            var request = Assert.Single(evidence);
+            Assert.Equal(ConsentRequestKinds.Requested, request.Kind);
+            Assert.Equal(40, request.TelegramUserId);
+            Assert.Equal(987, request.MessageId);
+            Assert.Equal(7, request.TemplateId);
+            Assert.Equal(ConsentRequestSources.JobRunner, request.Source);
+            Assert.False(string.IsNullOrWhiteSpace(request.BodySha256));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task ConsentRequestJobSkipsContactsStillInsideTheCooldown()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-job-runner-consent-cooldown-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            await ConfigureSafetyAsync(path, testMode: false);
+            var accountId = await new AccountRepository(path).CreateAsync("Cooldown", "+66000000109");
+            await new ContactRepository(path).UpsertManyAsync([
+                new Contact(accountId, 44, "Asked", "Recently", null, "+66000000044", false, false, DateTimeOffset.UtcNow)]);
+            await new ConsentRequestRepository(path).AppendAsync(new ConsentRequest(
+                0, accountId, 44, ConsentRequestKinds.Requested, DateTimeOffset.UtcNow.AddDays(-5),
+                null, null, null, "f".PadLeft(64, '0'), null, ConsentRequestSources.JobRunner));
+            var jobId = await new JobRepository(path).CreateAsync(accountId, "ConsentRequest", 1, "runner-cooldown", "ขอความยินยอมได้ไหม");
+            await new JobItemRepository(path).CreateAsync([
+                new JobItem(jobId, accountId, 44, "Queued", 0, "consent-item-44", null, DateTimeOffset.UtcNow)]);
+            var client = new FakeClient();
+
+            var result = await new TdLibCampaignJobRunner(path).RunAsync(client, jobId, accountId, true, TimeSpan.Zero);
+
+            var item = (await new JobItemRepository(path).ListAsync(jobId)).Single();
+            Assert.Equal(JobStatus.Completed, result);
+            Assert.Equal("Skipped", item.Status);
+            Assert.Equal(ConsentRequestPolicy.CooldownReason, item.LastError);
+            Assert.Equal(0, client.CallCount);
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task ConsentRequestJobStopsWhenTheDailyQuotaIsUsedUp()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-job-runner-consent-quota-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            await ConfigureSafetyAsync(path, testMode: false);
+            await new ConsentRequestSettingsRepository(path).SetAsync(new ConsentRequestSettings(30, 1));
+            var accountId = await new AccountRepository(path).CreateAsync("Quota", "+66000000110");
+            await new ContactRepository(path).UpsertManyAsync([
+                new Contact(accountId, 45, "First", "", null, "+66000000045", false, false, DateTimeOffset.UtcNow),
+                new Contact(accountId, 46, "Second", "", null, "+66000000046", false, false, DateTimeOffset.UtcNow)]);
+            var jobId = await new JobRepository(path).CreateAsync(accountId, "ConsentRequest", 2, "runner-quota", "ขอความยินยอมได้ไหม");
+            await new JobItemRepository(path).CreateAsync(new[] { 45L, 46L }.Select(userId =>
+                new JobItem(jobId, accountId, userId, "Queued", 0, $"consent-item-{userId}", null, DateTimeOffset.UtcNow)));
+            var client = new FakeClient();
+
+            var result = await new TdLibCampaignJobRunner(path).RunAsync(client, jobId, accountId, true, TimeSpan.Zero);
+
+            var items = await new JobItemRepository(path).ListAsync(jobId);
+            Assert.Equal(JobStatus.Completed, result);
+            Assert.Equal(1, client.CallCount);
+            Assert.Equal("Completed", items.Single(item => item.TargetId == 45).Status);
+            Assert.Equal("Skipped", items.Single(item => item.TargetId == 46).Status);
+            Assert.Equal(ConsentRequestPolicy.DailyLimitReason, items.Single(item => item.TargetId == 46).LastError);
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task ConsentRequestJobIsBlockedByTheKillSwitchLikeAnyOtherJob()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-job-runner-consent-kill-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            await ConfigureSafetyAsync(path, testMode: false);
+            await new SendSafetyRepository(path).SetKillSwitchAsync(true);
+            var accountId = await new AccountRepository(path).CreateAsync("ConsentKill", "+66000000111");
+            await new ContactRepository(path).UpsertManyAsync([
+                new Contact(accountId, 47, "New", "", null, "+66000000047", false, false, DateTimeOffset.UtcNow)]);
+            var jobId = await new JobRepository(path).CreateAsync(accountId, "ConsentRequest", 1, "runner-consent-kill", "ขอความยินยอมได้ไหม");
+            await new JobItemRepository(path).CreateAsync([
+                new JobItem(jobId, accountId, 47, "Queued", 0, "consent-item-47", null, DateTimeOffset.UtcNow)]);
+            var client = new FakeClient();
+
+            var result = await new TdLibCampaignJobRunner(path).RunAsync(client, jobId, accountId, true, TimeSpan.Zero);
+
+            Assert.Equal(JobStatus.Paused, result);
+            Assert.Equal(0, client.CallCount);
+            Assert.Empty(await new ConsentRequestRepository(path).ListAsync(accountId));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
     private static Task ConfigureSafetyAsync(string path, bool testMode, params long[] allowlist) =>
         new SendSafetyRepository(path).SaveAsync(new SendSafetySettings(testMode, allowlist.ToHashSet(), false, null));
 
