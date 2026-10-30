@@ -37,6 +37,9 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
     });
 builder.Services.AddAuthorization();
+// The Bot API carries the token in the request path, so the default Information-level
+// HttpClient logging would print the whole token to every log sink.
+builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 builder.Services.AddHttpClient<TelegramBotApiClient>(client => client.Timeout = TimeSpan.FromSeconds(60));
 builder.Services.AddHostedService<BotPollingService>();
 
@@ -85,27 +88,40 @@ app.MapPost("/setup/bot", async (HttpContext context, StudioHost host) =>
     await context.RequestServices.GetRequiredService<IAntiforgery>().ValidateRequestAsync(context);
     var form = await context.Request.ReadFormAsync(context.RequestAborted);
     var token = form["token"].ToString().Trim();
-
-    if (await BotSecrets.GetTokenAsync(host.DatabasePath, context.RequestAborted) is not null)
-        return Results.Redirect("/login?error=already");
+    var previousToken = form["previous_token"].ToString().Trim();
 
     if (token.Length < 20 || !token.Contains(':'))
         return Results.Redirect("/login?error=token");
 
+    var client = context.RequestServices.GetRequiredService<TelegramBotApiClient>();
     TelegramControlStudio.Infrastructure.Telegram.BotIdentity identity;
     try
     {
-        identity = await context.RequestServices.GetRequiredService<TelegramBotApiClient>().GetMeAsync(token, context.RequestAborted);
+        identity = await client.GetMeAsync(token, context.RequestAborted);
     }
     catch (Exception)
     {
         return Results.Redirect("/login?error=botapi");
     }
 
+    var storedToken = await BotSecrets.GetTokenAsync(host.DatabasePath, context.RequestAborted);
+    var storedTokenAccepted = storedToken is not null && await IsTokenAcceptedAsync(client, storedToken, context.RequestAborted);
+    var hasUsers = await new AppUserRepository(host.DatabasePath).CountAsync(context.RequestAborted) > 0;
+
+    switch (BotTokenSetupPolicy.Decide(storedToken, token, previousToken, storedTokenAccepted, hasUsers))
+    {
+        case BotTokenSetupDecision.AlreadyConfigured:
+            return Results.Redirect("/login?error=already");
+        case BotTokenSetupDecision.RequiresPreviousToken:
+            return Results.Redirect("/login?error=previous");
+    }
+
     await BotSecrets.SaveTokenAsync(host.DatabasePath, token, context.RequestAborted);
     var settings = new AppSettingsRepository(host.DatabasePath);
     await settings.SetAsync("bot_username", identity.Username, context.RequestAborted);
     await settings.SetAsync("bot_id", identity.Id.ToString(), context.RequestAborted);
+    if (storedToken is not null && !string.Equals(storedToken, token, StringComparison.Ordinal))
+        app.Logger.LogWarning("The stored bot token stopped working and was replaced by the token for @{Username} ({BotId}).", identity.Username, identity.Id);
     return Results.Redirect("/login?setup=ok");
 });
 
@@ -226,3 +242,16 @@ static bool IsOwnerPath(string path) =>
     path.StartsWith("/queue", StringComparison.OrdinalIgnoreCase) ||
     path.StartsWith("/settings", StringComparison.OrdinalIgnoreCase) ||
     path.StartsWith("/users", StringComparison.OrdinalIgnoreCase);
+
+static async Task<bool> IsTokenAcceptedAsync(TelegramBotApiClient client, string token, CancellationToken cancellationToken)
+{
+    try
+    {
+        await client.GetMeAsync(token, cancellationToken);
+        return true;
+    }
+    catch (Exception)
+    {
+        return false;
+    }
+}

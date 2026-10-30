@@ -75,6 +75,8 @@ or use the `http` launch profile (same URL) from an IDE.
 - The host is bound to localhost and requires login: Telegram Login Widget via the owner's own bot, verified server-side (`TelegramLoginVerifier`), then an HttpOnly `tcs_auth` cookie. Everyone else joins through a single-use invite link (`/invite/{code}`).
 - The first successful login on an empty `app_users` table becomes **Owner**; all other accounts are **Friend** until an owner invite grants otherwise.
 - Bot token setup: create a bot with @BotFather, run `/setdomain <host>`, then paste the token on `/login`. The token is stored with Windows DPAPI in `app_secrets`; never commit it.
+- Token rotation: revoke with @BotFather `/revoke`, then open `/login?setup=reset`. A stored token that still works cannot be replaced (the page answers `already`); once it fails against Telegram, replacing it needs the previous token as proof — or no accounts at all.
+- HttpClient request logging is filtered to `Warning` because the Bot API carries the token in the request path; keep that filter if you change the logging configuration.
 - The owner bot is a remote control (`/status`, `/jobs`, `/job`, `/approve`, `/cancel`, `/testmode`, `/kill`, `/invite`, `/users`); friends can only use `/me`, `/optin`, `/optout`. The bot only plans and gates work too — sending stays in the desktop app.
 - If the host is exposed through a Cloudflare Tunnel, put Cloudflare Access in front of it as well; the app's own login is the second layer, not a replacement.
 - The web host plans and gates work; TDLib login and every real send stay in the desktop app. A confirmed job waits for the desktop runner.

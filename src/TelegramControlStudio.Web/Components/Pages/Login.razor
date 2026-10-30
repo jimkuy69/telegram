@@ -2,6 +2,7 @@
 @layout Layout.LoginLayout
 @inject WorkspaceState Workspace
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 <PageTitle>เข้าสู่ระบบ • Telegram Control Studio</PageTitle>
 
@@ -16,13 +17,14 @@ else if (!BotSecrets.IsSupported)
         <p class="muted">การเก็บ bot token ต้องใช้ Windows DPAPI</p>
     </div>
 }
-else if (!_hasToken)
+else if (!_hasToken || _showResetForm)
 {
     <div class="card login-card">
-        <h2>ตั้งค่าครั้งแรก</h2>
+        <h2>@(_hasToken ? "เปลี่ยน bot token" : "ตั้งค่าครั้งแรก")</h2>
         <p class="muted small-note">
             สร้างบอทกับ <strong>@@BotFather</strong> ใน Telegram (/newbot) แล้วนำ token มาวางที่นี่
-            จากนั้นตั้งโดเมนของปุ่มล็อกอินด้วยคำสั่ง <span class="mono">/setdomain</span> → <span class="mono">tcs.bn9.one</span>
+            จากนั้นตั้งโดเมนของปุ่มล็อกอินด้วยคำสั่ง <span class="mono">/setdomain</span> → <span class="mono">@_host</span>
+            (ใส่โดเมนเปล่า ๆ ไม่ต้องมี <span class="mono">https://</span> และไม่มี <span class="mono">/</span> ปิดท้าย)
         </p>
         <form method="post" action="/setup/bot" class="login-form">
             <AntiforgeryToken />
@@ -30,9 +32,26 @@ else if (!_hasToken)
                 <span>Bot token</span>
                 <input class="input mono" name="token" type="password" autocomplete="off" placeholder="123456789:AA…" required />
             </label>
-            <button class="btn primary" type="submit">บันทึก token</button>
+            @if (_hasToken)
+            {
+                <label class="field">
+                    <span>Token เดิม (ใช้ยืนยันว่าเป็นเจ้าของระบบ)</span>
+                    <input class="input mono" name="previous_token" type="password" autocomplete="off" />
+                </label>
+                <p class="muted small-note">
+                    เปลี่ยน token ได้เฉพาะเมื่อ token เดิมใช้งานไม่ได้แล้ว — ถ้าระบบยังไม่มีผู้ใช้เลย ไม่ต้องกรอกช่องนี้
+                </p>
+            }
+            <button class="btn primary" type="submit">@(_hasToken ? "เปลี่ยน token" : "บันทึก token")</button>
         </form>
-        <p class="muted small-note">ผู้ที่ล็อกอินคนแรกจะกลายเป็นเจ้าของระบบ (Owner)</p>
+        @if (!_hasToken)
+        {
+            <p class="muted small-note">ผู้ที่ล็อกอินคนแรกจะกลายเป็นเจ้าของระบบ (Owner)</p>
+        }
+        else
+        {
+            <p class="muted small-note"><a href="/login">← กลับไปหน้าเข้าสู่ระบบ</a></p>
+        }
     </div>
 }
 else
@@ -41,7 +60,11 @@ else
         <h2>เข้าสู่ระบบ</h2>
         <p class="muted small-note">ใช้บัญชี Telegram ของคุณ — ไม่ต้องใช้รหัสผ่าน</p>
         <div id="tg-login" class="tg-login-slot"></div>
-        <p class="muted small-note">หากปุ่มไม่ขึ้น ให้รีเฟรชหน้า หรือตรวจว่าบอทตั้งโดเมนแล้ว (@@BotFather → /setdomain)</p>
+        <p class="muted small-note">
+            ถ้าปุ่มขึ้นว่า <span class="mono">Bot domain invalid</span> แปลว่ายังไม่ได้ตั้งโดเมนให้ตรงกับ
+            <span class="mono">@_host</span> — เปิด <strong>@@BotFather</strong> → <span class="mono">/setdomain</span> → พิมพ์ <span class="mono">@_host</span> แล้วรีเฟรชหน้านี้
+        </p>
+        <p class="muted small-note"><a href="/login?setup=reset">เปลี่ยน bot token</a></p>
     </div>
 }
 
@@ -61,6 +84,9 @@ else
     private bool _loading = true;
     private bool _hasToken;
     private string? _botUsername;
+    private string _host = string.Empty;
+
+    private bool _showResetForm => _hasToken && Setup == "reset";
 
     private string? Message => Error switch
     {
@@ -70,7 +96,8 @@ else
         "invite" => "ลิงก์เชิญไม่ถูกต้อง ถูกใช้แล้ว หรือหมดอายุ",
         "token" => "รูปแบบ token ไม่ถูกต้อง",
         "botapi" => "ติดต่อ Telegram ไม่สำเร็จ — ตรวจ token แล้วลองใหม่",
-        "already" => "มี bot token อยู่แล้ว",
+        "already" => "มี bot token ที่ใช้งานได้อยู่แล้ว — ถ้าต้องการเปลี่ยน ใช้ลิงก์ «เปลี่ยน bot token» ด้านล่าง",
+        "previous" => "token เดิมไม่ถูกต้อง — ต้องกรอก token เดิมที่ระบบเก็บไว้เพื่อยืนยันตัวตน",
         _ => Setup == "ok" ? "บันทึก token แล้ว — ล็อกอินด้วย Telegram ได้เลย"
             : Invited == "1" ? "ลิงก์เชิญถูกต้อง — ล็อกอินเพื่อเข้าระบบ"
             : Bye == "1" ? "ออกจากระบบแล้ว"
@@ -83,6 +110,7 @@ else
     {
         try
         {
+            if (Uri.TryCreate(Nav.Uri, UriKind.Absolute, out var uri)) _host = uri.Host;
             _hasToken = await BotSecrets.GetTokenAsync(Workspace.DatabasePath) is not null;
             _botUsername = await new AppSettingsRepository(Workspace.DatabasePath).GetAsync("bot_username");
         }
@@ -94,7 +122,7 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !_loading && _hasToken && !string.IsNullOrWhiteSpace(_botUsername))
+        if (firstRender && !_loading && _hasToken && !_showResetForm && !string.IsNullOrWhiteSpace(_botUsername))
             await JS.InvokeVoidAsync("tcsMountTelegramLogin", "tg-login", _botUsername, "/auth/telegram");
     }
 }
