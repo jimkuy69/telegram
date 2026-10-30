@@ -1,8 +1,10 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using System.IO;
 using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.Core.Operations;
+using TelegramControlStudio.Core.Safety;
 using TelegramControlStudio.App.ViewModels;
 using TelegramControlStudio.Infrastructure.Persistence;
 using TelegramControlStudio.Infrastructure.Safety;
@@ -17,6 +19,7 @@ namespace TelegramControlStudio.App;
 public partial class MainWindow : Window
 {
     private readonly string _databasePath = AppPaths.ResolveDatabasePath();
+    private readonly DispatcherTimer _autoRunTimer = new() { Interval = TimeSpan.FromSeconds(10) };
 
     public MainWindow()
     {
@@ -26,6 +29,8 @@ public partial class MainWindow : Window
         _ = LoadAccountsAsync(viewModel, _databasePath);
         _ = UpdateSafetyBadgeAsync();
         Activated += async (_, _) => await UpdateSafetyBadgeAsync();
+        _autoRunTimer.Tick += async (_, _) => await UpdateSafetyBadgeAsync();
+        _autoRunTimer.Start();
     }
 
     private async Task UpdateSafetyBadgeAsync()
@@ -57,11 +62,46 @@ public partial class MainWindow : Window
                 SafetyBadgeText.Text = "LIVE";
                 SafetyBadge.ToolTip = "โหมดใช้งานจริง: ส่งได้ทุกคนที่ให้ Consent";
             }
+            UpdateAutoRunBadge(settings);
         }
         catch
         {
             SafetyBadgeText.Text = "SAFETY ?";
         }
+    }
+
+    private void UpdateAutoRunBadge(SendSafetySettings settings)
+    {
+        var app = (App)Application.Current;
+        var connected = app.TdLibClients.Count;
+        var running = app.JobGate.Count;
+        string text;
+        string brush;
+        if (settings.KillSwitchEngaged)
+        {
+            text = "AUTO-RUN: หยุดฉุกเฉิน";
+            brush = "DangerText";
+        }
+        else if (connected == 0)
+        {
+            text = "AUTO-RUN: รอเข้าสู่ระบบ";
+            brush = "TextMuted";
+        }
+        else if (running > 0)
+        {
+            text = $"AUTO-RUN: กำลังส่ง {running}";
+            brush = "SuccessText";
+        }
+        else
+        {
+            text = $"AUTO-RUN: พร้อม ({connected})";
+            brush = "SuccessText";
+        }
+        AutoRunBadgeText.Text = text;
+        AutoRunBadgeText.Foreground = (System.Windows.Media.Brush)FindResource(brush);
+        AutoRunBadge.ToolTip = connected == 0
+            ? "ตัวรันอัตโนมัติจะทำงานหลังคุณเข้าสู่ระบบ Telegram ในหน้าต่างนี้"
+            : "งานที่ยืนยันแล้วในคิวจะถูกรันเอง และงานที่รอ FloodWait จะไปต่อเมื่อครบเวลา";
     }
 
     private async void EmergencyStop_Click(object sender, RoutedEventArgs e)

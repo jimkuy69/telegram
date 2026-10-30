@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using TelegramControlStudio.Core.Operations;
 using TelegramControlStudio.Infrastructure.Hosting;
 using TelegramControlStudio.Infrastructure.Telegram;
 
@@ -9,12 +10,20 @@ namespace TelegramControlStudio.App;
 
 public partial class App : Application
 {
+    private static readonly TimeSpan AutoRunTick = TimeSpan.FromSeconds(15);
+
     private StudioHost? _host;
     private readonly ConcurrentDictionary<long, TdLibSessionLock> _sessionLocks = new();
+    private readonly JobInFlightGate _jobGate = new();
+    private CancellationTokenSource? _autoRunCancellation;
+    private Task? _autoRunLoop;
 
     public StudioHost Host => _host ?? throw new InvalidOperationException("Studio host has not started.");
 
     public TdLibAccountClientRegistry TdLibClients => Host.TdLibClients;
+
+    /// <summary>Shared by the queue window, the campaign wizard, and the auto runner.</summary>
+    public JobInFlightGate JobGate => _jobGate;
 
     /// <summary>
     /// Holds the cross-process TDLib session lock for an account so two instances of
@@ -75,11 +84,26 @@ public partial class App : Application
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(1);
+            return;
         }
+
+        _autoRunCancellation = new CancellationTokenSource();
+        var autoRunner = new CampaignAutoRunner(Host.DatabasePath, TdLibClients, _jobGate);
+        _autoRunLoop = Task.Run(() => autoRunner.RunLoopAsync(AutoRunTick, _autoRunCancellation.Token));
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _autoRunCancellation?.Cancel();
+        try
+        {
+            _autoRunLoop?.Wait(TimeSpan.FromSeconds(5));
+        }
+        catch (AggregateException)
+        {
+            // The loop reports shutdown races through the awaited task; exit must continue.
+        }
+        _autoRunCancellation?.Dispose();
         _host?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         foreach (var sessionLock in _sessionLocks.Values)
             sessionLock.Dispose();

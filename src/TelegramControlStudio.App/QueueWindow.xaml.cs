@@ -111,18 +111,20 @@ public partial class QueueWindow : Window
         if (SelectedJob is null) return;
         var app = (App)Application.Current;
         if (!app.TdLibClients.TryGet(_accountId, out var client) || client is null) { MessageBox.Show("บัญชียังไม่ได้เชื่อมต่อกับ Telegram หรือ Session หมดอายุ", "ยังไม่พร้อมส่ง", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        var jobId = SelectedJob.Id;
+        if (!app.JobGate.TryBegin(jobId)) { MessageBox.Show("ตัวรันอัตโนมัติกำลังส่งงานนี้อยู่ รอให้จบรายการปัจจุบันก่อน", "กำลังรันอัตโนมัติ", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         _runCancellation?.Dispose(); _runCancellation = new CancellationTokenSource();
-        try { await new TdLibCampaignJobRunner(_databasePath).RunAsync(client, SelectedJob.Id, _accountId, true, TimeSpan.FromSeconds(2), _runCancellation.Token); }
+        try { await new TdLibCampaignJobRunner(_databasePath).RunAsync(client, jobId, _accountId, true, TimeSpan.FromSeconds(2), _runCancellation.Token); }
         catch (OperationCanceledException)
         {
             // Cancel and Pause share the same cancellation token. Preserve an explicit
             // Cancelled state instead of racing it back to Paused.
-            var current = await new JobRepository(_databasePath).GetAsync(SelectedJob.Id);
+            var current = await new JobRepository(_databasePath).GetAsync(jobId);
             if (current?.Status != JobStatus.Cancelled)
-                await new JobRepository(_databasePath).UpdateStatusAsync(SelectedJob.Id, JobStatus.Paused, "Paused by user.");
+                await new JobRepository(_databasePath).UpdateStatusAsync(jobId, JobStatus.Paused, "Paused by user.");
         }
-        catch (Exception) { await new JobRepository(_databasePath).UpdateStatusAsync(SelectedJob.Id, JobStatus.Failed, "QUEUE_RUN_FAILED"); await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, SelectedJob.Id, "Error", "QueueRunFailed", "Queue runner failed; sensitive data was not logged.", DateTimeOffset.UtcNow)); }
-        finally { _runCancellation.Dispose(); _runCancellation = null; await LoadAsync(); }
+        catch (Exception) { await new JobRepository(_databasePath).UpdateStatusAsync(jobId, JobStatus.Failed, "QUEUE_RUN_FAILED"); await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, jobId, "Error", "QueueRunFailed", "Queue runner failed; sensitive data was not logged.", DateTimeOffset.UtcNow)); }
+        finally { app.JobGate.End(jobId); _runCancellation.Dispose(); _runCancellation = null; await LoadAsync(); }
     }
     private async void Pause_Click(object sender, RoutedEventArgs e) { if (SelectedJob is null || SelectedJob.Status != JobStatus.Running) { MessageBox.Show("เลือก Job ที่กำลังทำงานอยู่ก่อนกดหยุดชั่วคราว", "หยุดชั่วคราวไม่ได้", MessageBoxButton.OK, MessageBoxImage.Information); return; } _runCancellation?.Cancel(); await ChangeAsync(JobStatus.Paused); }
     private async void Resume_Click(object sender, RoutedEventArgs e) { if (SelectedJob is null) { MessageBox.Show("กรุณาเลือก Job ก่อน", "ยังไม่ได้เลือก", MessageBoxButton.OK, MessageBoxImage.Information); return; } if (SelectedJob.Status is not (JobStatus.Paused or JobStatus.WaitingForFloodWait)) { MessageBox.Show("ทำต่อได้เฉพาะงานที่หยุดชั่วคราวหรือรอ FloodWait", "ทำต่อไม่ได้", MessageBoxButton.OK, MessageBoxImage.Information); return; } if ((await new SendSafetyRepository(_databasePath).GetAsync()).KillSwitchEngaged) { MessageBox.Show("หยุดฉุกเฉินอยู่ ต้องปลดหยุดฉุกเฉินก่อนจึงจะทำต่อได้", "หยุดฉุกเฉิน", MessageBoxButton.OK, MessageBoxImage.Warning); return; } await ChangeAsync(JobStatus.Queued); await StartSelectedJobAsync(); }

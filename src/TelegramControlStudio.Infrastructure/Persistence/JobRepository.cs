@@ -171,6 +171,63 @@ public sealed class JobRepository(string databasePath)
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// FIFO jobs the auto runner may take over: confirmed queue entries plus flood-waited
+    /// jobs whose cooldown has elapsed. Paused jobs are never returned.
+    /// </summary>
+    public async Task<IReadOnlyList<Job>> ListRunnableAsync(
+        long accountId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT id, account_id, target_type, target_count, status, retry_count, created_at, started_at, completed_at, flood_wait_until, last_error, idempotency_key, message_text, link_url
+            FROM jobs
+            WHERE account_id = $account_id
+              AND message_text IS NOT NULL AND trim(message_text) <> ''
+              AND (status = '{nameof(JobStatus.Queued)}'
+                   OR (status = '{nameof(JobStatus.WaitingForFloodWait)}' AND flood_wait_until IS NOT NULL AND flood_wait_until <= $now))
+            ORDER BY created_at;
+            """;
+        command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$now", now.ToString("O"));
+        var jobs = new List<Job>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (!Guid.TryParse(reader.GetString(0), out var id) || !Enum.TryParse<JobStatus>(reader.GetString(4), out var status)) continue;
+            jobs.Add(new Job(id, reader.GetInt64(1), reader.GetString(2), reader.GetInt32(3), status, reader.GetInt32(5), DateTimeOffset.Parse(reader.GetString(6)), ParseDate(reader, 7), ParseDate(reader, 8), ParseDate(reader, 9), reader.IsDBNull(10) ? null : reader.GetString(10), reader.GetString(11), reader.IsDBNull(12) ? "" : reader.GetString(12), reader.IsDBNull(13) ? null : reader.GetString(13)));
+        }
+        return jobs;
+    }
+
+    /// <summary>
+    /// Atomically moves a runnable job to Running so a manual click and the auto runner
+    /// cannot both drive the same job.
+    /// </summary>
+    public async Task<bool> TryClaimAsync(
+        Guid jobId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            UPDATE jobs
+            SET status = '{nameof(JobStatus.Running)}', last_error = NULL, started_at = COALESCE(started_at, $now)
+            WHERE id = $id
+              AND (status = '{nameof(JobStatus.Queued)}'
+                   OR (status = '{nameof(JobStatus.WaitingForFloodWait)}' AND flood_wait_until IS NOT NULL AND flood_wait_until <= $now));
+            """;
+        command.Parameters.AddWithValue("$id", jobId.ToString());
+        command.Parameters.AddWithValue("$now", now.ToString("O"));
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
+
     public async Task<bool> IncrementRetryAsync(
         Guid jobId,
         string error,

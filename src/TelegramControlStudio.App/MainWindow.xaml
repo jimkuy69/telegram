@@ -53,6 +53,9 @@
                     <Border x:Name="SafetyBadge" Background="{StaticResource WarningSoft}" BorderBrush="#6B4B12" BorderThickness="1" CornerRadius="10" Padding="9,3" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip="สถานะความปลอดภัยในการส่ง">
                         <TextBlock x:Name="SafetyBadgeText" Text="TEST MODE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource WarningText}" />
                     </Border>
+                    <Border x:Name="AutoRunBadge" Background="{StaticResource SidebarBg}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="10" Padding="9,3" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip="ตัวรันอัตโนมัติ: งานที่ยืนยันแล้วจะส่งต่อเองเมื่อบัญชีเชื่อมต่อ">
+                        <TextBlock x:Name="AutoRunBadgeText" Text="AUTO-RUN" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" />
+                    </Border>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">

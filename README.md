@@ -10,8 +10,9 @@ Local-first Windows desktop application for consent-first Telegram account and c
 - Phase 0 send safety: persisted test mode (on by default), per-recipient allowlist, and an emergency stop (kill switch) are enforced before any TDLib transmission.
 - Phase 1 library split: `Core` and `Infrastructure` are UI-agnostic net8.0 libraries consumed by the WPF app through the shared `StudioHost` bootstrap.
 - Session lock: each TDLib session is guarded by a named mutex per account, so two instances of the app can never open the same session database at once.
-- Latest CI evidence: managed build/test, dependency vulnerability scan, and Gitleaks passed on Commit `e2accb6`. Native TDLib runtime remains a separate artifact-gated check. These results do not prove live Telegram E2E.
-- Account/session, messaging, invitation, and real Telegram calls remain behind TDLib runtime, consent, confirmation, and manual-acceptance gates; no live Telegram E2E is claimed.
+- Queue auto-runner: once an account is signed in inside the app, confirmed (`Queued`) jobs and jobs whose flood-wait cooldown has elapsed are sent by a background loop without another click. See [Queue auto-runner](#queue-auto-runner).
+- Latest CI evidence: managed build/test, dependency vulnerability scan, and Gitleaks passed on Commit `e2accb6`. Native TDLib runtime remains a separate artifact-gated check.
+- Live evidence (2026-10-31): the desktop runner sent one real message to the signed-in account's own Saved Messages while the app was driven against a copy of the local database (`LIVE_AUTO_RUN_OK`). Campaign consent, confirmation, allowlist, and manual-acceptance gates still apply to every other recipient; bulk sending to real contacts has not been performed.
 - History: a Blazor web host and Telegram owner bot (phases 1–3) were built, live-verified, then removed on 2026-10-31 to keep the product desktop-only. They remain recoverable from git history up to commit `8ad4751`.
 
 ## Download the latest Windows installer
@@ -70,6 +71,21 @@ All outbound messages pass through one choke point (`TdLibMessageSendService`) t
 - A block pauses the job (item returns to `Queued`) so work resumes after the switch is cleared; a test-mode skip marks the item `Skipped` and pauses the job only when nothing was sent.
 - Enforcement is defensive depth: the campaign runner and consent campaign service check the policy per recipient, and the send service re-checks before transmission.
 - For isolated verification, set `TELEGRAM_CONTROL_STUDIO_DB` to a database file path to run against a copy instead of `%LOCALAPPDATA%\TelegramControlStudio\telegram-control-studio.db`.
+
+## Queue auto-runner
+
+`CampaignAutoRunner` runs on a background loop inside the desktop app (one tick every 15 seconds, `App.OnStartup`). It only acts on accounts whose TDLib session is connected in that process — signing in is still a human action, and nothing is sent before it.
+
+| Rule | Behavior |
+|---|---|
+| Eligible jobs | `Queued` jobs (already confirmed by a human in the Queue window) and `WaitingForFloodWait` jobs whose cooldown has elapsed, oldest first, and only when `message_text` is not blank. |
+| Never auto-started | `WaitingForConfirmation`, `Draft`, `Paused`, and terminal jobs. A pause is treated as an instruction, not a failure. |
+| Claims | `JobRepository.TryClaimAsync` flips the job to `Running` in one atomic statement, and `JobInFlightGate` blocks the loop while the Queue window or Campaign wizard is driving the same job, so no recipient is ever double-sent. |
+| Stops | The send loop re-reads the job status before each recipient, so pressing หยุดชั่วคราว or ยกเลิก in the Queue window stops an auto-run within one item. The kill switch pauses every item and the loop skips ticks while it is engaged. |
+| Flood wait | A `FLOOD_WAIT_n` response parks the job until `flood_wait_until`; the next eligible tick resumes it, so long campaigns continue unattended. |
+| Surface | The main-window header badge shows `AUTO-RUN: พร้อม (n)`, `กำลังส่ง n`, `รอเข้าสู่ระบบ`, or `หยุดฉุกเฉิน`. |
+
+Jobs finished by the loop are logged as `AutoRunFinished`, failures as `AutoRunFailed`, and tick failures as `AutoRunTickFailed` in the activity log.
 
 ## Security boundary
 

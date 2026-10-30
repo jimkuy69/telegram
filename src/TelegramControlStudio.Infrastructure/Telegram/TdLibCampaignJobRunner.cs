@@ -46,6 +46,12 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
             {
                 token.ThrowIfCancellationRequested();
                 if (item.Status is "Completed" or "Cancelled") continue;
+
+                // A pause or cancel raised from the queue UI must stop this loop even when it
+                // was started by the auto runner, which owns no cancellation token of its own.
+                var liveJob = await jobRepository.GetAsync(jobId, token);
+                if (liveJob is { Status: not JobStatus.Running }) return liveJob.Status;
+
                 if (!contacts.TryGetValue(item.TargetId, out var contact))
                 {
                     await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Skipped", "CONTACT_NOT_FOUND", cancellationToken: token);

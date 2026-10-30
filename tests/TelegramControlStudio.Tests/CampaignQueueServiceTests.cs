@@ -17,9 +17,12 @@ public sealed class CampaignQueueServiceTests
             var templateId = await new TemplateRepository(path).CreateAsync(new MessageTemplate(0, accountId, "Welcome", "th", "Hello", null, 1, true, DateTimeOffset.UtcNow));
             var contact = new Contact(accountId, 123, "A", "", "a", null, true, false, DateTimeOffset.UtcNow);
             var campaignId = await new CampaignBuilder(path).CreateFromConsentedContactsAsync(accountId, templateId, "Consent campaign", "Explicit consent", [contact], true);
-            var jobId = await new CampaignQueueService(path).QueueCampaignAsync(campaignId, accountId, true);
+            var jobId = await new CampaignQueueService(path).QueueCampaignAsync(campaignId, accountId, "สวัสดีครับ", "https://example.com", true);
             var counts = await new JobRepository(path).CountByStatusAsync(accountId);
             var items = await new JobItemRepository(path).ListAsync(jobId);
+            var job = (await new JobRepository(path).GetAsync(jobId))!;
+            Assert.Equal("สวัสดีครับ", job.MessageText);
+            Assert.Equal("https://example.com", job.LinkUrl);
             Assert.NotEqual(Guid.Empty, jobId); Assert.Equal(1, counts[JobStatus.Queued]); Assert.Single(items); Assert.Equal(123, items[0].TargetId); Assert.Equal("Queued", items[0].Status);
             Assert.True(await new JobItemRepository(path).UpdateStatusAsync(jobId, 123, "Failed", "temporary error", true));
             var failed = (await new JobItemRepository(path).ListAsync(jobId)).Single(); Assert.Equal("Failed", failed.Status); Assert.Equal(1, failed.RetryCount); Assert.Equal("temporary error", failed.LastError);
@@ -31,7 +34,20 @@ public sealed class CampaignQueueServiceTests
     public async Task UnconfirmedCampaignIsRejected()
     {
         var path = Path.Combine(Path.GetTempPath(), $"tg-queue-{Guid.NewGuid():N}.db");
-        try { await new SqliteDatabase(path).InitializeAsync(); await Assert.ThrowsAsync<InvalidOperationException>(() => new CampaignQueueService(path).QueueCampaignAsync(Guid.NewGuid(), 1, false)); }
+        try { await new SqliteDatabase(path).InitializeAsync(); await Assert.ThrowsAsync<InvalidOperationException>(() => new CampaignQueueService(path).QueueCampaignAsync(Guid.NewGuid(), 1, "Hello", null, false)); }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task CampaignQueueRejectsBlankMessageText()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-queue-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            var accountId = await new AccountRepository(path).CreateAsync("Blank", "+66000000099");
+            await Assert.ThrowsAsync<ArgumentException>(() => new CampaignQueueService(path).QueueCampaignAsync(Guid.NewGuid(), accountId, " ", null, true));
+        }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
 
