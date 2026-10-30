@@ -244,12 +244,16 @@ else
         _message = null;
         _pendingCancel = null;
         if (Workspace.ActiveAccount is not { } account) return;
+        if (job.Status is not (JobStatus.WaitingForConfirmation or JobStatus.Queued))
+        {
+            SetError("ยกเลิกจากเว็บได้เฉพาะงานที่รอยืนยันหรืออยู่ในคิว");
+            return;
+        }
 
         _busy = true;
         try
         {
-            await new JobItemRepository(Workspace.DatabasePath)
-                .UpdateStatusForJobAsync(job.Id, JobStatus.Queued.ToString(), JobStatus.Cancelled.ToString());
+            await new JobItemRepository(Workspace.DatabasePath).CancelPendingAsync(job.Id);
             await new JobRepository(Workspace.DatabasePath).UpdateStatusAsync(job.Id, JobStatus.Cancelled);
             await LogAsync(account.Id, job.Id, "Info", "JobCancelledWeb", $"Job {job.Id} cancelled from web host.");
             _message = $"ยกเลิก Job {job.Id} แล้ว";

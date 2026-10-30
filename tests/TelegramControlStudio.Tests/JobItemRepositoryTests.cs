@@ -45,4 +45,43 @@ public sealed class JobItemRepositoryTests
             if (File.Exists(path)) File.Delete(path);
         }
     }
+
+    [Fact]
+    public async Task CancelPendingCancelsQueuedAndWaitingItemsOnly()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"telegram-job-cancel-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            await using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                await connection.OpenAsync();
+                await using var command = connection.CreateCommand();
+                command.CommandText = "INSERT INTO accounts(display_name,phone_number,status,created_at) VALUES('test','+66000000000','Ready',$created_at);";
+                command.Parameters.AddWithValue("$created_at", DateTimeOffset.UtcNow.ToString("O"));
+                await command.ExecuteNonQueryAsync();
+            }
+
+            var jobId = await new JobRepository(path).CreateAsync(1, "ConsentMessaging", 3, Guid.NewGuid().ToString("N"));
+            var repository = new JobItemRepository(path);
+            await repository.CreateAsync(new[]
+            {
+                new JobItem(jobId, 1, 201, JobStatus.WaitingForConfirmation.ToString(), 0, Guid.NewGuid().ToString("N"), null, DateTimeOffset.UtcNow),
+                new JobItem(jobId, 1, 202, JobStatus.Queued.ToString(), 0, Guid.NewGuid().ToString("N"), null, DateTimeOffset.UtcNow),
+                new JobItem(jobId, 1, 203, JobStatus.Running.ToString(), 0, Guid.NewGuid().ToString("N"), null, DateTimeOffset.UtcNow)
+            });
+
+            Assert.Equal(2, await repository.CancelPendingAsync(jobId));
+
+            var byTarget = (await repository.ListAsync(jobId)).ToDictionary(item => item.TargetId);
+            Assert.Equal(JobStatus.Cancelled.ToString(), byTarget[201].Status);
+            Assert.Equal(JobStatus.Cancelled.ToString(), byTarget[202].Status);
+            Assert.Equal(JobStatus.Running.ToString(), byTarget[203].Status);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
 }

@@ -131,7 +131,7 @@ public partial class QueueWindow : Window
     {
         if (SelectedJob is null) return;
         _runCancellation?.Cancel();
-        await new JobItemRepository(_databasePath).UpdateStatusForJobAsync(SelectedJob.Id, JobStatus.Queued.ToString(), JobStatus.Cancelled.ToString());
+        await new JobItemRepository(_databasePath).CancelPendingAsync(SelectedJob.Id);
         await ChangeAsync(JobStatus.Cancelled);
     }
     private void Job_DoubleClick(object sender, MouseButtonEventArgs e) { if (SelectedJob is not null) new JobItemsWindow(_databasePath, SelectedJob.Id) { Owner = this }.ShowDialog(); }
