@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Threading;
 using TelegramControlStudio.Core.Operations;
 using TelegramControlStudio.Infrastructure.Hosting;
+using TelegramControlStudio.Infrastructure.Persistence;
 using TelegramControlStudio.Infrastructure.Telegram;
 
 namespace TelegramControlStudio.App;
@@ -45,6 +46,36 @@ public partial class App : Application
     {
         if (_sessionLocks.TryRemove(accountId, out var sessionLock))
             sessionLock.Dispose();
+    }
+
+    /// <summary>
+    /// Closes the TDLib client for one account and releases its session lock so another
+    /// instance can sign in. Refused while a job for that account is mid-transmission,
+    /// because disposing the client underneath the runner would fail the whole job.
+    /// </summary>
+    public async Task<bool> TryDisconnectAccountAsync(long accountId)
+    {
+        if (_jobGate.IsAccountBusy(accountId)) return false;
+        var jobs = new JobRepository(Host.DatabasePath);
+        foreach (var jobId in _jobGate.JobIds)
+        {
+            var job = await jobs.GetAsync(jobId);
+            if (job is not null && job.AccountId == accountId) return false;
+        }
+
+        // Reserving the account here is what keeps the auto runner from claiming a job in the
+        // window between the checks above and the client being closed.
+        if (!_jobGate.TryBeginAccount(accountId)) return false;
+        try
+        {
+            var removed = await Host.TdLibClients.RemoveAsync(accountId);
+            ReleaseSessionLock(accountId);
+            return removed;
+        }
+        finally
+        {
+            _jobGate.EndAccount(accountId);
+        }
     }
 
     protected override async void OnStartup(StartupEventArgs e)

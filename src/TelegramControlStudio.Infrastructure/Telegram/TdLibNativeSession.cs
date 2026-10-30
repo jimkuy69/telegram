@@ -9,6 +9,8 @@ namespace TelegramControlStudio.Infrastructure.Telegram;
 /// </summary>
 public sealed class TdLibNativeSession : ITdLibClient
 {
+    private const string CloseExtra = "tcs-session-close";
+    private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(10);
     private readonly TdLibNativeClient _nativeClient;
     private readonly int _clientId;
     private readonly TdLibUpdateRouter _router;
@@ -181,6 +183,8 @@ public sealed class TdLibNativeSession : ITdLibClient
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
+        await RequestTdLibCloseAsync().ConfigureAwait(false);
+
         _shutdown.Cancel();
         foreach (var pending in _pending.Values)
             pending.TrySetCanceled();
@@ -197,5 +201,30 @@ public sealed class TdLibNativeSession : ITdLibClient
 
         _shutdown.Dispose();
         _nativeClient.Dispose();
+    }
+
+    // TDLib frees the account's session directory only after `close` completes, so skipping it
+    // leaves the next connect of the same account failing on a locked database.
+    private async Task RequestTdLibCloseAsync()
+    {
+        var completion = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!_pending.TryAdd(CloseExtra, completion))
+            return;
+
+        using var timeout = new CancellationTokenSource(CloseTimeout);
+        using var registration = timeout.Token.Register(() =>
+        {
+            if (_pending.TryRemove(CloseExtra, out var pending))
+                pending.TrySetCanceled();
+        });
+
+        try
+        {
+            _nativeClient.Send(_clientId, $$"""{"@type":"close","@extra":"{{CloseExtra}}"}""");
+            await completion.Task.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) { }
     }
 }

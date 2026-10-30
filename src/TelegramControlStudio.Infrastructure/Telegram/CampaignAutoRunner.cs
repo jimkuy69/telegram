@@ -19,6 +19,7 @@ public sealed class CampaignAutoRunner(
     TimeSpan? sendInterval = null)
 {
     private readonly TimeSpan _sendInterval = sendInterval ?? TimeSpan.FromSeconds(2);
+    private long? _lastServedAccountId;
 
     public async Task<int> RunOnceAsync(CancellationToken cancellationToken = default)
     {
@@ -26,25 +27,29 @@ public sealed class CampaignAutoRunner(
 
         var started = 0;
         var jobs = new JobRepository(databasePath);
-        foreach (var accountId in clients.AccountIds)
+        foreach (var accountId in AccountTurnPolicy.RotateForFairness(clients.AccountIds, _lastServedAccountId))
         {
+            if (!inFlight.TryBeginAccount(accountId)) continue;
             try
             {
                 if (!clients.TryGet(accountId, out var client) || client is null) continue;
-                foreach (var job in await jobs.ListRunnableAsync(accountId, DateTimeOffset.UtcNow, cancellationToken))
+                var runnable = await jobs.ListRunnableAsync(accountId, DateTimeOffset.UtcNow, cancellationToken);
+                foreach (var job in AccountTurnPolicy.SelectForPass(runnable, DateTimeOffset.UtcNow))
                 {
-                    if (!AutoRunPolicy.IsEligible(job, DateTimeOffset.UtcNow)) continue;
                     if (!inFlight.TryBegin(job.Id)) continue;
                     try
                     {
                         if (!await jobs.TryClaimAsync(job.Id, DateTimeOffset.UtcNow, cancellationToken)) continue;
                         started++;
+                        _lastServedAccountId = accountId;
                         await RunJobAsync(client, job, accountId, cancellationToken);
                     }
                     finally
                     {
                         inFlight.End(job.Id);
                     }
+
+                    break;
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -54,6 +59,10 @@ public sealed class CampaignAutoRunner(
             catch (Exception exception)
             {
                 await LogAsync(accountId, null, "Error", "AutoRunTickFailed", exception.Message, CancellationToken.None);
+            }
+            finally
+            {
+                inFlight.EndAccount(accountId);
             }
         }
         return started;

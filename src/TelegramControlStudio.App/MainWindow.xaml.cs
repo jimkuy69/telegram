@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -20,17 +21,109 @@ public partial class MainWindow : Window
 {
     private readonly string _databasePath = AppPaths.ResolveDatabasePath();
     private readonly DispatcherTimer _autoRunTimer = new() { Interval = TimeSpan.FromSeconds(10) };
+    private bool _syncingAccountSelection;
+    private bool _suppressAccountReload;
+    private bool? _connectButtonShowsConnected;
 
     public MainWindow()
     {
         InitializeComponent();
         var viewModel = new MainWindowViewModel();
         DataContext = viewModel;
-        _ = LoadAccountsAsync(viewModel, _databasePath);
+        viewModel.PropertyChanged += ActiveAccount_PropertyChanged;
+        AccountSwitchBox.SelectionChanged += AccountSwitchBox_SelectionChanged;
+        _ = InitializeAccountsAsync(viewModel, _databasePath);
         _ = UpdateSafetyBadgeAsync();
         Activated += async (_, _) => await UpdateSafetyBadgeAsync();
         _autoRunTimer.Tick += async (_, _) => await UpdateSafetyBadgeAsync();
         _autoRunTimer.Start();
+    }
+
+    private void AccountSwitchBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_syncingAccountSelection) return;
+        if (DataContext is not MainWindowViewModel viewModel) return;
+        if (AccountSwitchBox.SelectedValue is not long accountId) return;
+        var account = viewModel.Accounts.FirstOrDefault(item => item.Id == accountId);
+        if (account is null || account.Id == viewModel.ActiveAccount?.Id) return;
+        viewModel.ActiveAccount = account;
+    }
+
+    private async void ActiveAccount_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainWindowViewModel.ActiveAccount)) return;
+        if (DataContext is not MainWindowViewModel viewModel) return;
+
+        _syncingAccountSelection = true;
+        AccountSwitchBox.SelectedValue = viewModel.ActiveAccount?.Id;
+        _syncingAccountSelection = false;
+
+        UpdateConnectButton((App)Application.Current, viewModel.ActiveAccount);
+        if (_suppressAccountReload) return;
+        await ReloadActiveAccountViewsAsync(viewModel);
+    }
+
+    private async Task ReloadActiveAccountViewsAsync(MainWindowViewModel viewModel)
+    {
+        if (viewModel.ActiveAccount is null) return;
+        var accountId = viewModel.ActiveAccount.Id;
+        try
+        {
+            await viewModel.LoadContactsAsync(_databasePath, accountId);
+            await viewModel.LoadQueueSummaryAsync(_databasePath, accountId);
+            await viewModel.LoadActivityLogsAsync(_databasePath, accountId);
+            await viewModel.LoadPendingRequestsAsync(_databasePath, accountId);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                $"โหลดข้อมูลของบัญชีที่เลือกไม่สำเร็จ ข้อมูลที่แสดงอาจยังเป็นของบัญชีก่อนหน้า\n{exception.Message}",
+                "สลับบัญชีไม่สำเร็จ",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task RefreshAccountStateAsync()
+    {
+        if (DataContext is not MainWindowViewModel viewModel) return;
+        try
+        {
+            var app = (App)Application.Current;
+            var accounts = await new AccountRepository(_databasePath).ListAsync();
+            var backlog = await new JobRepository(_databasePath).CountActiveByAccountAsync();
+            viewModel.RefreshAccountSummaries(accounts, app.TdLibClients.AccountIds, backlog);
+            if (viewModel.ActiveAccount is { } active && accounts.FirstOrDefault(item => item.Id == active.Id) is { } fresh)
+                viewModel.ActiveAccount = fresh;
+            UpdateConnectButton(app, viewModel.ActiveAccount);
+        }
+        catch
+        {
+            // The badge is decoration; a failing read must not break the window.
+        }
+    }
+
+    private void UpdateConnectButton(App app, Account? account)
+    {
+        if (account is null)
+        {
+            ConnectAccountButton.IsEnabled = false;
+            ConnectAccountButton.ToolTip = "เพิ่มบัญชีก่อนเข้าสู่ระบบ";
+            return;
+        }
+
+        var isConnected = app.TdLibClients.IsRegistered(account.Id);
+        if (_connectButtonShowsConnected != isConnected)
+        {
+            ConnectAccountButton.Style = (Style)FindResource(isConnected ? "SecondaryButton" : "PrimaryButton");
+            ConnectAccountButton.Content = isConnected ? "ตัดการเชื่อมต่อ" : "เข้าสู่ระบบ";
+            _connectButtonShowsConnected = isConnected;
+        }
+
+        ConnectAccountButton.IsEnabled = true;
+        ConnectAccountButton.ToolTip = isConnected
+            ? $"ปิด TDLib session ของ {account.DisplayName} และปล่อยล็อกเซสชันของบัญชีนี้"
+            : $"เริ่ม Authorization ของ {account.DisplayName}";
     }
 
     private async Task UpdateSafetyBadgeAsync()
@@ -63,6 +156,7 @@ public partial class MainWindow : Window
                 SafetyBadge.ToolTip = "โหมดใช้งานจริง: ส่งได้ทุกคนที่ให้ Consent";
             }
             UpdateAutoRunBadge(settings);
+            await RefreshAccountStateAsync();
         }
         catch
         {
@@ -89,19 +183,20 @@ public partial class MainWindow : Window
         }
         else if (running > 0)
         {
-            text = $"AUTO-RUN: กำลังส่ง {running}";
+            text = $"AUTO-RUN: กำลังส่ง {running} • {connected} บัญชี";
             brush = "SuccessText";
         }
         else
         {
-            text = $"AUTO-RUN: พร้อม ({connected})";
+            text = $"AUTO-RUN: พร้อม • {connected} บัญชี";
             brush = "SuccessText";
         }
         AutoRunBadgeText.Text = text;
         AutoRunBadgeText.Foreground = (System.Windows.Media.Brush)FindResource(brush);
         AutoRunBadge.ToolTip = connected == 0
             ? "ตัวรันอัตโนมัติจะทำงานหลังคุณเข้าสู่ระบบ Telegram ในหน้าต่างนี้"
-            : "งานที่ยืนยันแล้วในคิวจะถูกรันเอง และงานที่รอ FloodWait จะไปต่อเมื่อครบเวลา";
+            : "งานที่ยืนยันแล้วในคิวจะถูกรันเอง และงานที่รอ FloodWait จะไปต่อเมื่อครบเวลา\n" +
+              "ทุกบัญชีที่เชื่อมต่อจะได้คิวทีละงานต่อการหมุนเวียน และไม่ส่งทับกันข้ามบัญชี";
     }
 
     private async void EmergencyStop_Click(object sender, RoutedEventArgs e)
@@ -127,25 +222,31 @@ public partial class MainWindow : Window
         }
     }
 
-    private static async Task LoadAccountsAsync(MainWindowViewModel viewModel, string databasePath)
+    private async Task InitializeAccountsAsync(MainWindowViewModel viewModel, string databasePath)
     {
         try
         {
             await new SqliteDatabase(databasePath).InitializeAsync();
-            await viewModel.LoadAccountsAsync(databasePath);
+            _suppressAccountReload = true;
+            try
+            {
+                await viewModel.LoadAccountsAsync(databasePath);
+            }
+            finally
+            {
+                _suppressAccountReload = false;
+            }
+
             await RecoverJobsAsync(databasePath, viewModel.Accounts);
-            if (viewModel.ActiveAccount is not null)
-                await viewModel.LoadQueueSummaryAsync(databasePath, viewModel.ActiveAccount.Id);
-            if (viewModel.ActiveAccount is not null)
-                await viewModel.LoadActivityLogsAsync(databasePath, viewModel.ActiveAccount.Id);
-            if (viewModel.ActiveAccount is not null)
-                await viewModel.LoadPendingRequestsAsync(databasePath, viewModel.ActiveAccount.Id);
-            if (viewModel.ActiveAccount is not null)
-                await viewModel.LoadContactsAsync(databasePath, viewModel.ActiveAccount.Id);
+            await ReloadActiveAccountViewsAsync(viewModel);
         }
         catch
         {
             // The dashboard remains usable before the first local account exists.
+        }
+        finally
+        {
+            await RefreshAccountStateAsync();
         }
     }
 
@@ -184,16 +285,14 @@ public partial class MainWindow : Window
 
     private async void AddAccount_Click(object sender, RoutedEventArgs e)
     {
-        var databasePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "TelegramControlStudio",
-            "telegram-control-studio.db");
+        var databasePath = _databasePath;
         var wizard = new AddAccountWindow(databasePath) { Owner = this };
         if (wizard.ShowDialog() != true || wizard.CreatedAccountId is not long createdAccountId || DataContext is not MainWindowViewModel viewModel)
             return;
 
         await viewModel.LoadAccountsAsync(databasePath);
         viewModel.ActiveAccount = viewModel.Accounts.FirstOrDefault(account => account.Id == createdAccountId);
+        await RefreshAccountStateAsync();
         Title = "Telegram Control Studio • บันทึกบัญชีแล้ว";
         new SettingsWindow(databasePath, createdAccountId) { Owner = this }.ShowDialog();
     }
@@ -633,6 +732,13 @@ public partial class MainWindow : Window
 
         var account = viewModel.ActiveAccount;
         var databasePath = _databasePath;
+        var app = (App)Application.Current;
+        if (app.TdLibClients.IsRegistered(account.Id))
+        {
+            await DisconnectAccountAsync(app, account);
+            return;
+        }
+
         try
         {
             var configuration = await new TdLibConfigurationRepository(databasePath).GetAsync(account.Id);
@@ -640,13 +746,6 @@ public partial class MainWindow : Window
             if (configuration is null || native is null)
             {
                 MessageBox.Show("บัญชียังตั้งค่าไม่ครบ กรุณาเปิด ตั้งค่า แล้วบันทึก API ID, API Hash และเลือก tdjson.dll ก่อน", "ยังไม่พร้อมเข้าสู่ระบบ", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var app = (App)Application.Current;
-            if (app.TdLibClients.TryGet(account.Id, out _))
-            {
-                MessageBox.Show("บัญชีนี้เชื่อมต่ออยู่แล้ว หรือกำลังรอการยืนยันตัวตน", "กำลังเชื่อมต่อ", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -674,14 +773,50 @@ public partial class MainWindow : Window
                     await new TdLibAccountProfileSyncService(connectedClient, repository).SyncAsync(account.Id);
                     await viewModel.LoadAccountsAsync(databasePath);
                     viewModel.ActiveAccount = viewModel.Accounts.FirstOrDefault(item => item.Id == account.Id);
+                    await ReloadActiveAccountViewsAsync(viewModel);
                     MessageBox.Show("ยืนยันตัวตนสำเร็จแล้ว สามารถ Sync Contacts ได้", "เข้าสู่ระบบสำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
         }
         catch (Exception exception)
         {
-            ((App)Application.Current).ReleaseSessionLock(account.Id);
+            app.ReleaseSessionLock(account.Id);
             MessageBox.Show($"เริ่มเข้าสู่ระบบไม่สำเร็จ\n{exception.Message}", "เชื่อมต่อไม่สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            await RefreshAccountStateAsync();
+        }
+    }
+
+    private async Task DisconnectAccountAsync(App app, Account account)
+    {
+        if (MessageBox.Show(
+                $"ปิด TDLib session ของบัญชี {account.DisplayName}?\nคิวงานของบัญชีนี้ยังอยู่ และจะส่งต่อหลังเข้าสู่ระบบใหม่",
+                "ตัดการเชื่อมต่อ",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+
+        try
+        {
+            if (!await app.TryDisconnectAccountAsync(account.Id))
+            {
+                MessageBox.Show("บัญชีนี้กำลังส่งงานอยู่ ระบบจะไม่ปิดเซสชันกลางการส่ง\nรอให้จบรายการปัจจุบันก่อนแล้วกดอีกครั้ง", "กำลังส่งงาน", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(
+                account.Id,
+                null,
+                "Info",
+                "AccountDisconnected",
+                $"TDLib session for {account.DisplayName} was closed by the operator.",
+                DateTimeOffset.UtcNow));
+            await RefreshAccountStateAsync();
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show($"ตัดการเชื่อมต่อไม่สำเร็จ\n{exception.Message}", "ผิดพลาด", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

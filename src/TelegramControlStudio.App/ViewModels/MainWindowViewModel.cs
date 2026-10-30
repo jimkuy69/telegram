@@ -21,6 +21,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     ];
 
     public ObservableCollection<Account> Accounts { get; } = [];
+    public ObservableCollection<AccountSummary> AccountSummaries { get; } = [];
     public ObservableCollection<string> ActivityLogs { get; } = [];
     public ObservableCollection<PageNumberItem> PageNumbers { get; } = [];
 
@@ -36,12 +37,51 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         get => _activeAccount;
         set
         {
+            // Only a real switch of accounts reloads the per-account views; refreshing the
+            // same account with data re-read from the database must not re-query everything.
+            var switched = _activeAccount?.Id != value?.Id;
             _activeAccount = value;
-            OnPropertyChanged();
+            if (switched) OnPropertyChanged();
             OnPropertyChanged(nameof(ActiveAccountStatus));
+            OnPropertyChanged(nameof(SendAvailabilityNotice));
             OnPropertyChanged(nameof(CanCreateJob));
             CreateJobCommand?.Refresh();
         }
+    }
+
+    private string _accountSwitchNotice = "บัญชี • ยังไม่มีบัญชี";
+    public string AccountSwitchNotice
+    {
+        get => _accountSwitchNotice;
+        private set { _accountSwitchNotice = value; OnPropertyChanged(); }
+    }
+
+    public void RefreshAccountSummaries(
+        IReadOnlyList<Account> accounts,
+        IReadOnlyCollection<long> connectedAccountIds,
+        IReadOnlyDictionary<long, int> activeJobCountByAccount)
+    {
+        for (var index = AccountSummaries.Count - 1; index >= 0; index--)
+            if (!accounts.Any(account => account.Id == AccountSummaries[index].Id))
+                AccountSummaries.RemoveAt(index);
+
+        foreach (var account in accounts)
+        {
+            var summary = AccountSummaries.FirstOrDefault(item => item.Id == account.Id);
+            if (summary is null)
+            {
+                summary = new AccountSummary(account);
+                AccountSummaries.Add(summary);
+            }
+            summary.Update(
+                account,
+                connectedAccountIds.Contains(account.Id),
+                activeJobCountByAccount.GetValueOrDefault(account.Id));
+        }
+
+        AccountSwitchNotice = AccountSummaries.Count == 0
+            ? "บัญชี • ยังไม่มีบัญชี"
+            : $"บัญชี • เชื่อมต่อ {connectedAccountIds.Count}/{AccountSummaries.Count}";
     }
 
     private string _dataSourceNotice = "ข้อมูลตัวอย่างในเครื่องเท่านั้น • ยังไม่ได้ Sync Telegram";
@@ -353,13 +393,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var repository = new AccountRepository(databasePath);
         var accounts = await repository.ListAsync(cancellationToken);
+        var previousAccountId = ActiveAccount?.Id;
         Accounts.Clear();
         foreach (var account in accounts)
             Accounts.Add(account);
-        ActiveAccount = Accounts.FirstOrDefault();
-        OnPropertyChanged(nameof(ActiveAccount));
-        OnPropertyChanged(nameof(CanCreateJob));
-        CreateJobCommand?.Refresh();
+        ActiveAccount = Accounts.FirstOrDefault(account => account.Id == previousAccountId) ?? Accounts.FirstOrDefault();
     }
 
     public async Task LoadQueueSummaryAsync(string databasePath, long accountId, CancellationToken cancellationToken = default)

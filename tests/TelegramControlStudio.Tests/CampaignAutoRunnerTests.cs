@@ -133,6 +133,82 @@ public sealed class CampaignAutoRunnerTests
         finally { scenario.Cleanup(); }
     }
 
+    [Fact]
+    public async Task RunOnceTakesOneJobPerConnectedAccountPerPass()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"tg-multi-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(databasePath).InitializeAsync();
+            await new SendSafetyRepository(databasePath).SaveAsync(new SendSafetySettings(false, new HashSet<long>(), false, null));
+            var jobs = new JobRepository(databasePath);
+            var registry = new TdLibAccountClientRegistry();
+            var busy = await SeedAccountAsync(databasePath, jobs, registry, "+66000000211", queuedJobs: 3);
+            var light = await SeedAccountAsync(databasePath, jobs, registry, "+66000000212", queuedJobs: 1);
+            var runner = new CampaignAutoRunner(databasePath, registry, new JobInFlightGate(), TimeSpan.Zero);
+
+            Assert.Equal(2, await runner.RunOnceAsync());
+            Assert.Equal(1, busy.Client.CallCount);
+            Assert.Equal(1, light.Client.CallCount);
+            Assert.Equal(2, (await jobs.ListAsync(busy.AccountId)).Count(job => job.Status == JobStatus.Queued));
+            Assert.Equal(JobStatus.Completed, (await jobs.GetAsync(light.JobIds[0]))!.Status);
+
+            Assert.Equal(1, await runner.RunOnceAsync());
+            Assert.Equal(2, busy.Client.CallCount);
+            Assert.Equal(1, (await jobs.ListAsync(busy.AccountId)).Count(job => job.Status == JobStatus.Queued));
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(databasePath)) File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task RunOnceSkipsAnAccountWhoseSessionIsBeingClosed()
+    {
+        var scenario = await AutoRunScenario.CreateAsync(testMode: false);
+        try
+        {
+            Assert.True(scenario.Gate.TryBeginAccount(scenario.AccountId));
+            Assert.Equal(0, await scenario.Runner.RunOnceAsync());
+            Assert.Equal(JobStatus.Queued, (await scenario.Jobs.GetAsync(scenario.JobId))!.Status);
+            Assert.Equal(0, scenario.Client.CallCount);
+
+            scenario.Gate.EndAccount(scenario.AccountId);
+            Assert.Equal(1, await scenario.Runner.RunOnceAsync());
+        }
+        finally { scenario.Cleanup(); }
+    }
+
+    private static async Task<SeededAccount> SeedAccountAsync(
+        string databasePath,
+        JobRepository jobs,
+        TdLibAccountClientRegistry registry,
+        string phoneNumber,
+        int queuedJobs)
+    {
+        var accountId = await new AccountRepository(databasePath).CreateAsync("Multi", phoneNumber);
+        await new ContactRepository(databasePath).UpsertManyAsync(
+            [new Contact(accountId, 700, "Consented", "", null, null, true, false, DateTimeOffset.UtcNow)]);
+
+        var jobIds = new List<Guid>();
+        for (var index = 0; index < queuedJobs; index++)
+        {
+            var jobId = await jobs.CreateAsync(accountId, "ConsentMessaging", 1, $"multi-{Guid.NewGuid():N}", "สวัสดีครับ", null);
+            await new JobItemRepository(databasePath).CreateAsync(
+                [new JobItem(jobId, accountId, 700, "Queued", 0, $"item-{jobId:N}", null, DateTimeOffset.UtcNow)]);
+            await jobs.UpdateStatusAsync(jobId, JobStatus.Queued);
+            jobIds.Add(jobId);
+        }
+
+        var client = new FakeClient();
+        registry.Register(accountId, client);
+        return new SeededAccount(accountId, jobIds, client);
+    }
+
+    private sealed record SeededAccount(long AccountId, IReadOnlyList<Guid> JobIds, FakeClient Client);
+
     private sealed record AutoRunScenario(
         string DatabasePath,
         long AccountId,

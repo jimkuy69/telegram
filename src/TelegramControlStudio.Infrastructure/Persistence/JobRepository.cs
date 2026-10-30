@@ -205,6 +205,28 @@ public sealed class JobRepository(string databasePath)
     }
 
     /// <summary>
+    /// Unfinished jobs grouped by account, so the account switcher can show which of the
+    /// signed-in accounts still has work waiting.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<long, int>> CountActiveByAccountAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT account_id, COUNT(*)
+            FROM jobs
+            WHERE status IN ('WaitingForConfirmation', 'Queued', 'Running', 'Paused', 'WaitingForFloodWait')
+            GROUP BY account_id;
+            """;
+        var counts = new Dictionary<long, int>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            counts[reader.GetInt64(0)] = reader.GetInt32(1);
+        return counts;
+    }
+
+    /// <summary>
     /// Atomically moves a runnable job to Running so a manual click and the auto runner
     /// cannot both drive the same job.
     /// </summary>

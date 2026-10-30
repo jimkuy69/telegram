@@ -11,6 +11,7 @@ Local-first Windows desktop application for consent-first Telegram account and c
 - Phase 1 library split: `Core` and `Infrastructure` are UI-agnostic net8.0 libraries consumed by the WPF app through the shared `StudioHost` bootstrap.
 - Session lock: each TDLib session is guarded by a named mutex per account, so two instances of the app can never open the same session database at once.
 - Queue auto-runner: once an account is signed in inside the app, confirmed (`Queued`) jobs and jobs whose flood-wait cooldown has elapsed are sent by a background loop without another click. See [Queue auto-runner](#queue-auto-runner).
+- Multi-account: the header switcher lists every local account with its live session state and unfinished job count, the visible views follow the selected account, a session can be closed only when that account is not transmitting, and the auto-runner rotates one job per connected account per pass. See [Multi-account](#multi-account).
 - Latest CI evidence: managed build/test, dependency vulnerability scan, and Gitleaks passed on Commit `e2accb6`. Native TDLib runtime remains a separate artifact-gated check.
 - Live evidence (2026-10-31): the desktop runner sent one real message to the signed-in account's own Saved Messages while the app was driven against a copy of the local database (`LIVE_AUTO_RUN_OK`). Campaign consent, confirmation, allowlist, and manual-acceptance gates still apply to every other recipient; bulk sending to real contacts has not been performed.
 - History: a Blazor web host and Telegram owner bot (phases 1–3) were built, live-verified, then removed on 2026-10-31 to keep the product desktop-only. They remain recoverable from git history up to commit `8ad4751`.
@@ -52,7 +53,7 @@ await using var host = await StudioHost.StartAsync();          // resolves the D
 var databasePath = host.DatabasePath;
 ```
 
-`StudioHost.StartAsync(new StudioOptions(path))` accepts an explicit database path, and `StudioOptions.CreateDefault()` honors `TELEGRAM_CONTROL_STUDIO_DB`. UI-agnostic rules live in Core: `SendSafetyPolicy`, `ContactConsentPolicy`, `PagingPolicy`, `JobAggregateStatusPolicy`.
+`StudioHost.StartAsync(new StudioOptions(path))` accepts an explicit database path, and `StudioOptions.CreateDefault()` honors `TELEGRAM_CONTROL_STUDIO_DB`. UI-agnostic rules live in Core: `SendSafetyPolicy`, `ContactConsentPolicy`, `PagingPolicy`, `JobAggregateStatusPolicy`, `AutoRunPolicy`, `AccountTurnPolicy`.
 
 Every TDLib session is protected by `TdLibSessionLock`, a named mutex per account (`Local\TCS-TDLibSession-{accountId}`). The app acquires it before connecting a session and holds it for the app's lifetime, which prevents a second app instance from opening the same TDLib session database.
 
@@ -83,9 +84,24 @@ All outbound messages pass through one choke point (`TdLibMessageSendService`) t
 | Claims | `JobRepository.TryClaimAsync` flips the job to `Running` in one atomic statement, and `JobInFlightGate` blocks the loop while the Queue window or Campaign wizard is driving the same job, so no recipient is ever double-sent. |
 | Stops | The send loop re-reads the job status before each recipient, so pressing หยุดชั่วคราว or ยกเลิก in the Queue window stops an auto-run within one item. The kill switch pauses every item and the loop skips ticks while it is engaged. |
 | Flood wait | A `FLOOD_WAIT_n` response parks the job until `flood_wait_until`; the next eligible tick resumes it, so long campaigns continue unattended. |
-| Surface | The main-window header badge shows `AUTO-RUN: พร้อม (n)`, `กำลังส่ง n`, `รอเข้าสู่ระบบ`, or `หยุดฉุกเฉิน`. |
+| Surface | The main-window header badge shows `AUTO-RUN: พร้อม • n บัญชี`, `กำลังส่ง n • m บัญชี`, `รอเข้าสู่ระบบ`, or `หยุดฉุกเฉิน`. |
 
 Jobs finished by the loop are logged as `AutoRunFinished`, failures as `AutoRunFailed`, and tick failures as `AutoRunTickFailed` in the activity log.
+
+## Multi-account
+
+The desktop app can hold several Telegram accounts, but only the accounts whose TDLib session is connected in this process can send. The header carries the account switcher (`AccountSwitchBox`), a per-account status dot, and the connection count (`บัญชี • เชื่อมต่อ 1/8`).
+
+| Rule | Behavior |
+|---|---|
+| One session per account | `TdLibAccountClientRegistry` holds a live `ITdLibClient` per account id, and `TdLibSessionLock` (`Local\TCS-TDLibSession-{accountId}`) blocks any second process from opening the same session database. |
+| Switching accounts | Selecting an account reloads contacts, queue summary, activity log, and pending requests for that account only. The selection survives an account reload, so the switcher never jumps back to the first account. |
+| Status in the switcher | Each row shows the account status, whether its TDLib session is connected (green dot), and how many unfinished jobs it still has (`JobRepository.CountActiveByAccountAsync`). |
+| Sign out a session | The header button becomes ตัดการเชื่อมต่อ while a session is live. `App.TryDisconnectAccountAsync` refuses while that account is transmitting — either through the account-level slot in `JobInFlightGate` or through an in-flight job owned by the Queue window / Campaign wizard — so a session is never closed mid-send. Disconnecting writes `AccountDisconnected` to the activity log and releases the session lock, which makes the account reconnectable in the same window. |
+| Fair rotation | `AccountTurnPolicy.RotateForFairness` walks the connected accounts starting after the last account that got a job, and each pass hands one account exactly one job (`JobsPerAccountPerPass`). A busy account cannot starve the others, and two accounts never transmit at the same time. |
+| Closing a TDLib session | `TdLibNativeSession.DisposeAsync` sends TDLib's `close` request and waits (max 10 seconds) for the response before stopping the receive loop, because TDLib frees the session directory only after that. Without it the account cannot be signed in again in the same process. |
+
+Verification: `scripts/multi-account-ui-check.ps1` drives the live UI with Windows UI Automation against a throwaway copy of the local database. It copies the database itself, engages the kill switch through the app's own emergency stop (and aborts if the badge never appears), then asserts switcher contents, connect → `เชื่อมต่อ 1/8`, disconnect → `เชื่อมต่อ 0/8`, and reconnect → `เชื่อมต่อ 1/8` before deleting the copy.
 
 ## Security boundary
 
