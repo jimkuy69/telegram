@@ -102,7 +102,7 @@ public partial class SettingsWindow : Window
             var app = (App)Application.Current;
             if (!app.TryHoldSessionLock(_accountId))
             {
-                StatusText.Text = "เซสชัน Telegram ถูก Web Host ใช้อยู่ (เปิด \"การส่งผ่านเว็บ\" อยู่) — ปิดการส่งผ่านเว็บในหน้าตั้งค่าของเว็บก่อน";
+                StatusText.Text = "เซสชัน Telegram ของบัญชีนี้ถูกเปิดอยู่แล้วในหน้าต่างหรืออินสแตนซ์อื่นของโปรแกรม — ปิดการเชื่อมต่อนั้นก่อน";
                 return;
             }
 

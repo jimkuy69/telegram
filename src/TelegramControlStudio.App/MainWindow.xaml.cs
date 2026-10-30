@@ -613,7 +613,7 @@ public partial class MainWindow : Window
             if (!app.TryHoldSessionLock(account.Id))
             {
                 MessageBox.Show(
-                    "เซสชัน Telegram ของบัญชีนี้ถูก Web Host ใช้อยู่ (เปิด \"การส่งผ่านเว็บ\" อยู่)\nปิดการส่งผ่านเว็บในหน้า ตั้งค่า ของเว็บก่อน แล้วจึงเชื่อมต่อจากแอปนี้",
+                    "เซสชัน Telegram ของบัญชีนี้ถูกโปรแกรมนี้เปิดอยู่แล้วในหน้าต่างหรืออินสแตนซ์อื่น\nปิดการเชื่อมต่อนั้นก่อน แล้วจึงเชื่อมต่อใหม่",
                     "เซสชันถูกใช้งานอยู่",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);

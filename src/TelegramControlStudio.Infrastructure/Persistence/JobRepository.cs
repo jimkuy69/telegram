@@ -152,25 +152,6 @@ public sealed class JobRepository(string databasePath)
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    public async Task<int> ResumeFloodWaitedJobsAsync(
-        long accountId,
-        DateTimeOffset now,
-        CancellationToken cancellationToken = default)
-    {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            UPDATE jobs
-            SET status = 'Queued', last_error = NULL, flood_wait_until = NULL
-            WHERE account_id = $account_id
-              AND status = 'WaitingForFloodWait' AND flood_wait_until IS NOT NULL AND flood_wait_until <= $now;
-            """;
-        command.Parameters.AddWithValue("$account_id", accountId);
-        command.Parameters.AddWithValue("$now", now.ToString("O"));
-        return await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
     public async Task<int> ResumeEligibleJobsAsync(
         long accountId,
         DateTimeOffset now,

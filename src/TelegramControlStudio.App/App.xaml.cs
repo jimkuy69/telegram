@@ -17,9 +17,9 @@ public partial class App : Application
     public TdLibAccountClientRegistry TdLibClients => Host.TdLibClients;
 
     /// <summary>
-    /// Holds the cross-process TDLib session lock for an account. Fails when the web
-    /// host owns the session (web sending enabled); the caller must tell the user to
-    /// turn it off on the web settings page first.
+    /// Holds the cross-process TDLib session lock for an account so two instances of
+    /// this app (or a future companion host) can never open the same TDLib session
+    /// database at once.
     /// </summary>
     public bool TryHoldSessionLock(long accountId)
     {
