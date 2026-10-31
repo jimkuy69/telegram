@@ -16,6 +16,7 @@ public sealed class TdLibGroupQueryService(ITdLibClient client, string databaseP
         }, cancellationToken);
         using var document = JsonDocument.Parse(response);
         if (!document.RootElement.TryGetProperty("chat_ids", out var ids) || ids.ValueKind != JsonValueKind.Array) return [];
+        if (ids.GetArrayLength() == 0) return [];
         var repository = new TelegramGroupRepository(databasePath);
         var groups = new List<TelegramGroup>();
         foreach (var idElement in ids.EnumerateArray())
@@ -27,6 +28,10 @@ public sealed class TdLibGroupQueryService(ITdLibClient client, string databaseP
             await repository.UpsertAsync(group, cancellationToken);
             groups.Add(group);
         }
+
+        // Only prune after a complete round-trip, and only against the chats Telegram just listed, so a
+        // failed or empty response can never hide groups the operator still belongs to.
+        await repository.PruneAsync(accountId, groups.Select(group => group.ChatId).ToArray(), cancellationToken);
         return groups;
     }
 }

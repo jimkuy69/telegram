@@ -40,6 +40,59 @@ public sealed class TelegramGroupRepository
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Hides every group of the account that is not in <paramref name="keepChatIds"/>, so a chat the
+    /// operator left does not linger in the list forever. Soft-deleting keeps the row history, but the
+    /// member rows of a pruned chat are removed because they would otherwise resurface stale if the
+    /// chat is joined again.
+    /// </summary>
+    public async Task<int> PruneAsync(long accountId, IReadOnlyCollection<long> keepChatIds, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        var keepClause = keepChatIds.Count == 0
+            ? "1 = 1"
+            : $"chat_id NOT IN ({string.Join(", ", Enumerable.Range(0, keepChatIds.Count).Select(index => $"$keep{index}"))})";
+
+        await using (var members = connection.CreateCommand())
+        {
+            members.Transaction = transaction;
+            members.CommandText = $"""
+                DELETE FROM group_members
+                WHERE account_id = $account_id
+                  AND chat_id IN (
+                      SELECT chat_id FROM telegram_groups
+                      WHERE account_id = $account_id AND deleted_at IS NULL AND {keepClause});
+                """;
+            BindAccountAndKeeps(members, accountId, keepChatIds);
+            await members.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using (var groups = connection.CreateCommand())
+        {
+            groups.Transaction = transaction;
+            groups.CommandText = $"""
+                UPDATE telegram_groups
+                SET deleted_at = $now
+                WHERE account_id = $account_id AND deleted_at IS NULL AND {keepClause};
+                """;
+            BindAccountAndKeeps(groups, accountId, keepChatIds);
+            groups.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow.ToString("O"));
+            var pruned = await groups.ExecuteNonQueryAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return pruned;
+        }
+    }
+
+    private static void BindAccountAndKeeps(SqliteCommand command, long accountId, IReadOnlyCollection<long> keepChatIds)
+    {
+        command.Parameters.AddWithValue("$account_id", accountId);
+        var index = 0;
+        foreach (var chatId in keepChatIds) command.Parameters.AddWithValue($"$keep{index++}", chatId);
+    }
+
     private static TelegramGroup Read(SqliteDataReader reader) => new(
         reader.GetInt64(0), reader.GetInt64(1), reader.GetString(2), reader.GetString(3), reader.IsDBNull(4) ? null : reader.GetInt32(4),
         reader.GetInt32(5) == 1, reader.GetInt32(6) == 1, reader.GetInt32(7) == 1,

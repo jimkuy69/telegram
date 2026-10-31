@@ -25,13 +25,13 @@ public partial class GroupsWindow : Window
     private void Group_DoubleClick(object sender, MouseButtonEventArgs e)
     {
         if ((sender as System.Windows.Controls.DataGrid)?.SelectedItem is not TelegramGroup group) return;
-        new GroupMembersWindow(_databasePath, group.AccountId, group.ChatId, group.Title) { Owner = this }.ShowDialog();
+        new GroupMembersWindow(_databasePath, group.AccountId, group.ChatId, group.Title, group.CanViewMembers) { Owner = this }.ShowDialog();
     }
 
     private void ViewDetails_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.Button button && button.DataContext is TelegramGroup group)
-            new GroupMembersWindow(_databasePath, group.AccountId, group.ChatId, group.Title) { Owner = this }.ShowDialog();
+            new GroupMembersWindow(_databasePath, group.AccountId, group.ChatId, group.Title, group.CanViewMembers) { Owner = this }.ShowDialog();
     }
 
     private async void Sync_Click(object sender, RoutedEventArgs e)

@@ -70,6 +70,15 @@ Accounts, TDLib authentication, groups/channels, member observation, contacts, t
 | Sandbox UI check | `scripts/account-delete-ui-check.ps1` + `scripts/seed-account-delete-sandbox.py` | rehearses the destructive flow against a throwaway TEMP database holding one survivor and two junk accounts, then verifies the survivor keeps its rows and no orphan rows remain |
 | Tests | `AccountRepositoryDeletionTests` | every owned table emptied, the other account untouched, counts reported before deleting, unknown account returns null without writing |
 
+## IMPLEMENTED group list truth and member view
+
+| Feature | Where | Notes |
+|---|---|---|
+| Stale chats disappear on sync | `TelegramGroupRepository.PruneAsync` | after a complete round-trip every group missing from Telegram's main chat list is soft-deleted, and its member rows are removed so a chat joined again cannot show stale members; the prune only runs when Telegram actually returned chats |
+| Honest empty member list | `GroupMembersWindow` | an empty grid now says whether Telegram hides the member list (`can_view_members = 0`), the search matched nothing, or the chat has simply not been synced — instead of looking broken |
+| Select-page survives an open cell | `SelectVisibleContacts_Click` | the handler commits the pending cell edit and lets the two-way binding carry the selection; the old `Items.Refresh()` threw inside the edit transaction and closed the app |
+| Tests | `TelegramGroupRepositoryPruneTests` | keeps the survivors, hides the rest, drops pruned member rows, leaves other accounts untouched, idempotent on a second run |
+
 ## IMPLEMENTED web host (Phase 1)
 
 | Feature | Where | Notes |
