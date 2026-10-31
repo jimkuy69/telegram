@@ -83,6 +83,7 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                     <Button Style="{StaticResource IconButton}" Content="&#xE710;" Margin="6,0,0,0" ToolTip="เพิ่มบัญชี" Click="AddAccount_Click" />
+                    <Button x:Name="DeleteAccountButton" Style="{StaticResource IconButton}" Content="&#xE74D;" Margin="4,0,0,0" Foreground="{StaticResource DangerText}" ToolTip="ลบบัญชีที่เลือก พร้อมรายชื่อ งาน และเซสชันของบัญชีนั้น" Click="DeleteAccount_Click" />
                     <Button x:Name="ConnectAccountButton" Content="เข้าสู่ระบบ" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Padding="16,8" Click="ConnectAccount_Click" ToolTip="เริ่ม Authorization ของบัญชีที่เลือก" />
                     <Border Width="1" Height="24" Background="{StaticResource Border}" Margin="14,0" />
                     <Button x:Name="EmergencyStopButton" Style="{StaticResource IconButton}" Content="&#xE71A;" Foreground="{StaticResource DangerText}" ToolTip="หยุดฉุกเฉิน (Kill switch)" Click="EmergencyStop_Click" />

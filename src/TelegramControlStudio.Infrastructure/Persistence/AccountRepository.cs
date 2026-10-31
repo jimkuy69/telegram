@@ -97,6 +97,80 @@ public sealed class AccountRepository(string databasePath)
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
+    /// <summary>
+    /// Account-scoped tables in the order their rows can be removed: children before the parents they
+    /// reference, so the delete never leans on cascades the schema does not declare.
+    /// </summary>
+    private static readonly string[] OwnedTables =
+    [
+        "job_items", "campaign_recipients", "template_media", "campaigns", "jobs", "message_templates",
+        "media_files", "consent_requests", "contacts", "group_members", "telegram_groups", "invite_links",
+        "join_requests", "activity_logs", "account_secrets", "account_sessions"
+    ];
+
+    public async Task<IReadOnlyDictionary<string, int>> CountOwnedRowsAsync(long accountId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        var counts = new Dictionary<string, int>();
+        foreach (var table in OwnedTables) counts[table] = await CountAsync(connection, table, accountId, cancellationToken);
+        return counts;
+    }
+
+    /// <summary>Removes the account and every row that belongs to it. Returns null when the account does not exist.</summary>
+    public async Task<AccountDeletion?> DeleteAsync(long accountId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction();
+        try
+        {
+            await using (var lookup = connection.CreateCommand())
+            {
+                lookup.Transaction = transaction;
+                lookup.CommandText = "SELECT display_name FROM accounts WHERE id = $account_id;";
+                lookup.Parameters.AddWithValue("$account_id", accountId);
+                var displayName = await lookup.ExecuteScalarAsync(cancellationToken) as string;
+                if (displayName is null) return null;
+
+                var deleted = new Dictionary<string, int>();
+                foreach (var table in OwnedTables)
+                {
+                    deleted[table] = await CountAsync(connection, table, accountId, cancellationToken);
+                    if (deleted[table] == 0) continue;
+                    await using var purge = connection.CreateCommand();
+                    purge.Transaction = transaction;
+                    purge.CommandText = $"DELETE FROM {table} WHERE account_id = $account_id;";
+                    purge.Parameters.AddWithValue("$account_id", accountId);
+                    await purge.ExecuteNonQueryAsync(cancellationToken);
+                }
+
+                await using var remove = connection.CreateCommand();
+                remove.Transaction = transaction;
+                remove.CommandText = "DELETE FROM accounts WHERE id = $account_id;";
+                remove.Parameters.AddWithValue("$account_id", accountId);
+                if (await remove.ExecuteNonQueryAsync(cancellationToken) != 1)
+                    throw new InvalidOperationException($"Account {accountId} disappeared while it was being deleted.");
+
+                transaction.Commit();
+                return new AccountDeletion(accountId, displayName, deleted);
+            }
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    private static async Task<int> CountAsync(SqliteConnection connection, string table, long accountId, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM {table} WHERE account_id = $account_id;";
+        command.Parameters.AddWithValue("$account_id", accountId);
+        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken) ?? 0);
+    }
+
     public async Task<bool> UpdateProfileAsync(long accountId, string displayName, string phoneNumber, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);

@@ -57,6 +57,19 @@ Accounts, TDLib authentication, groups/channels, member observation, contacts, t
 | Sandbox UI check | `scripts/report-ui-check.ps1` + `scripts/seed-report-sandbox.py` | drives the real app against a synthetic TEMP database with the kill switch engaged, then verifies the exported bytes carry the BOM and every Thai section header |
 | Tests | `ResultReportCalculatorTests`, `ResultReportRepositoryTests`, `JobItemRepositoryTests`, `SqliteDatabaseTests`, `CsvExporterTests` | day bucketing, rate excluding pending, reason ordering, window filtering, legacy-schema migration, idempotent `sent_at` stamping and CSV quoting |
 
+## IMPLEMENTED account deletion
+
+| Feature | Where | Notes |
+|---|---|---|
+| Trash button in the header | `DeleteAccountButton` next to เพิ่มบัญชี | acts on the account currently selected in the switcher, so an operator can retire a mistaken or abandoned account without touching the database by hand |
+| Connected accounts refuse | `DeleteAccount_Click` | if the TDLib client is still registered the box tells the operator to disconnect first, so a live session is never removed mid-flight |
+| Blast radius read before confirming | `AccountRepository.CountOwnedRowsAsync` | the first confirmation lists, in Thai, how many jobs, recipients, contacts, consent events, secrets and session rows are about to go; an empty account says so instead of showing nothing |
+| Second confirmation | `DeleteAccount_Click` | warns that the DPAPI-protected API values and the TDLib session files are gone too, and that re-adding the account needs a fresh OTP |
+| Child-first cascade in one transaction | `AccountRepository.DeleteAsync` | deletes the 16 account-owned tables children first, rolls back on any failure, and returns `AccountDeletion` with the per-table counts so the result box can state exactly how many rows were removed |
+| Session folder cleanup | `RemoveAccountSessionDirectory` | deletes `%LOCALAPPDATA%\TelegramControlStudio\sessions\{id}` only after `SessionPathPolicy.IsWithinSessionRoot` confirms the path, and reports if the folder was still locked |
+| Sandbox UI check | `scripts/account-delete-ui-check.ps1` + `scripts/seed-account-delete-sandbox.py` | rehearses the destructive flow against a throwaway TEMP database holding one survivor and two junk accounts, then verifies the survivor keeps its rows and no orphan rows remain |
+| Tests | `AccountRepositoryDeletionTests` | every owned table emptied, the other account untouched, counts reported before deleting, unknown account returns null without writing |
+
 ## IMPLEMENTED web host (Phase 1)
 
 | Feature | Where | Notes |

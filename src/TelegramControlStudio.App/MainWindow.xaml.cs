@@ -297,6 +297,93 @@ public partial class MainWindow : Window
         new SettingsWindow(databasePath, createdAccountId) { Owner = this }.ShowDialog();
     }
 
+    private async void DeleteAccount_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is not Account account)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var app = (App)Application.Current;
+        if (app.TdLibClients.IsRegistered(account.Id))
+        {
+            MessageBox.Show("บัญชีนี้ยังเชื่อมต่อกับ Telegram อยู่ กรุณากด \"ตัดการเชื่อมต่อ\" ก่อนลบบัญชี", "ยังเชื่อมต่ออยู่",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            var repository = new AccountRepository(_databasePath);
+            var owned = await repository.CountOwnedRowsAsync(account.Id);
+            var detail = string.Join("\n", owned
+                .Where(pair => pair.Value > 0)
+                .Select(pair => $"• {DescribeOwnedTable(pair.Key)} {pair.Value} รายการ"));
+            if (detail.Length == 0) detail = "• บัญชีนี้ไม่มีรายชื่อหรืองานเก็บอยู่เลย";
+
+            if (MessageBox.Show(
+                    $"ลบบัญชี {account.DisplayName} ({account.PhoneNumber})?\n{detail}",
+                    "ยืนยันการลบบัญชี", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+            if (MessageBox.Show(
+                    "ลบถาวร: ไฟล์เซสชัน TDLib และค่า API ที่เข้ารหัสไว้ของบัญชีนี้จะถูกลบด้วย\nถ้าเพิ่มบัญชีนี้กลับจะต้องขอรหัส OTP จาก Telegram ใหม่ทั้งหมด",
+                    "ยืนยันการลบอีกครั้ง", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+
+            var deletion = await repository.DeleteAsync(account.Id)
+                ?? throw new InvalidOperationException("บัญชีนี้ถูกลบไปแล้ว");
+            var sessionKept = !RemoveAccountSessionDirectory(account.Id);
+
+            await viewModel.LoadAccountsAsync(_databasePath);
+            viewModel.ActiveAccount = viewModel.Accounts.FirstOrDefault();
+            await RefreshAccountStateAsync();
+            MessageBox.Show(
+                sessionKept
+                    ? $"ลบ {deletion.DisplayName} และข้อมูล {deletion.TotalRows} รายการแล้ว แต่โฟลเดอร์เซสชันยังถูกลบไม่ได้ (อาจมีโปรแกรมอื่นใช้อยู่)"
+                    : $"ลบ {deletion.DisplayName} และข้อมูล {deletion.TotalRows} รายการเรียบร้อย",
+                "ลบบัญชีแล้ว", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show($"ลบบัญชีไม่สำเร็จ\n{exception.Message}", "ผิดพลาด", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private static bool RemoveAccountSessionDirectory(long accountId)
+    {
+        var directory = SessionPathPolicy.GetAccountSessionDirectory(accountId);
+        if (!SessionPathPolicy.IsWithinSessionRoot(directory) || !Directory.Exists(directory)) return true;
+        try
+        {
+            Directory.Delete(directory, recursive: true);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    private static string DescribeOwnedTable(string table) => table switch
+    {
+        "job_items" => "รายการงานย่อย",
+        "campaign_recipients" => "ผู้รับในแคมเปญ",
+        "template_media" => "สื่อในเทมเพลต",
+        "campaigns" => "แคมเปญ",
+        "jobs" => "งาน",
+        "message_templates" => "เทมเพลตข้อความ",
+        "media_files" => "ไฟล์มีเดีย",
+        "consent_requests" => "ประวัติความยินยอม",
+        "contacts" => "รายชื่อ",
+        "group_members" => "สมาชิกกลุ่ม",
+        "telegram_groups" => "กลุ่ม/แชนแนล",
+        "invite_links" => "ลิงก์เชิญ",
+        "join_requests" => "คำขอเข้าร่วม",
+        "activity_logs" => "บันทึกกิจกรรม",
+        "account_secrets" => "ค่าลับของบัญชี",
+        "account_sessions" => "สถานะเซสชัน",
+        _ => table
+    };
+
     private void PendingRequests_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
