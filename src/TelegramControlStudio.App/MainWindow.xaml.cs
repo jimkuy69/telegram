@@ -546,9 +546,14 @@ public partial class MainWindow : Window
         if (ContactGrid.DataContext is not MainWindowViewModel viewModel) return;
         var checkbox = sender as System.Windows.Controls.CheckBox;
         var shouldSelect = checkbox?.IsChecked != null;
+
+        // Clicking a row checkbox leaves that cell in edit mode, and refreshing the grid inside an
+        // edit transaction throws. The bindings already track Selected, so only the edit is closed.
+        ContactGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Cell, true);
+        ContactGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Row, true);
+
         foreach (var contact in viewModel.Contacts)
             contact.Selected = shouldSelect;
-        ContactGrid.Items.Refresh();
         if (checkbox is not null)
             checkbox.IsChecked = shouldSelect;
     }
