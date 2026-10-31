@@ -79,6 +79,14 @@ Accounts, TDLib authentication, groups/channels, member observation, contacts, t
 | Select-page survives an open cell | `SelectVisibleContacts_Click` | the handler commits the pending cell edit and lets the two-way binding carry the selection; the old `Items.Refresh()` threw inside the edit transaction and closed the app |
 | Tests | `TelegramGroupRepositoryPruneTests` | keeps the survivors, hides the rest, drops pruned member rows, leaves other accounts untouched, idempotent on a second run |
 
+## IMPLEMENTED per-menu help popover
+
+| Feature | Where | Notes |
+|---|---|---|
+| Asterisk help button on every sidebar menu | `MainWindow.xaml`, `NavHelpButton` style | each of the 16 menu rows carries a small `*` button that opens a popover instead of navigating |
+| Usage and scope text per menu | `MainWindow.xaml.cs` `MenuHelp` | two short lines per menu: what to click, then what the menu is allowed to do (consent, test-mode allowlist, kill switch, opt-in quota/cooldown, Telegram limits) |
+| Sandbox check | `scripts/menu-help-ui-check.ps1` | 16 asterisk buttons found, opt-in popover shows quota/cooldown/declined text, a second menu swaps the text, kill switch engaged first, `RESULT=PASS` |
+
 ## IMPLEMENTED web host (Phase 1)
 
 | Feature | Where | Notes |

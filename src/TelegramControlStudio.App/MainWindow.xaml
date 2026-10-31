@@ -1,4 +1,4 @@
-<Window x:Class="TelegramControlStudio.App.MainWindow"
+﻿<Window x:Class="TelegramControlStudio.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Telegram Control Studio"
@@ -111,26 +111,74 @@
 
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
-                            <Button Style="{StaticResource NavButtonActive}" Tag="&#xE724;" Content="ส่งข้อความ" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE716;" Content="จัดการผู้รับ" Click="FocusRecipients_Click" />
+                            <Grid>
+                                <Button Style="{StaticResource NavButtonActive}" Tag="&#xE724;" Content="ส่งข้อความ" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="ส่งข้อความ" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE716;" Content="จัดการผู้รับ" Click="FocusRecipients_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="จัดการผู้รับ" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
 
                             <TextBlock Text="เครื่องมือ" Style="{StaticResource SectionLabel}" Margin="10,12,0,6" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE774;" Content="กลุ่มและแชนแนล" Click="Groups_Click" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE8A5;" Content="เทมเพลตและมีเดีย" Click="TemplateEditor_Click" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE8B7;" Content="Media Library" Click="MediaLibrary_Click" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE7C3;" Content="Campaign Wizard" Click="CampaignWizard_Click" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE768;" Content="ขอยินยอม (Opt-in)" Click="RequestConsent_Click" ToolTip="ส่งคำขอความยินยอมให้ผู้ติดต่อที่มีเบอร์ของเราและยังไม่มี Consent" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE8A7;" Content="กล่องคำตอบ Consent" Click="ConsentInbox_Click" ToolTip="ดูประวัติคำขอและคำตอบ พร้อมอนุมัติ/ปฏิเสธอัตโนมัติ" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE71B;" Content="Invite Links" Click="InviteLinks_Click" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE823;" Content="Pending Requests" Click="PendingRequests_Click" />
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE774;" Content="กลุ่มและแชนแนล" Click="Groups_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="กลุ่มและแชนแนล" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE8A5;" Content="เทมเพลตและมีเดีย" Click="TemplateEditor_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="เทมเพลตและมีเดีย" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE8B7;" Content="Media Library" Click="MediaLibrary_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="Media Library" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE7C3;" Content="Campaign Wizard" Click="CampaignWizard_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="Campaign Wizard" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE768;" Content="ขอยินยอม (Opt-in)" Click="RequestConsent_Click" ToolTip="ส่งคำขอความยินยอมให้ผู้ติดต่อที่มีเบอร์ของเราและยังไม่มี Consent" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="ขอยินยอม (Opt-in)" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE8A7;" Content="กล่องคำตอบ Consent" Click="ConsentInbox_Click" ToolTip="ดูประวัติคำขอและคำตอบ พร้อมอนุมัติ/ปฏิเสธอัตโนมัติ" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="กล่องคำตอบ Consent" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE71B;" Content="Invite Links" Click="InviteLinks_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="Invite Links" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE823;" Content="Pending Requests" Click="PendingRequests_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="Pending Requests" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
 
                             <TextBlock Text="ระบบ" Style="{StaticResource SectionLabel}" Margin="10,12,0,6" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE8CB;" Content="คิวงาน" Click="Queue_Click" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE81C;" Content="ประวัติการทำงาน" Click="History_Click" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE9D9;" Content="รายงานผล" Click="ResultReport_Click" ToolTip="สรุปผลส่งข้อความตามช่วงวันที่ พร้อมเหตุผลที่ต้องแก้ และส่งออก CSV" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE896;" Content="นำเข้าผู้ติดต่อ" Click="ImportContacts_Click" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE898;" Content="ส่งออกผู้ติดต่อ" Click="ExportContacts_Click" />
-                            <Button Style="{StaticResource NavButton}" Tag="&#xE713;" Content="ตั้งค่า" Click="Settings_Click" />
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE8CB;" Content="คิวงาน" Click="Queue_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="คิวงาน" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE81C;" Content="ประวัติการทำงาน" Click="History_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="ประวัติการทำงาน" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE9D9;" Content="รายงานผล" Click="ResultReport_Click" ToolTip="สรุปผลส่งข้อความตามช่วงวันที่ พร้อมเหตุผลที่ต้องแก้ และส่งออก CSV" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="รายงานผล" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE896;" Content="นำเข้าผู้ติดต่อ" Click="ImportContacts_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="นำเข้าผู้ติดต่อ" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE898;" Content="ส่งออกผู้ติดต่อ" Click="ExportContacts_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="ส่งออกผู้ติดต่อ" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE713;" Content="ตั้งค่า" Click="Settings_Click" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="ตั้งค่า" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -162,6 +210,19 @@
                     </Border>
                 </Grid>
             </Border>
+
+            <!-- Menu help popover: opened by the small asterisk button next to each sidebar menu -->
+            <Popup x:Name="NavHelpPopup" AllowsTransparency="True" StaysOpen="False" Placement="Right" HorizontalOffset="6" VerticalOffset="-12" PopupAnimation="Fade">
+                <Border Background="{StaticResource CardBg}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="10" Padding="14,12" MaxWidth="340">
+                    <Border.Effect>
+                        <DropShadowEffect Color="Black" BlurRadius="18" ShadowDepth="3" Opacity="0.45" />
+                    </Border.Effect>
+                    <StackPanel>
+                        <TextBlock x:Name="NavHelpTitle" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" TextWrapping="Wrap" />
+                        <TextBlock x:Name="NavHelpBody" FontSize="12" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,8,0,0" LineHeight="18" />
+                    </StackPanel>
+                </Border>
+            </Popup>
 
             <!-- Content -->
             <Grid Grid.Column="1" Margin="20,18,20,18">
