@@ -27,7 +27,9 @@ public sealed class TdLibMessageSendService(string databasePath)
             throw new SendSafetyBlockedException(decision.ReasonCode, decision.Verdict);
         }
 
-        var request = TdLibMessageRequests.SendText(recipient.TelegramUserId, text, recipient.HasConsent, recipient.IsOptedOut, confirmed);
+        var request = TdLibMessageRequests.SendText(
+            await ResolvePrivateChatIdAsync(client, recipient.AccountId, recipient.TelegramUserId, cancellationToken),
+            text, recipient.HasConsent, recipient.IsOptedOut, confirmed);
         var response = await client.SendAsync(request.Function, request.Parameters, cancellationToken);
         await EnsureNoTdLibErrorAsync(response, recipient.AccountId, cancellationToken);
         await LogAsync(recipient.AccountId, "Info", "MessageSent", "Message sent to a consented recipient.", cancellationToken);
@@ -74,8 +76,9 @@ public sealed class TdLibMessageSendService(string databasePath)
             throw new SendSafetyBlockedException(decision.ReasonCode, decision.Verdict);
         }
 
+        var chatId = await ResolvePrivateChatIdAsync(client, recipient.AccountId, recipient.TelegramUserId, cancellationToken);
         var request = TdLibMessageRequests.SendText(
-            recipient.TelegramUserId, text, recipient.HasConsent, recipient.IsOptedOut, confirmed: true, SendPurpose.ConsentRequest);
+            chatId, text, recipient.HasConsent, recipient.IsOptedOut, confirmed: true, SendPurpose.ConsentRequest);
         var response = await client.SendAsync(request.Function, request.Parameters, cancellationToken);
         await EnsureNoTdLibErrorAsync(response, recipient.AccountId, cancellationToken);
 
@@ -86,13 +89,29 @@ public sealed class TdLibMessageSendService(string databasePath)
             ConsentRequestKinds.Requested,
             now,
             TryMessageId(response),
-            TryChatId(response) ?? recipient.TelegramUserId,
+            TryChatId(response) ?? chatId,
             templateId,
             BodyFingerprint(text),
             null,
             ConsentRequestSources.JobRunner), cancellationToken);
         await LogAsync(recipient.AccountId, "Info", "ConsentRequested", "Opt-in request sent and recorded as consent evidence.", cancellationToken);
         return response;
+    }
+
+    /// <summary>
+    /// sendMessage needs a chat id, and TDLib answers 400 "Chat not found" for a user whose
+    /// private chat was never created locally. createPrivateChat returns the existing chat or
+    /// creates it, so every transmission resolves the peer first.
+    /// </summary>
+    private async Task<long> ResolvePrivateChatIdAsync(ITdLibClient client, long accountId, long userId, CancellationToken cancellationToken)
+    {
+        var response = await client.SendAsync("createPrivateChat", new Dictionary<string, object?>
+        {
+            ["user_id"] = userId,
+            ["force"] = false
+        }, cancellationToken);
+        await EnsureNoTdLibErrorAsync(response, accountId, cancellationToken);
+        return TryReadId(response, "id") ?? throw new InvalidOperationException($"{TdLibErrorSummary.SendFailedCode} 0: CHAT_ID_UNREADABLE");
     }
 
     private async Task EnsureNoTdLibErrorAsync(string response, long accountId, CancellationToken cancellationToken)
@@ -104,8 +123,9 @@ public sealed class TdLibMessageSendService(string databasePath)
             await LogAsync(accountId, "Waiting", "FloodWait", "TDLib requested a FloodWait; secret data was not logged.", cancellationToken);
             throw new TdLibFloodWaitException(seconds);
         }
-        await LogAsync(accountId, "Error", "MessageSendFailed", "TDLib returned an error for a recipient that passed the safety gate.", cancellationToken);
-        throw new InvalidOperationException("TDLIB_MESSAGE_SEND_FAILED");
+        var detail = TdLibErrorSummary.Describe(response);
+        await LogAsync(accountId, "Error", "MessageSendFailed", $"TDLib rejected the message: {detail}.", cancellationToken);
+        throw new InvalidOperationException($"{TdLibErrorSummary.SendFailedCode} {detail}");
     }
 
     private static long? TryMessageId(string response) => TryReadId(response, "id");

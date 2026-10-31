@@ -303,6 +303,7 @@ public sealed class TdLibCampaignJobRunnerTests
         public int CallCount { get; private set; }
         public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
         {
+            if (function == "createPrivateChat") return Task.FromResult("{\"@type\":\"chat\",\"id\":9001}");
             CallCount++;
             return Task.FromResult(response);
         }

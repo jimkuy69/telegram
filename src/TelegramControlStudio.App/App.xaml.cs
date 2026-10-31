@@ -149,8 +149,13 @@ public partial class App : Application
             // The loop reports shutdown races through the awaited task; exit must continue.
         }
         _autoRunCancellation?.Dispose();
-        _consentReplies?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        _host?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        // Dispose off the UI thread: awaiting TDLib shutdown on the dispatcher during exit
+        // blocks the shutdown forever because the continuations cannot be posted back.
+        Task.Run(async () =>
+        {
+            if (_consentReplies is not null) await _consentReplies.DisposeAsync();
+            if (_host is not null) await _host.DisposeAsync();
+        }).GetAwaiter().GetResult();
         foreach (var sessionLock in _sessionLocks.Values)
             sessionLock.Dispose();
         _sessionLocks.Clear();

@@ -2,6 +2,7 @@ using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.Core.Operations;
 using TelegramControlStudio.Core.Reporting;
 using TelegramControlStudio.Core.Safety;
+using TelegramControlStudio.Core.Telegram;
 using TelegramControlStudio.Infrastructure.Persistence;
 
 namespace TelegramControlStudio.App.ViewModels;
@@ -37,16 +38,24 @@ public static class ReportDisplay
         _ => "ต้องแก้ถาวร",
     };
 
-    public static string DescribeReason(string? reason) => reason switch
+    public static string DescribeReason(string? reason)
     {
-        ResultReportMath.UnspecifiedReason => "ไม่ระบุเหตุผล",
-        SendSafetyPolicy.ConsentReason => "ผู้รับยังไม่มี Consent หรือ Opt-out แล้ว",
-        "TDLIB_MESSAGE_SEND_FAILED" => "Telegram ไม่ยอมรับการส่งข้อความ",
-        "Cancelled by user" => "ผู้ใช้ยกเลิกเอง",
-        "QUEUE_RUN_FAILED" => "ตัวรันคิวทำงานผิดพลาด",
-        "AUTO_RUN_FAILED" => "ตัวรันอัตโนมัติทำงานผิดพลาด",
-        _ => ConsentRequestDisplay.DescribeReason(reason),
-    };
+        if (TdLibErrorSummary.IsSendFailure(reason))
+        {
+            var detail = TdLibErrorSummary.SendFailureDetail(reason);
+            return detail is null ? "Telegram ไม่ยอมรับการส่งข้อความ" : $"Telegram ไม่ยอมรับการส่งข้อความ ({detail})";
+        }
+
+        return reason switch
+        {
+            ResultReportMath.UnspecifiedReason => "ไม่ระบุเหตุผล",
+            SendSafetyPolicy.ConsentReason => "ผู้รับยังไม่มี Consent หรือ Opt-out แล้ว",
+            "Cancelled by user" => "ผู้ใช้ยกเลิกเอง",
+            "QUEUE_RUN_FAILED" => "ตัวรันคิวทำงานผิดพลาด",
+            "AUTO_RUN_FAILED" => "ตัวรันอัตโนมัติทำงานผิดพลาด",
+            _ => ConsentRequestDisplay.DescribeReason(reason),
+        };
+    }
 
     public static string DescribeConsentKind(string kind) => kind switch
     {

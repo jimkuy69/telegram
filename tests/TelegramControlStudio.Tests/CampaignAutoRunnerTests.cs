@@ -256,6 +256,7 @@ public sealed class CampaignAutoRunnerTests
 
         public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
         {
+            if (function == "createPrivateChat") return Task.FromResult("{\"@type\":\"chat\",\"id\":9001}");
             CallCount++;
             return Task.FromResult(response);
         }
@@ -270,6 +271,7 @@ public sealed class CampaignAutoRunnerTests
 
         public async Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
         {
+            if (function == "createPrivateChat") return "{\"@type\":\"chat\",\"id\":9001}";
             CallCount++;
             await new JobRepository(databasePath).UpdateStatusAsync(jobId, JobStatus.Paused, "Paused by user.");
             return "{\"@type\":\"message\"}";

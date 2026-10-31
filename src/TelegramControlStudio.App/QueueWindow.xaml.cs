@@ -128,7 +128,17 @@ public partial class QueueWindow : Window
     }
     private async void Pause_Click(object sender, RoutedEventArgs e) { if (SelectedJob is null || SelectedJob.Status != JobStatus.Running) { MessageBox.Show("เลือก Job ที่กำลังทำงานอยู่ก่อนกดหยุดชั่วคราว", "หยุดชั่วคราวไม่ได้", MessageBoxButton.OK, MessageBoxImage.Information); return; } _runCancellation?.Cancel(); await ChangeAsync(JobStatus.Paused); }
     private async void Resume_Click(object sender, RoutedEventArgs e) { if (SelectedJob is null) { MessageBox.Show("กรุณาเลือก Job ก่อน", "ยังไม่ได้เลือก", MessageBoxButton.OK, MessageBoxImage.Information); return; } if (SelectedJob.Status is not (JobStatus.Paused or JobStatus.WaitingForFloodWait)) { MessageBox.Show("ทำต่อได้เฉพาะงานที่หยุดชั่วคราวหรือรอ FloodWait", "ทำต่อไม่ได้", MessageBoxButton.OK, MessageBoxImage.Information); return; } if ((await new SendSafetyRepository(_databasePath).GetAsync()).KillSwitchEngaged) { MessageBox.Show("หยุดฉุกเฉินอยู่ ต้องปลดหยุดฉุกเฉินก่อนจึงจะทำต่อได้", "หยุดฉุกเฉิน", MessageBoxButton.OK, MessageBoxImage.Warning); return; } await ChangeAsync(JobStatus.Queued); await StartSelectedJobAsync(); }
-    private async void Retry_Click(object sender, RoutedEventArgs e) { if (SelectedJob is not null && await new JobRepository(_databasePath).IncrementRetryAsync(SelectedJob.Id, "Manually retried from queue")) { await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, SelectedJob.Id, "Info", "JobRetry", $"Job {SelectedJob.Id} manually retried from Queue UI.", DateTimeOffset.UtcNow)); await LoadAsync(); await StartSelectedJobAsync(); } }
+    private async void Retry_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedJob is null) return;
+        var jobId = SelectedJob.Id;
+        if (!await new JobRepository(_databasePath).IncrementRetryAsync(jobId, "Manually retried from queue")) return;
+        await new ActivityLogRepository(_databasePath).AppendAsync(new ActivityLog(_accountId, jobId, "Info", "JobRetry", $"Job {jobId} manually retried from Queue UI.", DateTimeOffset.UtcNow));
+        await LoadAsync();
+        // LoadAsync rebuilds the list, so the selection has to be restored before the runner reads it.
+        SelectedJob = Jobs.FirstOrDefault(job => job.Id == jobId);
+        await StartSelectedJobAsync();
+    }
     private async void Cancel_Click(object sender, RoutedEventArgs e)
     {
         if (SelectedJob is null) return;

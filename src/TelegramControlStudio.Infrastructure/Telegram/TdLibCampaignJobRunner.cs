@@ -127,7 +127,7 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
                 }
                 catch (Exception exception)
                 {
-                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Failed", "TDLIB_MESSAGE_SEND_FAILED", incrementRetry: true, cancellationToken: token);
+                    await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Failed", exception.Message, incrementRetry: true, cancellationToken: token);
                     await jobRepository.UpdateStatusAsync(jobId, JobStatus.PartiallyCompleted, exception.Message, cancellationToken: token);
                     return JobStatus.PartiallyCompleted;
                 }

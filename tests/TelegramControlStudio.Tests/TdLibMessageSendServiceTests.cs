@@ -140,13 +140,47 @@ public sealed class TdLibMessageSendServiceTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
 
+    [Fact]
+    public async Task ResolvesThePrivateChatBeforeSendingBecauseTdlibNeedsAChatId()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-chat-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            await DisableTestModeAsync(path);
+            var client = new FakeClient("{\"@type\":\"message\",\"id\":11,\"chat_id\":7001}");
+            var accountId = await new AccountRepository(path).CreateAsync("Chat", "+66000000093");
+            var recipient = new Contact(accountId, 322, "A", "B", null, "+66000000322", false, false, DateTimeOffset.UtcNow);
+
+            await new TdLibMessageSendService(path).SendConsentRequestAsync(client, recipient, "ขอความยินยอมได้ไหม");
+
+            Assert.Equal(new[] { "createPrivateChat", "sendMessage" }, client.Functions);
+            Assert.Equal(322L, client.Calls[0].Parameters["user_id"]);
+            Assert.Equal(7001L, client.Calls[1].Parameters["chat_id"]);
+            var request = Assert.Single(await new ConsentRequestRepository(path).ListAsync(accountId));
+            Assert.Equal(7001, request.ChatId);
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
     private static Task DisableTestModeAsync(string path) =>
         new SendSafetyRepository(path).SaveAsync(new SendSafetySettings(false, new HashSet<long>(), false, null));
 
     private sealed class FakeClient(string response) : TelegramControlStudio.Core.Telegram.ITdLibClient
     {
-        public string? Function { get; private set; }
-        public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default) { Function = function; return Task.FromResult(response); }
+        private readonly List<(string Function, IReadOnlyDictionary<string, object?> Parameters)> _calls = [];
+
+        public IReadOnlyList<(string Function, IReadOnlyDictionary<string, object?> Parameters)> Calls => _calls;
+        public string[] Functions => _calls.Select(call => call.Function).ToArray();
+        public string? Function => _calls.Count == 0 ? null : _calls[^1].Function;
+
+        public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
+        {
+            _calls.Add((function, parameters));
+            var payload = function == "createPrivateChat" ? "{\"@type\":\"chat\",\"id\":7001}" : response;
+            return Task.FromResult(payload);
+        }
+
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

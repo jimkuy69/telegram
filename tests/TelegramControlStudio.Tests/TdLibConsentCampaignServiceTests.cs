@@ -40,6 +40,11 @@ public sealed class TdLibConsentCampaignServiceTests
         public List<long> ChatIds { get; } = [];
         public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
         {
+            if (function == "createPrivateChat")
+            {
+                var userId = (long)parameters["user_id"]!;
+                return Task.FromResult($"{{\"@type\":\"chat\",\"id\":{userId}}}");
+            }
             var chatId = (long)parameters["chat_id"]!;
             ChatIds.Add(chatId);
             return Task.FromResult(chatId == 4

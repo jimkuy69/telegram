@@ -43,6 +43,18 @@ Accounts, TDLib authentication, groups/channels, member observation, contacts, t
 | Sandbox UI check | `scripts/consent-ui-check.ps1` | drives the real app against a throwaway database copy with the kill switch engaged |
 | Tests | `ConsentRequestPolicyTests`, `ConsentRequestQueueServiceTests`, `ConsentRequestRepositoryTests`, `ConsentReplyUpdateParserTests`, `ConsentReplyPolicyTests`, `TdLibConsentReplyHandlerTests` | ladder, quota ceiling, evidence trail, reply parsing and auto-grant/opt-out |
 
+## IMPLEMENTED delivery reliability (v0.2.9)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Private chat resolved before every send | `TdLibMessageSendService.ResolvePrivateChatIdAsync` | `sendMessage` needs a chat id and TDLib answers `400: Chat not found` for a user whose private chat was never created locally, so each send (campaign text and consent request) calls `createPrivateChat(user_id, force:false)` first and sends to the returned chat id |
+| Chat id kept as evidence | `consent_requests.chat_id` | the resolved chat id is what the consent row records, so the reply watcher matches answers in the same chat the request went to |
+| Log-safe send error detail | `TdLibErrorSummary` | turns a TDLib error JSON into a one-line `code: message` (whitespace collapsed, truncated, `UNKNOWN` fallbacks) and stores it as `TDLIB_MESSAGE_SEND_FAILED <detail>`; message text is never part of the reason |
+| Actionable failure label in the report | `ReportDisplay.DescribeReason` | a failed send now shows "Telegram ไม่ยอมรับการส่งข้อความ (400: Chat not found)" instead of the raw code |
+| Retry acts on the selected job | `QueueWindow.Retry_Click` | the selection is restored after the queue reload, so "ลองใหม่" actually starts the runner instead of silently doing nothing |
+| Clean shutdown | `App.OnExit` | TDLib and the reply watcher are disposed off the dispatcher thread, so closing the app no longer deadlocks and updates can be installed |
+| Tests | `TdLibErrorSummaryTests`, `TdLibMessageSendServiceTests` | code+message parsing, truncation, detail extraction, and the private-chat-then-send call order |
+
 ## IMPLEMENTED result report and CSV export
 
 | Feature | Where | Notes |
