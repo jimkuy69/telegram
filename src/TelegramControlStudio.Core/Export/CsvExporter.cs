@@ -23,6 +23,16 @@ public static class CsvExporter
         return builder.ToString();
     }
 
+    public static string Rows(IEnumerable<IReadOnlyList<string?>> rows)
+    {
+        var builder = new StringBuilder();
+        foreach (var row in rows)
+            builder.AppendLine(string.Join(",", row.Select(Cell)));
+        return builder.ToString();
+    }
+
+    private static string Cell(string? value) => value is null ? string.Empty : Escape(value);
+
     private static string Escape(string? value)
     {
         var text = value ?? string.Empty;

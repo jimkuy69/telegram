@@ -28,5 +28,22 @@ public sealed class CsvExporterTests
         Assert.Equal("Smith, Jr.", result.Valid[0].FirstName);
         Assert.Equal("smith", result.Valid[0].Username);
     }
+
+    [Fact]
+    public void RowsQuoteEveryCellAndKeepBlankSeparatorLines()
+    {
+        var csv = CsvExporter.Rows(new IReadOnlyList<string?>[]
+        {
+            new string?[] { "summary", "1,2" },
+            Array.Empty<string?>(),
+            new string?[] { null }
+        });
+
+        var lines = csv.Replace("\r", string.Empty).Split('\n');
+        Assert.Equal("\"summary\",\"1,2\"", lines[0]);
+        Assert.Equal(string.Empty, lines[1]);
+        Assert.Equal(string.Empty, lines[2]);
+        Assert.Equal(4, lines.Length);
+    }
 }
 

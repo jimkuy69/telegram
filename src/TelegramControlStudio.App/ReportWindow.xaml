@@ -1,0 +1,104 @@
+<Window x:Class="TelegramControlStudio.App.ReportWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Result Report" Width="1140" Height="720" Background="{StaticResource WindowBg}" Foreground="{StaticResource TextPrimary}" WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style x:Key="Cell" TargetType="{x:Type TextBlock}">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+        </Style>
+        <Style x:Key="CardValue" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+        </Style>
+    </Window.Resources>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="รายงานผลตามช่วงวันที่" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock x:Name="SubtitleText" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+        </StackPanel>
+
+        <DockPanel Grid.Row="1" Margin="0,14,0,10">
+            <TextBlock Text="ตั้งแต่" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+            <DatePicker x:Name="FromDateBox" Width="140" Margin="8,0,0,0" VerticalAlignment="Center" />
+            <TextBlock Text="ถึง" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="14,0,0,0" />
+            <DatePicker x:Name="ToDateBox" Width="140" Margin="8,0,0,0" VerticalAlignment="Center" />
+            <Button Content="7 วันล่าสุด" Style="{StaticResource GhostButton}" Margin="14,0,0,0" Click="Preset7_Click" />
+            <Button Content="30 วันล่าสุด" Style="{StaticResource GhostButton}" Margin="8,0,0,0" Click="Preset30_Click" />
+            <Button Content="ดูรายงาน" Style="{StaticResource PrimaryButton}" Height="36" Margin="14,0,0,0" Click="Refresh_Click" />
+            <Button x:Name="ExportButton" Content="ส่งออก CSV" Style="{StaticResource SecondaryButton}" Height="36" HorizontalAlignment="Right" Click="Export_Click" IsEnabled="False" />
+        </DockPanel>
+
+        <ItemsControl x:Name="CardsBox" Grid.Row="2" Margin="0,0,0,12">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource Card}" MinWidth="184" Margin="0,0,10,10" Padding="14,10">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Label}" Foreground="{StaticResource TextMuted}" FontSize="12" />
+                            <TextBlock Text="{Binding Value}" Style="{StaticResource CardValue}" />
+                            <TextBlock Text="{Binding Hint}" Foreground="{StaticResource TextMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.35*" />
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <DockPanel>
+                <TextBlock Text="ผลรายวัน" FontSize="15" FontWeight="SemiBold" DockPanel.Dock="Top" Margin="0,0,0,8" />
+                <DataGrid x:Name="DaysGrid" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                          Background="#0D1A2D" Foreground="{StaticResource TextSecondary}" BorderBrush="{StaticResource Border}"
+                          RowBackground="#0D1A2D" AlternatingRowBackground="#10213A">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="วัน" Binding="{Binding Day}" Width="104" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="ส่งสำเร็จ" Binding="{Binding Sent}" Width="78" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="คำขอยินยอม" Binding="{Binding ConsentSent}" Width="100" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="ล้มเหลว" Binding="{Binding Failed}" Width="72" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="ข้าม" Binding="{Binding Skipped}" Width="58" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="รอดำเนินการ" Binding="{Binding Pending}" Width="98" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="อัตราสำเร็จ" Binding="{Binding SuccessRate}" Width="*" ElementStyle="{StaticResource Cell}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+
+            <DockPanel Grid.Column="2">
+                <TextBlock Text="เหตุผลที่ต้องแก้ไข" FontSize="15" FontWeight="SemiBold" DockPanel.Dock="Top" Margin="0,0,0,8" />
+                <DataGrid x:Name="FailuresGrid" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                          Background="#0D1A2D" Foreground="{StaticResource TextSecondary}" BorderBrush="{StaticResource Border}"
+                          RowBackground="#0D1A2D" AlternatingRowBackground="#10213A">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="เหตุผล" Binding="{Binding Label}" Width="*" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="ประเภท" Binding="{Binding Kind}" Width="132" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="จำนวน" Binding="{Binding Count}" Width="62" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="รหัส" Binding="{Binding Code}" Width="150" ElementStyle="{StaticResource Cell}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="4" Margin="0,12,0,0">
+            <TextBlock x:Name="ConsentText" Foreground="{StaticResource InfoText}" TextWrapping="Wrap" Margin="0,0,0,6" />
+            <TextBlock x:Name="StatusText" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <StackPanel Orientation="Horizontal">
+                <Button Content="ปิด" Style="{StaticResource GhostButton}" Height="36" Click="Close_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -23,7 +23,7 @@ public sealed class SqliteDatabase
             CREATE TABLE IF NOT EXISTS account_sessions (account_id INTEGER PRIMARY KEY, session_directory TEXT NOT NULL, authorization_state TEXT NOT NULL, is_authorized INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE TABLE IF NOT EXISTS account_secrets (account_id INTEGER NOT NULL, secret_name TEXT NOT NULL, protected_value BLOB NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(account_id, secret_name), FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, account_id INTEGER NOT NULL, target_type TEXT NOT NULL, target_count INTEGER NOT NULL, status TEXT NOT NULL, retry_count INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, started_at TEXT, completed_at TEXT, flood_wait_until TEXT, last_error TEXT, idempotency_key TEXT NOT NULL UNIQUE, FOREIGN KEY(account_id) REFERENCES accounts(id));
-            CREATE TABLE IF NOT EXISTS job_items (job_id TEXT NOT NULL, account_id INTEGER NOT NULL, target_id INTEGER NOT NULL, status TEXT NOT NULL, retry_count INTEGER NOT NULL DEFAULT 0, idempotency_key TEXT NOT NULL UNIQUE, last_error TEXT, updated_at TEXT NOT NULL, PRIMARY KEY(job_id, target_id), FOREIGN KEY(job_id) REFERENCES jobs(id), FOREIGN KEY(account_id) REFERENCES accounts(id));
+            CREATE TABLE IF NOT EXISTS job_items (job_id TEXT NOT NULL, account_id INTEGER NOT NULL, target_id INTEGER NOT NULL, status TEXT NOT NULL, retry_count INTEGER NOT NULL DEFAULT 0, idempotency_key TEXT NOT NULL UNIQUE, last_error TEXT, updated_at TEXT NOT NULL, sent_at TEXT, PRIMARY KEY(job_id, target_id), FOREIGN KEY(job_id) REFERENCES jobs(id), FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE INDEX IF NOT EXISTS ix_job_items_status ON job_items(job_id, status);
             CREATE TABLE IF NOT EXISTS contacts (account_id INTEGER NOT NULL, telegram_user_id INTEGER NOT NULL, first_name TEXT NOT NULL, last_name TEXT NOT NULL DEFAULT '', username TEXT, phone_number TEXT, has_consent INTEGER NOT NULL DEFAULT 0, is_opted_out INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, deleted_at TEXT, PRIMARY KEY(account_id, telegram_user_id), FOREIGN KEY(account_id) REFERENCES accounts(id));
             CREATE INDEX IF NOT EXISTS ix_contacts_account_consent ON contacts(account_id, has_consent, is_opted_out);
@@ -68,6 +68,21 @@ public sealed class SqliteDatabase
         await command.ExecuteNonQueryAsync(cancellationToken);
         await EnsureColumnAsync(connection, "jobs", "message_text", "TEXT NOT NULL DEFAULT ''", cancellationToken);
         await EnsureColumnAsync(connection, "jobs", "link_url", "TEXT", cancellationToken);
+        await EnsureColumnAsync(connection, "job_items", "sent_at", "TEXT", cancellationToken);
+        await EnsureMigratedAsync(connection, 5, cancellationToken);
+        await using (var indexCommand = connection.CreateCommand())
+        {
+            indexCommand.CommandText = "CREATE INDEX IF NOT EXISTS ix_job_items_account_sent ON job_items(account_id, sent_at);";
+            await indexCommand.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    private static async Task EnsureMigratedAsync(SqliteConnection connection, int version, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES($version, CURRENT_TIMESTAMP);";
+        command.Parameters.AddWithValue("$version", version);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task EnsureColumnAsync(SqliteConnection connection, string table, string column, string definition, CancellationToken cancellationToken)

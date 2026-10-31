@@ -731,6 +731,16 @@ public partial class MainWindow : Window
     private Task RefreshConsentRequestStatesAsync(MainWindowViewModel viewModel, long accountId) =>
         viewModel.ApplyConsentRequestStatesAsync(_databasePath, accountId);
 
+    private void ResultReport_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        new ReportWindow(_databasePath, viewModel.ActiveAccount.Id, viewModel.ActiveAccount.DisplayName) { Owner = this }.ShowDialog();
+    }
+
     private void History_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)

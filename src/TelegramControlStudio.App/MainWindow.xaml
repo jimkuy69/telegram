@@ -126,6 +126,7 @@
                             <TextBlock Text="ระบบ" Style="{StaticResource SectionLabel}" Margin="10,12,0,6" />
                             <Button Style="{StaticResource NavButton}" Tag="&#xE8CB;" Content="คิวงาน" Click="Queue_Click" />
                             <Button Style="{StaticResource NavButton}" Tag="&#xE81C;" Content="ประวัติการทำงาน" Click="History_Click" />
+                            <Button Style="{StaticResource NavButton}" Tag="&#xE9D9;" Content="รายงานผล" Click="ResultReport_Click" ToolTip="สรุปผลส่งข้อความตามช่วงวันที่ พร้อมเหตุผลที่ต้องแก้ และส่งออก CSV" />
                             <Button Style="{StaticResource NavButton}" Tag="&#xE896;" Content="นำเข้าผู้ติดต่อ" Click="ImportContacts_Click" />
                             <Button Style="{StaticResource NavButton}" Tag="&#xE898;" Content="ส่งออกผู้ติดต่อ" Click="ExportContacts_Click" />
                             <Button Style="{StaticResource NavButton}" Tag="&#xE713;" Content="ตั้งค่า" Click="Settings_Click" />

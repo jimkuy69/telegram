@@ -43,6 +43,20 @@ Accounts, TDLib authentication, groups/channels, member observation, contacts, t
 | Sandbox UI check | `scripts/consent-ui-check.ps1` | drives the real app against a throwaway database copy with the kill switch engaged |
 | Tests | `ConsentRequestPolicyTests`, `ConsentRequestQueueServiceTests`, `ConsentRequestRepositoryTests`, `ConsentReplyUpdateParserTests`, `ConsentReplyPolicyTests`, `TdLibConsentReplyHandlerTests` | ladder, quota ceiling, evidence trail, reply parsing and auto-grant/opt-out |
 
+## IMPLEMENTED result report and CSV export
+
+| Feature | Where | Notes |
+|---|---|---|
+| Date-range report window | sidebar รายงานผล | per-account summary cards, per-day table, failure table and consent totals for a chosen range; read-only, never sends |
+| Real per-recipient send time | `job_items.sent_at` (schema v5) | stamped once when an item first reaches `Completed`; earlier rows stay NULL and fall back to `updated_at` |
+| Local-day bucketing | `ResultReportCalculator` | outcome time is `sent_at ?? updated_at` converted to the operator's timezone, so an evening send lands on the Thai calendar day it happened |
+| Failure grouping | `FailuresGrid` | grouped by the raw `last_error` code with a Thai label and the `JobFailureClassifier` category beside it, so the operator can quote the exact code |
+| Consent outcomes in the report | `consent_requests` | asked / granted / rejected / opted-out counts plus awaiting-answer and the grant rate for the same window |
+| Campaign vs consent split | `jobs.target_type` | `Campaign:%` and `ConsentRequest:%` jobs are counted separately in the header line |
+| CSV export | Export CSV button | four sections (summary, per-day, failures, consent) written as UTF-8 with BOM so Thai opens correctly in Excel; no recipient identifiers are exported |
+| Sandbox UI check | `scripts/report-ui-check.ps1` + `scripts/seed-report-sandbox.py` | drives the real app against a synthetic TEMP database with the kill switch engaged, then verifies the exported bytes carry the BOM and every Thai section header |
+| Tests | `ResultReportCalculatorTests`, `ResultReportRepositoryTests`, `JobItemRepositoryTests`, `SqliteDatabaseTests`, `CsvExporterTests` | day bucketing, rate excluding pending, reason ordering, window filtering, legacy-schema migration, idempotent `sent_at` stamping and CSV quoting |
+
 ## IMPLEMENTED web host (Phase 1)
 
 | Feature | Where | Notes |
