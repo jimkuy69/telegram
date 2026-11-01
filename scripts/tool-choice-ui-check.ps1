@@ -386,6 +386,7 @@ function Send-MediaPath($process, $main, [string]$path) {
 
 # Engage the kill switch and add one sandbox template per account inside the throwaway DB through the
 # app repositories, so the checks never touch the real data and sending stays impossible.
+$SandboxInviteUrl = 'https://t.me/+TcsSandboxCopy'
 $probe = Join-Path $env:TEMP 'tcs-tool-choice-probe'
 New-Item -ItemType Directory -Force -Path $probe | Out-Null
 Set-Content -Path (Join-Path $probe 'probe.csproj') -Value @"
@@ -411,11 +412,17 @@ await new SqliteDatabase(databasePath).InitializeAsync();
 var settings = await new SendSafetyRepository(databasePath).SetKillSwitchAsync(true);
 Console.WriteLine($"KILL_SWITCH_SET={settings.KillSwitchEngaged}");
 var templates = new TemplateRepository(databasePath);
+var invites = new InviteLinkRepository(databasePath);
+var groups = new TelegramGroupRepository(databasePath);
 foreach (var account in await new AccountRepository(databasePath).ListAsync())
 {{
     var id = await templates.CreateNextVersionAsync(new MessageTemplate(
         0, account.Id, "Sandbox Preview", "th", body, null, 1, true, DateTimeOffset.UtcNow));
     Console.WriteLine($"SEEDED_TEMPLATE={account.Id}/{id}");
+    var chatId = (await groups.ListAsync(account.Id)).FirstOrDefault()?.ChatId ?? -1002226660072;
+    await invites.CreateAsync(new InviteLink(
+        0, account.Id, chatId, "$SandboxInviteUrl", null, null, true, DateTimeOffset.UtcNow, null));
+    Console.WriteLine($"SEEDED_INVITE={account.Id}/{chatId}");
 }}
 Console.WriteLine("EXPECTED_BODY_READ=" + (body.Length > 20));
 // The sandbox is copied from a live database that may still hold a write-ahead log, so the probe
@@ -435,6 +442,7 @@ $probeOut = & dotnet run --project $probe -- $Database $BodyFile 2>&1
 Log "KILL_PROBE=$($probeOut -join ' | ')"
 if (($probeOut -join ' ') -notmatch 'KILL_SWITCH_SET=True') { throw 'failed to engage kill switch in the sandbox DB' }
 if (($probeOut -join ' ') -notmatch 'SEEDED_TEMPLATE') { throw 'failed to seed the sandbox template' }
+if (($probeOut -join ' ') -notmatch 'SEEDED_INVITE') { throw 'failed to seed the sandbox invite link' }
 
 try {
     $process = Start-Process $Exe -PassThru
@@ -526,6 +534,19 @@ try {
     Log "STEP=chat-preselected STATUS_TEXT=$status"
     if ($status -notmatch 'ยังไม่เชื่อมต่อ') { throw "the invite window had no chat preselected: $status" }
     if ($status -match 'กรุณาเลือก') { throw "the invite window still asks for a chat: $status" }
+
+    # --- C4: the saved link must be copyable without selecting grid text by hand. ---
+    $copyButton = Find-AutomationId $links 'CopyInviteLinkButton'
+    if ($null -eq $copyButton) { throw 'the Invite URL column has no copy button' }
+    Set-Clipboard -Value 'cleared-before-copy-check'
+    Invoke-Element $copyButton
+    Start-Sleep -Seconds 2
+    $links = Wait-AppWindow $process $main 'Invite Links' 10
+    $clip = (Get-Clipboard -ErrorAction SilentlyContinue) -join ''
+    $after = (Get-AllText $links) -join ' / '
+    Log "STEP=copy-link CLIP=$clip STATUS_MATCH=$($after -match 'คัดลอก')"
+    if ($clip -ne $SandboxInviteUrl) { throw "the copy button did not put the invite URL on the clipboard: $clip" }
+    if ($after -notmatch 'คัดลอก') { throw "the invite window gave no copy feedback: $after" }
     Save-WindowShot $links (Join-Path $OutDir 'ui-invite-chat-dropdown.png')
     Close-AppWindow $process $links
 

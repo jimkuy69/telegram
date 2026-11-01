@@ -104,6 +104,22 @@ public partial class InviteLinksWindow : Window
     }
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
+    // Another process can hold the clipboard open mid-write, so a failed copy has to be reported here
+    // instead of the operator assuming the link is already copied.
+    private void CopyInviteLink_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { DataContext: InviteLink link }) return;
+        try
+        {
+            Clipboard.SetText(link.InviteUrl);
+            StatusText.Text = $"คัดลอก {link.InviteUrl} แล้ว";
+        }
+        catch (Exception)
+        {
+            StatusText.Text = "คัดลอกไม่สำเร็จ กรุณาลองอีกครั้ง";
+        }
+    }
+
     private sealed record ChatOption(TelegramGroup Group)
     {
         public override string ToString() => $"{Group.Title} • {Group.ChatId}";

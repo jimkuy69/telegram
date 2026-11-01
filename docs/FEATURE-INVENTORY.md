@@ -165,7 +165,7 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | Window says what an empty list means | `PendingRequestsWindow.LoadAsync` | the grid told the operator nothing when no request had arrived; it now counts the pending rows or explains that Telegram only sends them while this account is an administrator of the chat and its session is open |
 | Refresh without reopening | `PendingRequestsWindow` + `Refresh_Click` | requests arrive while the window stays open, so pulling the list again no longer needs an account switch or a restart |
 
-## IMPLEMENTED previews and pickers the operator can see (v0.3.5 - v0.3.7)
+## IMPLEMENTED previews and pickers the operator can see (v0.3.5 - v0.3.8)
 
 | Feature | Where | Notes |
 |---|---|---|
@@ -175,6 +175,8 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | The chosen template writes its body into the message box | `CampaignWizardWindow` + `TemplateBox_SelectionChanged` | creating a campaign reads the body from the database, so an empty box would have sent something different from what the operator saw; a refresh never overwrites a draft that was already edited |
 | Invite links pick the chat from the synced groups | `InviteLinksWindow.ReloadChatsAsync` | the free-text Chat ID box is how a positive id like `8263209286` reached TDLib and came back as "did not return a valid invite link response"; the window now offers the chats it already knows, titled with the negative TDLib id, and preselects the first one |
 | One harness for all three | `scripts/tool-choice-ui-check.ps1` | runs the renamed `TcsSandbox.exe` against a copy of the database with the kill switch engaged, drives the media dialog, both dropdowns and the create button, and refuses to continue if the badge is missing. It also refuses to start unless the database override points at the copy, because a lost override once opened the live database |
+| Copy button on every saved invite link | `InviteLinksWindow.CopyInviteLink_Click` | the Invite URL column is a template column now, so the operator no longer has to select grid text by hand to paste the link into Telegram; the window answers with the copied URL, and a clipboard held by another process is reported instead of silently doing nothing |
+| The harness seeds an invite link and reads the clipboard | same | it inserts one link per account through `InviteLinkRepository`, clicks `CopyInviteLinkButton` and fails the run unless the clipboard carries the seeded URL |
 
 ## Screen acceptance rules
 
