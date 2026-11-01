@@ -11,8 +11,16 @@ public static class TelegramGroupUpdateParser
         var root = document.RootElement;
         var chat = root.TryGetProperty("chat", out var nestedChat) ? nestedChat : root;
         if (!chat.TryGetProperty("id", out var id)) return null;
-        var type = chat.TryGetProperty("type", out var typeElement) ? typeElement.GetProperty("@type").GetString() ?? "unknown" : "unknown";
-        var kind = type switch { "chatTypeBasicGroup" => "Group", "chatTypeSupergroup" => "Channel", _ => "Unknown" };
+        var type = chat.TryGetProperty("type", out var typeElement) ? typeElement : default;
+        var typeId = type.TryGetProperty("@type", out var typeIdElement) ? typeIdElement.GetString() ?? "unknown" : "unknown";
+        // chatTypeSupergroup covers both groups and channels; is_channel is what separates them.
+        var isChannel = type.TryGetProperty("is_channel", out var isChannelElement) && isChannelElement.ValueKind == JsonValueKind.True;
+        var kind = typeId switch
+        {
+            "chatTypeBasicGroup" => "Group",
+            "chatTypeSupergroup" => isChannel ? "Channel" : "Group",
+            _ => "Unknown"
+        };
         var title = chat.TryGetProperty("title", out var titleElement) ? titleElement.GetString() ?? "(ไม่มีชื่อ)" : "(ไม่มีชื่อ)";
         int? members = chat.TryGetProperty("member_count", out var count) && count.TryGetInt32(out var value) ? value : null;
         var canView = ReadBool(chat, "can_view_members");

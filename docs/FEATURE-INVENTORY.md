@@ -144,6 +144,19 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy): Queue & History went from `�
 
 Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `SendSafetyRepository`): a real mouse click on the first row's Telegram ID cell left the process alive with no dialog, and the copy button put `8154557922` on the clipboard.
 
+## IMPLEMENTED TDLib reply shapes (v0.3.3)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Group members are read from the sender | `TdLibGroupMemberParser.ReadUserId` | TDLib describes each entry of `getSupergroupMembers` as a `chatMember` whose id lives in `member_id.user_id` (`messageSenderUser`). The parser only looked for a top-level `user_id`, so every sync stored zero rows and the member list looked empty. `messageSenderChat` senders (a channel posting as itself) are skipped because they are not users |
+| Invite links are read from the flat reply | `TdLibInviteLinkResponseParser.Parse` | `createChatInviteLink` returns `chatInviteLink` with `invite_link` as a plain string and **no chat id**, so the chat the request was sent for is recorded instead of being read back from the reply; `member_limit`/`expiration_date`/`is_revoked` map to the stored limit, expiry and revoked state |
+| Telegram's reason reaches the operator | `TdLibResponseGuard` used by `TdLibGroupMemberSyncService`, `TdLibInviteLinkService`, `TdLibJoinRequestDecisionService` | an `error` reply carries the same `@extra` as a successful one, so it arrived through the normal path and the caller reported only "no valid response"; the services now quote the real code, e.g. `TDLib getSupergroupMembers rejected by Telegram: 403: CHAT_ADMIN_REQUIRED` |
+| Confirmation no longer demands `ok` | `TdLibInviteLinkService.RevokeAsync`, `TdLibJoinRequestDecisionService.DecideAsync` | `revokeChatInviteLink` and `processChatJoinRequest` answer with a `chatInviteLink`, never an `ok` object, so requiring one made both operations report failure even when Telegram had carried them out |
+| Supergroups are labelled by kind | `TelegramGroupUpdateParser.Parse` | `chatTypeSupergroup` covers both groups and channels; `is_channel` is what separates them, so a group the operator owns no longer reads as a channel |
+| Member list says what it does not know | `GroupMembersWindow.ShowEmptyHint` | TDLib's `chat` object has no `can_view_members` field, so the old empty state declared the chat restricted without ever having asked. The hint now states that only Sync can tell, and that Telegram hands out only the members the account may see |
+
+Known gap carried into the next release: `updateChatJoinRequest` is still not routed into `TdLibJoinRequestSyncHandler` — the inbound sink only feeds consent replies — so Pending Join Requests stays empty until that wiring lands.
+
 ## Screen acceptance rules
 
 1. The active account is visible before account-scoped actions.

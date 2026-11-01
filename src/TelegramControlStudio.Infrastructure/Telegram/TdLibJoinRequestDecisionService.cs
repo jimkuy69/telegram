@@ -14,7 +14,9 @@ public sealed class TdLibJoinRequestDecisionService(string databasePath)
         if (!approve && !string.Equals(decision, "Rejected", StringComparison.Ordinal)) throw new ArgumentException("INVALID_DECISION", nameof(decision));
         var tdRequest = TdLibInviteRequests.ProcessChatJoinRequest(request.ChatId, request.TelegramUserId, approve, reason, confirmed, canInvite);
         var response = await client.SendAsync(tdRequest.Function, tdRequest.Parameters, cancellationToken);
-        if (!response.Contains("\"@type\":\"ok\"", StringComparison.Ordinal)) throw new InvalidOperationException("TDLIB_JOIN_REQUEST_NOT_CONFIRMED");
+        // TDLib answers processChatJoinRequest with the invite link the request came through, so an
+        // ok object is not the confirmation — only an error means Telegram refused.
+        TdLibResponseGuard.EnsureSuccess(response, tdRequest.Function);
         if (!await new JoinRequestRepository(databasePath).DecideAsync(request.AccountId, request.ChatId, request.TelegramUserId, decision, reason, cancellationToken))
             throw new InvalidOperationException("REQUEST_NOT_PENDING");
         await new ActivityLogRepository(databasePath).AppendAsync(new ActivityLog(request.AccountId, null, "Info", $"JoinRequest{decision}", $"Join request decision recorded for chat_id={request.ChatId}.", DateTimeOffset.UtcNow), cancellationToken);

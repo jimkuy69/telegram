@@ -11,12 +11,12 @@ namespace TelegramControlStudio.App;
 
 public partial class GroupMembersWindow : Window
 {
-    private readonly string _databasePath; private readonly long _accountId; private readonly long _chatId; private readonly bool _canViewMembers;
+    private readonly string _databasePath; private readonly long _accountId; private readonly long _chatId;
     private const int PageSize = 100;
     private int _page;
     public ObservableCollection<GroupMember> Members { get; } = [];
-    public GroupMembersWindow(string databasePath, long accountId, long chatId, string title, bool canViewMembers)
-    { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; _chatId = chatId; _canViewMembers = canViewMembers; TitleText.Text = $"สมาชิก • {title}"; DataContext = this; _ = LoadPageAsync(); }
+    public GroupMembersWindow(string databasePath, long accountId, long chatId, string title)
+    { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; _chatId = chatId; TitleText.Text = $"สมาชิก • {title}"; DataContext = this; _ = LoadPageAsync(); }
     private async Task LoadPageAsync()
     {
         if (string.IsNullOrWhiteSpace(_databasePath)) return;
@@ -35,16 +35,16 @@ public partial class GroupMembersWindow : Window
         }
     }
 
-    // An empty grid reads as a bug, so say why it is empty: Telegram hides channel members from
-    // accounts that are not administrators, and no amount of syncing brings them back.
+    // An empty grid reads as a bug, so say what actually decides the outcome: Telegram only exposes a
+    // member list to accounts with the right to read it, and that is known only once Sync has asked.
     private void ShowEmptyHint(int count)
     {
         if (count > 0) { EmptyPanel.Visibility = Visibility.Collapsed; return; }
         EmptyText.Text = !string.IsNullOrWhiteSpace(SearchBox.Text)
             ? "ไม่พบรายชื่อตามคำค้นหา"
-            : _canViewMembers
-                ? "ยังไม่มีข้อมูลสมาชิก — กด Sync TDLib เพื่อดึงรายชื่อเท่าที่ Telegram เปิดเผย"
-                : "แชนแนล/กลุ่มนี้ไม่เปิดเผยรายชื่อสมาชิกให้บัญชีนี้ (Telegram จำกัดสิทธิ์) — กด Sync TDLib ก็ไม่ทำให้รายชื่อขึ้น";
+            : "ยังไม่มีข้อมูลสมาชิกในเครื่อง — กด Sync TDLib เพื่อดึงรายชื่อ\n" +
+              "Telegram ให้ดึงได้เฉพาะสมาชิกที่บัญชีนี้มองเห็น (แอดมินดึงได้มาก, สมาชิกทั่วไปมักเห็นเฉพาะรายล่าสุด) " +
+              "และระบบจะไม่สรุปว่านี่คือสมาชิกทั้งหมดของกลุ่ม";
         EmptyPanel.Visibility = Visibility.Visible;
     }
     private async void Search_Click(object sender, RoutedEventArgs e) { _page = 0; await LoadPageAsync(); }

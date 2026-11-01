@@ -11,8 +11,9 @@ public sealed class TdLibInviteLinkService(string databasePath)
         ArgumentNullException.ThrowIfNull(client);
         var request = TdLibInviteRequests.RevokeChatInviteLink(chatId, inviteUrl, confirmed, canInvite);
         var response = await client.SendAsync(request.Function, request.Parameters, cancellationToken);
-        if (!response.Contains("\"@type\":\"ok\"", StringComparison.Ordinal))
-            throw new InvalidOperationException("TDLib did not confirm invite link revocation.");
+        // TDLib confirms this call with the revoked chatInviteLink, not an ok object, so only an
+        // error response means the link is still live.
+        TdLibResponseGuard.EnsureSuccess(response, request.Function);
         if (!await new InviteLinkRepository(databasePath).MarkRevokedAsync(accountId, inviteUrl, DateTimeOffset.UtcNow, cancellationToken))
             throw new InvalidOperationException("Invite link was not found or was already revoked.");
         await new ActivityLogRepository(databasePath).AppendAsync(new ActivityLog(
@@ -33,6 +34,7 @@ public sealed class TdLibInviteLinkService(string databasePath)
         ArgumentNullException.ThrowIfNull(client);
         var request = TdLibInviteRequests.CreateChatInviteLink(chatId, expiresAt, usageLimit, createsJoinRequest, confirmed, canInvite);
         var response = await client.SendAsync(request.Function, request.Parameters, cancellationToken);
+        TdLibResponseGuard.EnsureSuccess(response, request.Function);
         var link = await PersistCreatedLinkAsync(accountId, chatId, response, cancellationToken);
         return link ?? throw new InvalidOperationException("TDLib did not return a valid invite link response.");
     }
