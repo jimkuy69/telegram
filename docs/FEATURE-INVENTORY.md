@@ -165,7 +165,7 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | Window says what an empty list means | `PendingRequestsWindow.LoadAsync` | the grid told the operator nothing when no request had arrived; it now counts the pending rows or explains that Telegram only sends them while this account is an administrator of the chat and its session is open |
 | Refresh without reopening | `PendingRequestsWindow` + `Refresh_Click` | requests arrive while the window stays open, so pulling the list again no longer needs an account switch or a restart |
 
-## IMPLEMENTED previews and pickers the operator can see (v0.3.5 - v0.3.8)
+## IMPLEMENTED previews and pickers the operator can see (v0.3.5 - v0.3.9)
 
 | Feature | Where | Notes |
 |---|---|---|
@@ -177,6 +177,7 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | One harness for all three | `scripts/tool-choice-ui-check.ps1` | runs the renamed `TcsSandbox.exe` against a copy of the database with the kill switch engaged, drives the media dialog, both dropdowns and the create button, and refuses to continue if the badge is missing. It also refuses to start unless the database override points at the copy, because a lost override once opened the live database |
 | Copy button on every saved invite link | `InviteLinksWindow.CopyInviteLink_Click` | the Invite URL column is a template column now, so the operator no longer has to select grid text by hand to paste the link into Telegram; the window answers with the copied URL, and a clipboard held by another process is reported instead of silently doing nothing |
 | The harness seeds an invite link and reads the clipboard | same | it inserts one link per account through `InviteLinkRepository`, clicks `CopyInviteLinkButton` and fails the run unless the clipboard carries the seeded URL |
+| The copy button survives a narrow window | `InviteLinksWindow.xaml` | v0.3.8 put the text and the button in a StackPanel, so at the operator's window width the star-sized column gave the cell ~130px and the button was laid out outside the visible clip — present in UIA, invisible on screen. The cell is a DockPanel now with the button pinned right, the URL trimmed with an ellipsis, a `MinWidth` of 300 on the column, and the harness shrinks the window and compares the button rect against it |
 
 ## Screen acceptance rules
 

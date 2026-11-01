@@ -538,6 +538,16 @@ try {
     # --- C4: the saved link must be copyable without selecting grid text by hand. ---
     $copyButton = Find-AutomationId $links 'CopyInviteLinkButton'
     if ($null -eq $copyButton) { throw 'the Invite URL column has no copy button' }
+    # A clipped cell still answers UIA, so the window is shrunk to the operator's size and the button is
+    # measured against it: v0.3.8 had the button in the tree but outside the visible cell.
+    [void][WinMouse]::PlaceTopmost([IntPtr]$links.Current.NativeWindowHandle, 40, 40, 1000, 620)
+    Start-Sleep -Milliseconds 800
+    $links = Wait-AppWindow $process $main 'Invite Links' 10
+    $copyButton = Find-AutomationId $links 'CopyInviteLinkButton'
+    $buttonRect = $copyButton.Current.BoundingRectangle
+    $windowRect = $links.Current.BoundingRectangle
+    Log "STEP=copy-button-fit BUTTON_X=$([int]$buttonRect.X) BUTTON_RIGHT=$([int]($buttonRect.X + $buttonRect.Width)) WINDOW_RIGHT=$([int]($windowRect.X + $windowRect.Width))"
+    if ($buttonRect.X + $buttonRect.Width -gt $windowRect.X + $windowRect.Width) { throw 'the copy button is clipped outside the visible window' }
     Set-Clipboard -Value 'cleared-before-copy-check'
     Invoke-Element $copyButton
     Start-Sleep -Seconds 2
