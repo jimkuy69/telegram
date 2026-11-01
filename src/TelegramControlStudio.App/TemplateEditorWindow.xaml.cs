@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using System.Security.Cryptography;
 using TelegramControlStudio.Core.Import;
 using Microsoft.Win32;
@@ -43,12 +44,49 @@ public partial class TemplateEditorWindow : Window
         _selectedMediaPath = Path.Combine(root, Path.GetFileName(dialog.FileName));
         File.Copy(dialog.FileName, _selectedMediaPath, true);
         MediaText.Text = $"เลือกแล้ว: {Path.GetFileName(dialog.FileName)}";
+        UpdatePreview();
     }
     private void UpdatePreview()
     {
         PreviewText.Text = BodyBox.Text;
         PreviewLink.Text = LinkBox.Text;
+        UpdateMediaPreview();
     }
+
+    // The media picker used to be invisible until Save, so an attached picture looked ignored.
+    private void UpdateMediaPreview()
+    {
+        PreviewImage.Source = null;
+        PreviewImage.Visibility = Visibility.Collapsed;
+        if (_selectedMediaPath is null) { PreviewMediaText.Text = string.Empty; return; }
+        var fileName = Path.GetFileName(_selectedMediaPath);
+        if (!IsPreviewableImage(fileName))
+        {
+            PreviewMediaText.Text = $"แนบ {fileName} — Telegram จะส่งเป็นไฟล์แนบ (Windows ไม่มีตัวเปิดดู {Path.GetExtension(fileName)})";
+            return;
+        }
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            // The copy under LocalAppData stays as the send source, so the preview has to read the
+            // bytes and release the file instead of holding it open.
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.UriSource = new Uri(_selectedMediaPath);
+            bitmap.EndInit();
+            bitmap.Freeze();
+            PreviewImage.Source = bitmap;
+            PreviewImage.Visibility = Visibility.Visible;
+            PreviewMediaText.Text = $"แนบรูป {fileName}";
+        }
+        catch (Exception exception)
+        {
+            PreviewMediaText.Text = $"เปิดรูปพรีวิวไม่สำเร็จ: {exception.Message}";
+        }
+    }
+
+    private static bool IsPreviewableImage(string fileName) =>
+        Path.GetExtension(fileName).ToLowerInvariant() is ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp";
 
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
