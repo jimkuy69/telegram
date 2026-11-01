@@ -29,12 +29,12 @@
                   Background="#0D1A2D" Foreground="{StaticResource TextSecondary}" BorderBrush="{StaticResource Border}"
                   RowBackground="#0D1A2D" AlternatingRowBackground="#10213A">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Telegram ID" Binding="{Binding TelegramUserId}" Width="120" ElementStyle="{StaticResource Cell}" />
-                <DataGridTextColumn Header="ชื่อ" Binding="{Binding DisplayName}" Width="*" ElementStyle="{StaticResource Cell}" />
-                <DataGridTextColumn Header="สถานะ" Binding="{Binding Kind}" Width="120" ElementStyle="{StaticResource Cell}" />
-                <DataGridTextColumn Header="เวลา" Binding="{Binding OccurredAt}" Width="180" ElementStyle="{StaticResource Cell}" />
-                <DataGridTextColumn Header="คำที่จับได้จากคำตอบ" Binding="{Binding MatchedKeyword}" Width="180" ElementStyle="{StaticResource Cell}" />
-                <DataGridTextColumn Header="ที่มา" Binding="{Binding Source}" Width="130" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="Telegram ID" Binding="{Binding TelegramUserId, Mode=OneWay}" Width="120" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="ชื่อ" Binding="{Binding DisplayName, Mode=OneWay}" Width="*" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="สถานะ" Binding="{Binding Kind, Mode=OneWay}" Width="120" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="เวลา" Binding="{Binding OccurredAt, Mode=OneWay}" Width="180" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="คำที่จับได้จากคำตอบ" Binding="{Binding MatchedKeyword, Mode=OneWay}" Width="180" ElementStyle="{StaticResource Cell}" />
+                <DataGridTextColumn Header="ที่มา" Binding="{Binding Source, Mode=OneWay}" Width="130" ElementStyle="{StaticResource Cell}" />
             </DataGrid.Columns>
         </DataGrid>
 

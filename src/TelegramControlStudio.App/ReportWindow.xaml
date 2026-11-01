@@ -68,13 +68,13 @@
                           Background="#0D1A2D" Foreground="{StaticResource TextSecondary}" BorderBrush="{StaticResource Border}"
                           RowBackground="#0D1A2D" AlternatingRowBackground="#10213A">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="วัน" Binding="{Binding Day}" Width="104" ElementStyle="{StaticResource Cell}" />
-                        <DataGridTextColumn Header="ส่งสำเร็จ" Binding="{Binding Sent}" Width="78" ElementStyle="{StaticResource Cell}" />
-                        <DataGridTextColumn Header="คำขอยินยอม" Binding="{Binding ConsentSent}" Width="100" ElementStyle="{StaticResource Cell}" />
-                        <DataGridTextColumn Header="ล้มเหลว" Binding="{Binding Failed}" Width="72" ElementStyle="{StaticResource Cell}" />
-                        <DataGridTextColumn Header="ข้าม" Binding="{Binding Skipped}" Width="58" ElementStyle="{StaticResource Cell}" />
-                        <DataGridTextColumn Header="รอดำเนินการ" Binding="{Binding Pending}" Width="98" ElementStyle="{StaticResource Cell}" />
-                        <DataGridTextColumn Header="อัตราสำเร็จ" Binding="{Binding SuccessRate}" Width="*" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="วัน" Binding="{Binding Day, Mode=OneWay}" Width="104" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="ส่งสำเร็จ" Binding="{Binding Sent, Mode=OneWay}" Width="78" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="คำขอยินยอม" Binding="{Binding ConsentSent, Mode=OneWay}" Width="100" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="ล้มเหลว" Binding="{Binding Failed, Mode=OneWay}" Width="72" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="ข้าม" Binding="{Binding Skipped, Mode=OneWay}" Width="58" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="รอดำเนินการ" Binding="{Binding Pending, Mode=OneWay}" Width="98" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="อัตราสำเร็จ" Binding="{Binding SuccessRate, Mode=OneWay}" Width="*" ElementStyle="{StaticResource Cell}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>
@@ -85,10 +85,10 @@
                           Background="#0D1A2D" Foreground="{StaticResource TextSecondary}" BorderBrush="{StaticResource Border}"
                           RowBackground="#0D1A2D" AlternatingRowBackground="#10213A">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="เหตุผล" Binding="{Binding Label}" Width="*" ElementStyle="{StaticResource Cell}" />
-                        <DataGridTextColumn Header="ประเภท" Binding="{Binding Kind}" Width="132" ElementStyle="{StaticResource Cell}" />
-                        <DataGridTextColumn Header="จำนวน" Binding="{Binding Count}" Width="62" ElementStyle="{StaticResource Cell}" />
-                        <DataGridTextColumn Header="รหัส" Binding="{Binding Code}" Width="150" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="เหตุผล" Binding="{Binding Label, Mode=OneWay}" Width="*" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="ประเภท" Binding="{Binding Kind, Mode=OneWay}" Width="132" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="จำนวน" Binding="{Binding Count, Mode=OneWay}" Width="62" ElementStyle="{StaticResource Cell}" />
+                        <DataGridTextColumn Header="รหัส" Binding="{Binding Code, Mode=OneWay}" Width="150" ElementStyle="{StaticResource Cell}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>

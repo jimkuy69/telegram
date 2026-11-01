@@ -568,6 +568,32 @@ public partial class MainWindow : Window
         }
     }
 
+    private void CopyTelegramId_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { DataContext: ContactRow row })
+            CopyToClipboard(row.Id.ToString(), "Telegram ID");
+    }
+
+    private void CopyUsername_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { DataContext: ContactRow row })
+            CopyToClipboard(row.Username, "Username");
+    }
+
+    // The clipboard belongs to the whole desktop and another process can hold it open mid-write.
+    private static void CopyToClipboard(string text, string label)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        try
+        {
+            Clipboard.SetText(text);
+        }
+        catch (Exception)
+        {
+            MessageBox.Show($"คัดลอก{label}ไม่สำเร็จ กรุณาลองอีกครั้ง", "ผิดพลาด", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private async void DeleteSelectedContacts_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null) return;

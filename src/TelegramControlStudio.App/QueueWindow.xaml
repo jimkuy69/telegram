@@ -74,12 +74,12 @@
         </DockPanel>
         <DataGrid x:Name="JobsGrid" Grid.Row="3" ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob}" AutoGenerateColumns="False" IsReadOnly="True" Background="#0A1627" Foreground="#AFC3DA" MouseDoubleClick="Job_DoubleClick">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="สถานะ" Binding="{Binding Status}" Width="170" ElementStyle="{StaticResource GridTextCell}" />
-                <DataGridTextColumn Header="ประเภทงาน" Binding="{Binding TargetType}" Width="*" ElementStyle="{StaticResource GridTextCell}" />
-                <DataGridTextColumn Header="จำนวน" Binding="{Binding TargetCount}" Width="80" ElementStyle="{StaticResource GridTextCell}" />
-                <DataGridTextColumn Header="Retry" Binding="{Binding RetryCount}" Width="70" ElementStyle="{StaticResource GridTextCell}" />
-                <DataGridTextColumn Header="สร้างเมื่อ" Binding="{Binding CreatedAt}" Width="190" ElementStyle="{StaticResource GridTextCell}" />
-                <DataGridTextColumn Header="ข้อผิดพลาด" Binding="{Binding LastError}" Width="220" ElementStyle="{StaticResource GridTextCell}" />
+                <DataGridTextColumn Header="สถานะ" Binding="{Binding Status, Mode=OneWay}" Width="170" ElementStyle="{StaticResource GridTextCell}" />
+                <DataGridTextColumn Header="ประเภทงาน" Binding="{Binding TargetType, Mode=OneWay}" Width="*" ElementStyle="{StaticResource GridTextCell}" />
+                <DataGridTextColumn Header="จำนวน" Binding="{Binding TargetCount, Mode=OneWay}" Width="80" ElementStyle="{StaticResource GridTextCell}" />
+                <DataGridTextColumn Header="Retry" Binding="{Binding RetryCount, Mode=OneWay}" Width="70" ElementStyle="{StaticResource GridTextCell}" />
+                <DataGridTextColumn Header="สร้างเมื่อ" Binding="{Binding CreatedAt, Mode=OneWay}" Width="190" ElementStyle="{StaticResource GridTextCell}" />
+                <DataGridTextColumn Header="ข้อผิดพลาด" Binding="{Binding LastError, Mode=OneWay}" Width="220" ElementStyle="{StaticResource GridTextCell}" />
             </DataGrid.Columns>
         </DataGrid>
         <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,14,0,0">

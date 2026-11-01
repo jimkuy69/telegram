@@ -359,8 +359,31 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTextColumn Header="Telegram ID" Binding="{Binding Id}" Width="130" ElementStyle="{StaticResource GridTextCell}" />
-                                        <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="150" ElementStyle="{StaticResource GridTextCell}" />
+                                        <DataGridTemplateColumn Header="Telegram ID" Width="150">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Id}" Style="{StaticResource GridTextCell}" VerticalAlignment="Center" />
+                                                        <Button x:Name="CopyTelegramIdButton" Style="{StaticResource IconButton}" Content="&#xE8C8;" FontSize="11"
+                                                                Width="24" Height="24" MinWidth="0" Padding="0" Margin="8,0,0,0"
+                                                                ToolTip="คัดลอก Telegram ID" Click="CopyTelegramId_Click" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTemplateColumn Header="Username" Width="165">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Username}" Style="{StaticResource GridTextCell}" TextTrimming="CharacterEllipsis" MaxWidth="120" VerticalAlignment="Center" />
+                                                        <Button x:Name="CopyUsernameButton" Style="{StaticResource IconButton}" Content="&#xE8C8;" FontSize="11"
+                                                                Width="24" Height="24" MinWidth="0" Padding="0" Margin="8,0,0,0"
+                                                                ToolTip="คัดลอก Username" Click="CopyUsername_Click" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
 
                                         <DataGridTemplateColumn Header="สถานะ" Width="140">
                                             <DataGridTemplateColumn.CellTemplate>
@@ -370,7 +393,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTextColumn Header="การขอความยินยอม" Binding="{Binding RequestState}" Width="170" ElementStyle="{StaticResource GridTextCell}" />
+                                        <DataGridTextColumn Header="การขอความยินยอม" Binding="{Binding RequestState, Mode=OneWay}" Width="170" ElementStyle="{StaticResource GridTextCell}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <TextBlock Text="ไม่พบรายชื่อในตัวกรองนี้" Foreground="{StaticResource TextMuted}"

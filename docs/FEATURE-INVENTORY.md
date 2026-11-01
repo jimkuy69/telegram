@@ -133,6 +133,17 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy): Queue & History went from `�
 | Disconnect stops the thread before destroying | `TdLibNativeSession.ShutdownAsync` | `close` is awaited, the receive thread is joined, and only then is the client instance destroyed and the library handle released — a receive call in flight during destroy would be undefined behaviour, so a thread that refuses to stop leaks the instance instead |
 | Two-client regression test | `TdLibNativeRuntimeTests.TwoClientsReceiveOnSeparateDedicatedThreads` (gate `TDLIB_RUNTIME_GATE=1`) | two verified clients each send and receive on their own dedicated thread and must get their own `@extra` response; under the old global `td_receive` this test takes the process down instead of failing |
 
+## IMPLEMENTED read-only grid cells and copy buttons (v0.3.2)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Grid cells never enter edit mode | every `DataGridTextColumn` in the 12 window XAML files | the bindings now carry `Mode=OneWay`; WPF defaults a text column's binding to TwoWay, and clicking such a cell starts `DataGridCell.BeginEdit`, which threw `InvalidOperationException: A TwoWay or OneWayToSource binding cannot work on the read-only property 'Id' of ... ContactRow` — the row view models are read-only, so the edit was never going to commit anything |
+| Unhandled exception kills the app | `App.DispatcherUnhandledException` | that exception reached the global handler, wrote `logs\startup-crash.log` and shut the process down, which is why a single cell click closed the program |
+| Copy Telegram ID / Username | `MainWindow.xaml` contacts grid + `CopyTelegramId_Click` / `CopyUsername_Click` | each of the two columns is now a template column with a copy glyph (`CopyTelegramIdButton`, `CopyUsernameButton`) that puts that row's value on the clipboard — the supported way to take a value out of the grid now that cells are not editable |
+| Clipboard failure stays local | `MainWindow.CopyToClipboard` | the clipboard belongs to the desktop and another process can hold it, so a failed write shows a Thai error box instead of propagating to the global handler; an empty username copies nothing |
+
+Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `SendSafetyRepository`): a real mouse click on the first row's Telegram ID cell left the process alive with no dialog, and the copy button put `8154557922` on the clipboard.
+
 ## Screen acceptance rules
 
 1. The active account is visible before account-scoped actions.
