@@ -165,6 +165,17 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | Window says what an empty list means | `PendingRequestsWindow.LoadAsync` | the grid told the operator nothing when no request had arrived; it now counts the pending rows or explains that Telegram only sends them while this account is an administrator of the chat and its session is open |
 | Refresh without reopening | `PendingRequestsWindow` + `Refresh_Click` | requests arrive while the window stays open, so pulling the list again no longer needs an account switch or a restart |
 
+## IMPLEMENTED previews and pickers the operator can see (v0.3.5 - v0.3.7)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Attached media previews in the template editor | `TemplateEditorWindow.UpdateMediaPreview` | choosing a picture used to change only a caption, so the preview pane still showed text alone; jpg/jpeg/png/gif/bmp now render inside the preview, read with `BitmapCacheOption.OnLoad` and frozen so `LocalAppData\TelegramControlStudio\media` stays free for the send |
+| Unsupported media is named, not shown broken | same | WebP and PDF have no Windows image codec, so they are announced as "จะส่งเป็นไฟล์แนบ" instead of an empty image box |
+| Campaigns pick a saved template by name | `CampaignWizardWindow.ReloadTemplatesAsync` | the wizard asked for a numeric Template ID, which nobody can read off the Template Editor; it now lists `name (version)` for the active account, refills on every dropdown open, and says how many templates exist or tells the operator to create one first |
+| The chosen template writes its body into the message box | `CampaignWizardWindow` + `TemplateBox_SelectionChanged` | creating a campaign reads the body from the database, so an empty box would have sent something different from what the operator saw; a refresh never overwrites a draft that was already edited |
+| Invite links pick the chat from the synced groups | `InviteLinksWindow.ReloadChatsAsync` | the free-text Chat ID box is how a positive id like `8263209286` reached TDLib and came back as "did not return a valid invite link response"; the window now offers the chats it already knows, titled with the negative TDLib id, and preselects the first one |
+| One harness for all three | `scripts/tool-choice-ui-check.ps1` | runs the renamed `TcsSandbox.exe` against a copy of the database with the kill switch engaged, drives the media dialog, both dropdowns and the create button, and refuses to continue if the badge is missing. It also refuses to start unless the database override points at the copy, because a lost override once opened the live database |
+
 ## Screen acceptance rules
 
 1. The active account is visible before account-scoped actions.

@@ -1,4 +1,5 @@
 using System.Windows;
+using TelegramControlStudio.Core.Domain;
 using TelegramControlStudio.Infrastructure.Persistence;
 using TelegramControlStudio.Infrastructure.Telegram;
 
@@ -16,7 +17,7 @@ public partial class InviteLinksWindow : Window
         _accountId = accountId;
         AccountSelector.Initialize(databasePath, accountId);
         AccountSelector.AccountChanged += OnAccountChanged;
-        Loaded += async (_, _) => await LoadAsync();
+        Loaded += async (_, _) => { await LoadAsync(); await ReloadChatsAsync(); };
     }
 
     private async void OnAccountChanged(object? sender, long accountId)
@@ -24,10 +25,26 @@ public partial class InviteLinksWindow : Window
         _accountId = accountId;
         StatusText.Text = string.Empty;
         await LoadAsync();
+        await ReloadChatsAsync();
     }
 
     private async Task LoadAsync() => LinksGrid.ItemsSource = await new InviteLinkRepository(_databasePath).ListAsync(_accountId);
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await LoadAsync();
+
+    // Typing a chat id is how an operator ends up with a positive id that TDLib has no chat for, so
+    // the window offers the ids it already knows. The list is read again whenever it opens because
+    // the Groups window may have synced chats in the meantime.
+    private async Task ReloadChatsAsync()
+    {
+        var selected = (ChatBox.SelectedItem as ChatOption)?.Group;
+        var groups = await new TelegramGroupRepository(_databasePath).ListAsync(_accountId);
+        var options = groups.Select(group => new ChatOption(group)).ToArray();
+        ChatBox.ItemsSource = options;
+        ChatBox.SelectedItem = options.FirstOrDefault(option => option.Group.ChatId == (selected?.ChatId ?? 0))
+            ?? options.FirstOrDefault();
+    }
+
+    private async void Chats_DropDownOpened(object sender, System.EventArgs e) => await ReloadChatsAsync();
     private async void Revoke_Click(object sender, RoutedEventArgs e)
     {
         if (LinksGrid.SelectedItem is not TelegramControlStudio.Core.Domain.InviteLink link)
@@ -52,11 +69,12 @@ public partial class InviteLinksWindow : Window
     }
     private async void Create_Click(object sender, RoutedEventArgs e)
     {
-        if (!long.TryParse(ChatIdBox.Text.Trim(), out var chatId) || chatId == 0)
+        if (ChatBox.SelectedItem is not ChatOption chat)
         {
-            StatusText.Text = "กรุณาระบุ Chat ID ให้ถูกต้อง";
+            StatusText.Text = "กรุณาเลือกกลุ่มหรือแชนแนลจากรายการก่อน";
             return;
         }
+        var chatId = chat.Group.ChatId;
         int? usageLimit = null;
         if (!string.IsNullOrWhiteSpace(UsageLimitBox.Text))
         {
@@ -75,7 +93,7 @@ public partial class InviteLinksWindow : Window
             StatusText.Text = "บัญชียังไม่เชื่อมต่อและยืนยันตัวตนกับ TDLib";
             return;
         }
-        if (MessageBox.Show("ยืนยันสร้าง Invite Link แบบ Join Request?", "ยืนยัน", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show($"ยืนยันสร้าง Invite Link แบบ Join Request สำหรับ \"{chat.Group.Title}\" (chat_id={chatId})?", "ยืนยัน", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         try
         {
             var link = await new TdLibInviteLinkService(_databasePath).CreateAndPersistAsync(client, _accountId, chatId, expiresAt, usageLimit, true, true, true);
@@ -85,5 +103,10 @@ public partial class InviteLinksWindow : Window
         catch (Exception exception) { StatusText.Text = $"สร้างไม่สำเร็จ: {exception.Message}"; }
     }
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    private sealed record ChatOption(TelegramGroup Group)
+    {
+        public override string ToString() => $"{Group.Title} • {Group.ChatId}";
+    }
 }
 
