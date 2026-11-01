@@ -9,10 +9,20 @@ using TelegramControlStudio.Core.Security;
 namespace TelegramControlStudio.App;
 public partial class SettingsWindow : Window
 {
-    private readonly string _databasePath; private readonly long _accountId;
+    private readonly string _databasePath; private long _accountId;
     private string? _nativeDirectory;
     private readonly Task _tdLibLoadTask;
-    public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; _tdLibLoadTask = LoadTdLibIdAsync(); _ = LoadSafetyAsync(); _ = LoadConsentLimitsAsync(); }
+    public SettingsWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DatabasePathBox.Text = databasePath; AccountSelector.Initialize(databasePath, accountId); AccountSelector.AccountChanged += OnAccountChanged; _tdLibLoadTask = LoadTdLibIdAsync(); _ = LoadSafetyAsync(); _ = LoadConsentLimitsAsync(); }
+    private async void OnAccountChanged(object? sender, long accountId)
+    {
+        _accountId = accountId;
+        _nativeDirectory = null;
+        ApiIdBox.Clear();
+        ApiHashBox.Clear();
+        NativePathText.Text = string.Empty;
+        StatusText.Text = string.Empty;
+        await LoadTdLibIdAsync();
+    }
     private async Task LoadConsentLimitsAsync()
     {
         try

@@ -112,6 +112,18 @@ Accounts, TDLib authentication, groups/channels, member observation, contacts, t
 
 The web host is localhost-only and unauthenticated; it plans work and gates safety. TDLib login and every real send remain in the desktop app.
 
+## IMPLEMENTED in-window account switcher
+
+| Feature | Where | Notes |
+|---|---|---|
+| Shared account picker control | `AccountSelectorControl.xaml(.cs)` | one dark-theme row (`บัญชี` + ComboBox) listing every account as `Name • Status`; raises `AccountChanged` only for a real user change, so the initial load never triggers a reload |
+| Switch without leaving the window | 12 tool windows | Invite Links, Pending Requests, Groups, Activity Log, Campaign Wizard, Contact Import, Media Library, Template Editor, Queue & History, Settings, Consent Inbox, Report each carry the selector in their header |
+| Reload per window | each `OnAccountChanged` | lists reload for the new account, selection and previews reset, and Settings clears the previous account's API ID/hash/native-path text before repopulating so nothing stale is shown |
+| Global settings stay global | `SettingsWindow` | test mode, allowlist, kill switch and opt-in quota/cooldown are not account-scoped and are untouched by a switch |
+| No logout on switch | `MainWindow.xaml.cs` | switching only changes which account a window reads; TDLib sessions stay connected and the badge count is unaffected |
+
+Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy): Queue & History went from `แสดง 0 จากทั้งหมด 0 งาน` on Jim Heehom to `7 จากทั้งหมด 7` on jimmy, Report subtitle switched to `บัญชี 8 (jimmy) • คิวส่งข้อความ 5 คิว • คิวคำขอยินยอม 2 คิว`, and Settings repopulated the API ID for the selected account — all without closing a window.
+
 ## Screen acceptance rules
 
 1. The active account is visible before account-scoped actions.

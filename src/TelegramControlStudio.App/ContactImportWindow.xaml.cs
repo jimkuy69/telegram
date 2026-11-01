@@ -10,13 +10,23 @@ namespace TelegramControlStudio.App;
 public partial class ContactImportWindow : Window
 {
     private readonly string _databasePath;
-    private readonly long _accountId;
+    private long _accountId;
     private ContactImportResult? _preview;
     public ContactImportWindow(string databasePath, long accountId)
     {
         InitializeComponent();
         _databasePath = databasePath;
         _accountId = accountId;
+        AccountSelector.Initialize(databasePath, accountId);
+        AccountSelector.AccountChanged += OnAccountChanged;
+    }
+
+    private void OnAccountChanged(object? sender, long accountId)
+    {
+        _accountId = accountId;
+        _preview = null;
+        SummaryText.Text = "เลือกไฟล์เพื่อเริ่ม Preview";
+        PreviewText.Text = string.Empty;
     }
 
     private void Choose_Click(object sender, RoutedEventArgs e)

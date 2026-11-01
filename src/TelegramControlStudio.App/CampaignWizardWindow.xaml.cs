@@ -8,12 +8,24 @@ namespace TelegramControlStudio.App;
 public partial class CampaignWizardWindow : Window
 {
     private readonly string _databasePath;
-    private readonly long _accountId;
+    private long _accountId;
     private IReadOnlyList<Contact> _contacts = [];
     public CampaignWizardWindow(string databasePath, long accountId)
     {
         InitializeComponent(); _databasePath = databasePath; _accountId = accountId;
-        Loaded += async (_, _) => { _contacts = await new ContactRepository(_databasePath).ListAsync(_accountId); RecipientSummary.Text = $"ผู้รับที่ผ่าน Consent: {_contacts.Count(item => item.HasConsent && !item.IsOptedOut)} รายการ"; };
+        AccountSelector.Initialize(databasePath, accountId);
+        AccountSelector.AccountChanged += OnAccountChanged;
+        Loaded += async (_, _) => await ReloadContactsAsync();
+    }
+    private async void OnAccountChanged(object? sender, long accountId)
+    {
+        _accountId = accountId;
+        await ReloadContactsAsync();
+    }
+    private async Task ReloadContactsAsync()
+    {
+        _contacts = await new ContactRepository(_databasePath).ListAsync(_accountId);
+        RecipientSummary.Text = $"ผู้รับที่ผ่าน Consent: {_contacts.Count(item => item.HasConsent && !item.IsOptedOut)} รายการ";
     }
     private async void Create_Click(object sender, RoutedEventArgs e)
     {

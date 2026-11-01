@@ -10,11 +10,21 @@ namespace TelegramControlStudio.App;
 public partial class GroupsWindow : Window
 {
     private readonly string _databasePath;
-    private readonly long _accountId;
+    private long _accountId;
     public ObservableCollection<TelegramGroup> Groups { get; } = [];
     public GroupsWindow(string databasePath, long accountId)
     {
-        InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DataContext = this; _ = LoadAsync(databasePath, accountId);
+        InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DataContext = this;
+        AccountSelector.Initialize(databasePath, accountId);
+        AccountSelector.AccountChanged += OnAccountChanged;
+        _ = LoadAsync(databasePath, accountId);
+    }
+    private async void OnAccountChanged(object? sender, long accountId)
+    {
+        _accountId = accountId;
+        Groups.Clear();
+        StatusText.Text = string.Empty;
+        await LoadAsync(_databasePath, accountId);
     }
     private async Task LoadAsync(string databasePath, long accountId)
     {

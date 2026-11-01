@@ -23,7 +23,7 @@ public partial class ConsentInboxWindow : Window
     ];
 
     private readonly string _databasePath;
-    private readonly long _accountId;
+    private long _accountId;
 
     public ConsentInboxWindow(string databasePath, long accountId)
     {
@@ -32,7 +32,15 @@ public partial class ConsentInboxWindow : Window
         _accountId = accountId;
         KindBox.ItemsSource = Filters.Select(filter => new FilterChoice(filter.Value, filter.Label)).ToArray();
         KindBox.SelectedIndex = 0;
+        AccountSelector.Initialize(databasePath, accountId);
+        AccountSelector.AccountChanged += OnAccountChanged;
         Loaded += async (_, _) => await LoadAsync();
+    }
+
+    private async void OnAccountChanged(object? sender, long accountId)
+    {
+        _accountId = accountId;
+        await LoadAsync();
     }
 
     private async Task LoadAsync()

@@ -18,8 +18,8 @@ namespace TelegramControlStudio.App;
 public partial class ReportWindow : Window
 {
     private readonly string _databasePath;
-    private readonly long _accountId;
-    private readonly string _accountName;
+    private long _accountId;
+    private string _accountName;
     private ResultReport? _report;
 
     public ReportWindow(string databasePath, long accountId, string accountName)
@@ -30,7 +30,17 @@ public partial class ReportWindow : Window
         _accountName = accountName;
         ToDateBox.SelectedDate = DateTime.Today;
         FromDateBox.SelectedDate = DateTime.Today.AddDays(-6);
+        AccountSelector.Initialize(databasePath, accountId);
+        AccountSelector.AccountChanged += OnAccountChanged;
         Loaded += async (_, _) => await LoadAsync();
+    }
+
+    private async void OnAccountChanged(object? sender, long accountId)
+    {
+        _accountId = accountId;
+        var account = (await new AccountRepository(_databasePath).ListAsync()).FirstOrDefault(item => item.Id == accountId);
+        if (account is not null) _accountName = account.DisplayName;
+        await LoadAsync();
     }
 
     private (DateTimeOffset From, DateTimeOffset To) ResolveRange()

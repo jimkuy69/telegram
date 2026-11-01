@@ -7,14 +7,23 @@ namespace TelegramControlStudio.App;
 public partial class InviteLinksWindow : Window
 {
     private readonly string _databasePath;
-    private readonly long _accountId;
+    private long _accountId;
 
     public InviteLinksWindow(string databasePath, long accountId)
     {
         InitializeComponent();
         _databasePath = databasePath;
         _accountId = accountId;
+        AccountSelector.Initialize(databasePath, accountId);
+        AccountSelector.AccountChanged += OnAccountChanged;
         Loaded += async (_, _) => await LoadAsync();
+    }
+
+    private async void OnAccountChanged(object? sender, long accountId)
+    {
+        _accountId = accountId;
+        StatusText.Text = string.Empty;
+        await LoadAsync();
     }
 
     private async Task LoadAsync() => LinksGrid.ItemsSource = await new InviteLinkRepository(_databasePath).ListAsync(_accountId);

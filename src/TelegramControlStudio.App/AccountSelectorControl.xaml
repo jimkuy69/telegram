@@ -1,0 +1,8 @@
+<UserControl x:Class="TelegramControlStudio.App.AccountSelectorControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Orientation="Horizontal">
+        <TextBlock Text="บัญชี" Foreground="#8FA6C6" VerticalAlignment="Center" Margin="0,0,8,0" />
+        <ComboBox x:Name="AccountBox" Width="280" SelectedValuePath="Id" SelectionChanged="AccountBox_SelectionChanged" ToolTip="สลับบัญชีของหน้าต่างนี้ ข้อมูลจะโหลดใหม่ตามบัญชีที่เลือก" />
+    </StackPanel>
+</UserControl>

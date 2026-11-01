@@ -20,11 +20,12 @@ public partial class QueueWindow : Window
     private static readonly SolidColorBrush KillBannerBg = new(Color.FromRgb(0x33, 0x14, 0x1B));
     private static readonly SolidColorBrush KillBannerBorder = new(Color.FromRgb(0x5B, 0x23, 0x33));
     private static readonly SolidColorBrush KillBannerText = new(Color.FromRgb(0xF8, 0x71, 0x71));
-    private readonly string _databasePath; private readonly long _accountId;
+    private readonly string _databasePath; private long _accountId;
     private CancellationTokenSource? _runCancellation;
     private List<Job> _allJobs = [];
     public ObservableCollection<Job> Jobs { get; } = []; public Job? SelectedJob { get; set; }
-    public QueueWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DataContext = this; Loaded += async (_, _) => await LoadAsync(); }
+    public QueueWindow(string databasePath, long accountId) { InitializeComponent(); _databasePath = databasePath; _accountId = accountId; DataContext = this; AccountSelector.Initialize(databasePath, accountId); AccountSelector.AccountChanged += OnAccountChanged; Loaded += async (_, _) => await LoadAsync(); }
+    private async void OnAccountChanged(object? sender, long accountId) { _accountId = accountId; SelectedJob = null; await LoadAsync(); }
     private async Task LoadAsync()
     {
         var repository = new JobRepository(_databasePath);
