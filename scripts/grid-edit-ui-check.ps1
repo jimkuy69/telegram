@@ -214,6 +214,28 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 # Engage the kill switch inside the throwaway DB via the app repository before launch,
 # so the sandbox is isolated even if synthetic UI clicks never reach the window.
 $probe = Join-Path $env:TEMP 'tcs-kill-probe'
+New-Item -ItemType Directory -Force -Path $probe | Out-Null
+Set-Content -Path (Join-Path $probe 'probe.csproj') -Value @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$PSScriptRoot\..\src\TelegramControlStudio.Infrastructure\TelegramControlStudio.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
+"@ -Encoding UTF8
+Set-Content -Path (Join-Path $probe 'Program.cs') -Value @"
+using TelegramControlStudio.Infrastructure.Persistence;
+
+var databasePath = args[0];
+await new SqliteDatabase(databasePath).InitializeAsync();
+var settings = await new SendSafetyRepository(databasePath).SetKillSwitchAsync(true);
+Console.WriteLine($"KILL_SWITCH_SET={settings.KillSwitchEngaged}");
+"@ -Encoding UTF8
 $probeOut = & dotnet run --project $probe -- $Database 2>&1
 Log "KILL_PROBE=$($probeOut -join ' | ')"
 if (($probeOut -join ' ') -notmatch 'KILL_SWITCH_SET=True') { throw 'failed to engage kill switch in the sandbox DB' }
