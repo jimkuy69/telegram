@@ -27,8 +27,14 @@ public partial class PendingRequestsWindow : Window
 
     private async Task LoadAsync()
     {
-        RequestsGrid.ItemsSource = await new JoinRequestRepository(_databasePath).ListPendingAsync(_accountId);
+        var pending = await new JoinRequestRepository(_databasePath).ListPendingAsync(_accountId);
+        RequestsGrid.ItemsSource = pending;
+        StatusText.Text = pending.Count == 0
+            ? "ไม่มีคำขอที่รออยู่ — Telegram จะส่งคำขอมาเมื่อบัญชีนี้เป็นแอดมินของห้องนั้นและต่อ TDLib อยู่"
+            : $"คำขอที่รอตัดสินใจ {pending.Count} รายการ";
     }
+
+    private async void Refresh_Click(object sender, RoutedEventArgs e) => await LoadAsync();
 
     private async void Approve_Click(object sender, RoutedEventArgs e) => await DecideAsync("Approved");
     private async void Reject_Click(object sender, RoutedEventArgs e) => await DecideAsync("Rejected");

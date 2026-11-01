@@ -155,7 +155,15 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | Supergroups are labelled by kind | `TelegramGroupUpdateParser.Parse` | `chatTypeSupergroup` covers both groups and channels; `is_channel` is what separates them, so a group the operator owns no longer reads as a channel |
 | Member list says what it does not know | `GroupMembersWindow.ShowEmptyHint` | TDLib's `chat` object has no `can_view_members` field, so the old empty state declared the chat restricted without ever having asked. The hint now states that only Sync can tell, and that Telegram hands out only the members the account may see |
 
-Known gap carried into the next release: `updateChatJoinRequest` is still not routed into `TdLibJoinRequestSyncHandler` — the inbound sink only feeds consent replies — so Pending Join Requests stays empty until that wiring lands.
+
+## IMPLEMENTED inbound join requests (v0.3.4)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Join requests captured | `ConsentReplyPump.ProcessAsync` | the inbound sink already carried every update Telegram sends, but only the consent handler read it, so `updateChatJoinRequest` was parsed by tests and never reached `join_requests`; the pump now hands each update to both handlers |
+| One handler cannot hide the other's work | same | a failure in either handler is caught per handler, so a malformed reply does not discard a join request on the same trail — and vice versa |
+| Window says what an empty list means | `PendingRequestsWindow.LoadAsync` | the grid told the operator nothing when no request had arrived; it now counts the pending rows or explains that Telegram only sends them while this account is an administrator of the chat and its session is open |
+| Refresh without reopening | `PendingRequestsWindow` + `Refresh_Click` | requests arrive while the window stays open, so pulling the list again no longer needs an account switch or a restart |
 
 ## Screen acceptance rules
 

@@ -14,6 +14,7 @@ public sealed class ConsentReplyPump : IAsyncDisposable
     private const int Capacity = 1024;
     private readonly Channel<string> _channel;
     private readonly TdLibConsentReplyHandler _handler;
+    private readonly TdLibJoinRequestSyncHandler _joinRequests;
     private readonly Task _loop;
     private long _dropped;
 
@@ -28,6 +29,7 @@ public sealed class ConsentReplyPump : IAsyncDisposable
             SingleWriter = false
         });
         _handler = new TdLibConsentReplyHandler(databasePath, accountId);
+        _joinRequests = new TdLibJoinRequestSyncHandler(databasePath, accountId);
         _loop = Task.Run(() => ProcessAsync(databasePath, accountId));
     }
 
@@ -44,16 +46,29 @@ public sealed class ConsentReplyPump : IAsyncDisposable
         {
             await foreach (var json in _channel.Reader.ReadAllAsync().ConfigureAwait(false))
             {
+                // Both handlers read the same update because Telegram uses a different one for a
+                // reply and for a join request. Neither is allowed to lose the other's work.
+                var failed = false;
                 try
                 {
                     await _handler.HandleAsync(json, CancellationToken.None).ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
-                    // One bad update must not stop the rest of the trail; the message content is
-                    // never logged because it can hold anything the recipient typed.
-                    await SafeLogFailureAsync(databasePath, accountId);
+                    failed = true;
                 }
+
+                try
+                {
+                    await _joinRequests.HandleAsync(json, CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    failed = true;
+                }
+
+                // The message content is never logged because it can hold anything the recipient typed.
+                if (failed) await SafeLogFailureAsync(databasePath, accountId);
             }
         }
         catch (OperationCanceledException)
@@ -64,7 +79,7 @@ public sealed class ConsentReplyPump : IAsyncDisposable
     private static Task SafeLogFailureAsync(string databasePath, long accountId) =>
         new ActivityLogRepository(databasePath).AppendAsync(new Core.Domain.ActivityLog(
             accountId, null, "Warning", "ConsentReplyHandlingFailed",
-            "An inbound update could not be processed as a consent reply.", DateTimeOffset.UtcNow));
+            "An inbound update could not be processed as a consent reply or a join request.", DateTimeOffset.UtcNow));
 
     public async ValueTask DisposeAsync()
     {

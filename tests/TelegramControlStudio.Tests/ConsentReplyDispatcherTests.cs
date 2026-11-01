@@ -74,6 +74,41 @@ public sealed class ConsentReplyDispatcherTests
         finally { Cleanup(path); }
     }
 
+    [Fact]
+    public async Task AJoinRequestOnTheSameTrailIsStored()
+    {
+        var (path, accountId) = await RequestedAsync("join");
+        try
+        {
+            await using var dispatcher = new ConsentReplyDispatcher(path);
+
+            dispatcher.SinkFor(accountId)("""
+                {"@type":"updateChatJoinRequest","chat_id":-1004308190667,"user_id":515,"date":1730000000,
+                 "invite_link":{"@type":"chatInviteLink","invite_link":"https://t.me/+abc","creates_join_request":true}}
+                """);
+
+            var pending = await WaitForPendingAsync(path, accountId);
+            var request = Assert.Single(pending);
+            Assert.Equal(515, request.TelegramUserId);
+            Assert.Equal(-1004308190667, request.ChatId);
+            Assert.Equal("Pending", request.Status);
+        }
+        finally { Cleanup(path); }
+    }
+
+    private static async Task<IReadOnlyList<JoinRequest>> WaitForPendingAsync(string path, long accountId)
+    {
+        var repository = new JoinRequestRepository(path);
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(5);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var pending = await repository.ListPendingAsync(accountId);
+            if (pending.Count > 0) return pending;
+            await Task.Delay(25);
+        }
+        throw new TimeoutException("The join request was not stored by the pump.");
+    }
+
     private static async Task<Contact> WaitForConsentAsync(
         string path, long accountId, long telegramUserId, Func<Contact, bool> settled)
     {
