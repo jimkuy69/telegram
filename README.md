@@ -57,6 +57,10 @@ var databasePath = host.DatabasePath;
 
 Every TDLib session is protected by `TdLibSessionLock`, a named mutex per account (`Local\TCS-TDLibSession-{accountId}`). The app acquires it before connecting a session and holds it for the app's lifetime, which prevents a second app instance from opening the same TDLib session database.
 
+Each session wraps one `td_json_client_create` instance (`TdLibNativeClient`) and reads it from one dedicated `TCS-TDLib-Receive` thread (`TdLibNativeSession`). The per-instance entry points are required rather than the process-global `td_send`/`td_receive`: TDLib aborts the whole process (`STATUS_STACK_BUFFER_OVERRUN` in `ucrtbase.dll`) the moment two clients receive from different threads, which is what used to close the app when a second account was connected.
+
+The native tests (`Category=NativeRuntime`) only run with `TDLIB_RUNTIME_GATE=1` and a gitignored `tdlib\` folder next to the solution containing `tdjson.dll`, `tdjson.manifest.json` and TDLib's own dependencies (`libssl-3-x64.dll`, `libcrypto-3-x64.dll`, `z.dll`) — `tdjson.dll` does not load from a folder that holds only it.
+
 ## Send safety (Phase 0)
 
 All outbound messages pass through one choke point (`TdLibMessageSendService`) that evaluates `SendSafetyPolicy` before building a TDLib request:

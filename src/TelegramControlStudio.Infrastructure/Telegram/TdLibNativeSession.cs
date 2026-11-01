@@ -6,32 +6,38 @@ namespace TelegramControlStudio.Infrastructure.Telegram;
 
 /// <summary>
 /// Owns one native TDLib client, its receive loop, request correlation, and update routing.
+/// TDLib binds a client to the thread that receives from it, so the receive loop runs on one
+/// dedicated thread for the lifetime of the session.
 /// </summary>
 public sealed class TdLibNativeSession : ITdLibClient
 {
     private const string CloseExtra = "tcs-session-close";
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan ReceiveThreadJoinTimeout = TimeSpan.FromSeconds(10);
     private readonly TdLibNativeClient _nativeClient;
-    private readonly int _clientId;
     private readonly TdLibUpdateRouter _router;
     private readonly Action<string>? _onUnmatchedUpdate;
     private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _pending = new();
     private readonly CancellationTokenSource _shutdown = new();
-    private readonly Task _receiveLoop;
+    private readonly TaskCompletionSource<bool> _receiveThreadReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly Thread _receiveThread;
     private long _requestNumber;
     private int _disposed;
 
     private TdLibNativeSession(
         TdLibNativeClient nativeClient,
-        int clientId,
         TdLibUpdateRouter router,
         Action<string>? onUnmatchedUpdate)
     {
         _nativeClient = nativeClient;
-        _clientId = clientId;
         _router = router;
         _onUnmatchedUpdate = onUnmatchedUpdate;
-        _receiveLoop = Task.Run(ReceiveLoopAsync);
+        _receiveThread = new Thread(ReceiveThreadMain)
+        {
+            IsBackground = true,
+            Name = "TCS-TDLib-Receive",
+        };
+        _receiveThread.Start();
     }
 
     public static async Task<TdLibNativeSession> CreateAsync(
@@ -50,20 +56,19 @@ public sealed class TdLibNativeSession : ITdLibClient
         var loader = new TdLibNativeLoader();
         var handle = loader.Load(nativeDirectory, expectedSha256);
         var nativeClient = new TdLibNativeClient(handle);
+        var session = new TdLibNativeSession(nativeClient, router, onUnmatchedUpdate);
         try
         {
-            var clientId = nativeClient.CreateClientId();
-            if (clientId <= 0)
-                throw new InvalidOperationException("TDLib did not return a valid client id.");
-
-            var session = new TdLibNativeSession(nativeClient, clientId, router, onUnmatchedUpdate);
+            await session._receiveThreadReady.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
             var parameterResponse = await session.SendAsync("setTdlibParameters", parameters, cancellationToken).ConfigureAwait(false);
             EnsureSuccessfulResponse(parameterResponse, "setTdlibParameters");
             return session;
         }
         catch
         {
-            nativeClient.Dispose();
+            // The receive thread keeps calling into the library, so it has to stop before the
+            // client instance and the library handle are released.
+            await session.ShutdownAsync().ConfigureAwait(false);
             throw;
         }
     }
@@ -98,7 +103,9 @@ public sealed class TdLibNativeSession : ITdLibClient
                 ["@type"] = function,
                 ["@extra"] = extra
             };
-            _nativeClient.Send(_clientId, JsonSerializer.Serialize(payload));
+            // td_json_client_send is documented as callable from any thread; only receiving is
+            // bound to one thread.
+            _nativeClient.Send(JsonSerializer.Serialize(payload));
             return await completion.Task.ConfigureAwait(false);
         }
         catch
@@ -128,10 +135,11 @@ public sealed class TdLibNativeSession : ITdLibClient
         }
     }
 
-    private async Task ReceiveLoopAsync()
+    private void ReceiveThreadMain()
     {
         try
         {
+            _receiveThreadReady.TrySetResult(true);
             while (!_shutdown.IsCancellationRequested)
             {
                 var json = _nativeClient.Receive(1.0);
@@ -143,13 +151,12 @@ public sealed class TdLibNativeSession : ITdLibClient
                     _router.Route(json);
                     _onUnmatchedUpdate?.Invoke(json);
                 }
-
-                await Task.Yield();
             }
         }
         catch (Exception exception) when (
             exception is ObjectDisposedException or OperationCanceledException or InvalidOperationException)
         {
+            _receiveThreadReady.TrySetException(exception);
             foreach (var pending in _pending.Values)
                 pending.TrySetException(exception);
             _pending.Clear();
@@ -183,6 +190,11 @@ public sealed class TdLibNativeSession : ITdLibClient
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
+        await ShutdownAsync().ConfigureAwait(false);
+    }
+
+    private async Task ShutdownAsync()
+    {
         await RequestTdLibCloseAsync().ConfigureAwait(false);
 
         _shutdown.Cancel();
@@ -190,17 +202,12 @@ public sealed class TdLibNativeSession : ITdLibClient
             pending.TrySetCanceled();
         _pending.Clear();
 
-        try
-        {
-            await _receiveLoop.ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected during shutdown.
-        }
+        // Destroying the instance while its receive call is still running would be undefined
+        // behaviour, so the thread has to be gone first; a stuck thread leaks the client instead.
+        if (_receiveThread.Join(ReceiveThreadJoinTimeout))
+            _nativeClient.Dispose();
 
         _shutdown.Dispose();
-        _nativeClient.Dispose();
     }
 
     // TDLib frees the account's session directory only after `close` completes, so skipping it
@@ -220,7 +227,7 @@ public sealed class TdLibNativeSession : ITdLibClient
 
         try
         {
-            _nativeClient.Send(_clientId, $$"""{"@type":"close","@extra":"{{CloseExtra}}"}""");
+            _nativeClient.Send($$"""{"@type":"close","@extra":"{{CloseExtra}}"}""");
             await completion.Task.ConfigureAwait(false);
         }
         catch (OperationCanceledException) { }

@@ -124,6 +124,15 @@ The web host is localhost-only and unauthenticated; it plans work and gates safe
 
 Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy): Queue & History went from `แสดง 0 จากทั้งหมด 0 งาน` on Jim Heehom to `7 จากทั้งหมด 7` on jimmy, Report subtitle switched to `บัญชี 8 (jimmy) • คิวส่งข้อความ 5 คิว • คิวคำขอยินยอม 2 คิว`, and Settings repopulated the API ID for the selected account — all without closing a window.
 
+## IMPLEMENTED concurrent TDLib sessions (v0.3.1)
+
+| Feature | Where | Notes |
+|---|---|---|
+| One native client instance per session | `TdLibNativeClient` | uses `td_json_client_create/send/receive/execute/destroy` instead of the process-global `td_send`/`td_receive`; TDLib aborts the process (`0xc0000409` in `ucrtbase.dll`, `Client.cpp:285 "Receive must not be called simultaneously from two different threads"`) as soon as two clients read through the global entry points, which closed the whole app on the second account connect |
+| Fixed receive thread per session | `TdLibNativeSession.ReceiveThreadMain` | one dedicated `TCS-TDLib-Receive` thread per session reads that client only, with no `Task.Yield()` thread hopping; the thread is created inside `TdLibNativeSession` so a session can never be read from two threads |
+| Disconnect stops the thread before destroying | `TdLibNativeSession.ShutdownAsync` | `close` is awaited, the receive thread is joined, and only then is the client instance destroyed and the library handle released — a receive call in flight during destroy would be undefined behaviour, so a thread that refuses to stop leaks the instance instead |
+| Two-client regression test | `TdLibNativeRuntimeTests.TwoClientsReceiveOnSeparateDedicatedThreads` (gate `TDLIB_RUNTIME_GATE=1`) | two verified clients each send and receive on their own dedicated thread and must get their own `@extra` response; under the old global `td_receive` this test takes the process down instead of failing |
+
 ## Screen acceptance rules
 
 1. The active account is visible before account-scoped actions.
