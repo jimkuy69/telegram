@@ -2,7 +2,22 @@ using TelegramControlStudio.Core.Domain;
 
 namespace TelegramControlStudio.Core.Import;
 
-public sealed record ContactImportResult(IReadOnlyList<Contact> Valid, IReadOnlyList<string> Errors);
+public sealed record PhoneOnlyContact(
+    long AccountId,
+    string FirstName,
+    string LastName,
+    string? Username,
+    string PhoneNumber,
+    bool HasConsent,
+    bool IsOptedOut);
+
+// A phone-only row is not an error: the operator has a real list of numbers and Telegram, not the
+// file, is the only place that knows the user id. Keeping them in their own list stops a resolved
+// id from ever being guessed from a name.
+public sealed record ContactImportResult(
+    IReadOnlyList<Contact> Valid,
+    IReadOnlyList<PhoneOnlyContact> PhoneOnly,
+    IReadOnlyList<string> Errors);
 
 public static class ContactCsvImporter
 {
@@ -14,11 +29,13 @@ public static class ContactCsvImporter
         ArgumentNullException.ThrowIfNull(csv);
         if (accountId <= 0) throw new ArgumentOutOfRangeException(nameof(accountId));
         var valid = new List<Contact>();
+        var phoneOnly = new List<PhoneOnlyContact>();
         var errors = new List<string>();
         var seenUserIds = new HashSet<long>();
+        var seenPhones = new HashSet<string>(StringComparer.Ordinal);
         var lines = csv.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
         if (lines.Length == 0 || !lines[0].Equals(ExpectedHeader, StringComparison.OrdinalIgnoreCase))
-            return new([], [HeaderError]);
+            return new([], [], [HeaderError]);
         for (var index = 1; index < lines.Length; index++)
         {
             var row = index + 1;
@@ -30,14 +47,18 @@ public static class ContactCsvImporter
                 errors.Add($"แถว {row}: อ่านได้ {fields.Length} คอลัมน์ ต้องมี 7 ตามหัวตาราง (ห้ามเว้น has_consent และ is_opted_out)");
                 continue;
             }
-            if (!long.TryParse(fields[0].Trim(), out var userId) || userId <= 0)
+            var idText = fields[0].Trim();
+            var phone = string.IsNullOrWhiteSpace(fields[4]) ? null : fields[4].Trim();
+            var hasTelegramId = idText.Length > 0;
+            long userId = 0;
+            if (!hasTelegramId && phone is null)
             {
-                errors.Add($"แถว {row}: telegram_user_id ต้องเป็นเลขจำนวนเต็มบวก (อ่านได้ \"{fields[0].Trim()}\")");
+                errors.Add($"แถว {row}: ต้องมี telegram_user_id หรือ phone_number อย่างน้อยหนึ่งอย่าง");
                 continue;
             }
-            if (!seenUserIds.Add(userId))
+            if (hasTelegramId && (!long.TryParse(idText, out userId) || userId <= 0))
             {
-                errors.Add($"แถว {row}: telegram_user_id {userId} ซ้ำกับแถวอื่นในไฟล์นี้");
+                errors.Add($"แถว {row}: telegram_user_id ต้องเป็นเลขจำนวนเต็มบวก (อ่านได้ \"{idText}\")");
                 continue;
             }
             if (!TryParseBoolean(fields[5], out var consent) || !TryParseBoolean(fields[6], out var optedOut))
@@ -45,15 +66,35 @@ public static class ContactCsvImporter
                 errors.Add($"แถว {row}: has_consent และ is_opted_out ต้องเป็น true/false หรือ 1/0 (อ่านได้ \"{fields[5].Trim()}\" และ \"{fields[6].Trim()}\")");
                 continue;
             }
-            var phone = string.IsNullOrWhiteSpace(fields[4]) ? null : fields[4].Trim();
             if (!ContactFieldPolicy.IsValidPhone(phone))
             {
                 errors.Add($"แถว {row}: phone_number ไม่ถูกต้อง ให้เว้นว่างหรือใส่รูปแบบสากลเช่น +66900000000 (อ่านได้ \"{fields[4].Trim()}\")");
                 continue;
             }
-            valid.Add(new Contact(accountId, userId, fields[1].Trim(), fields[2].Trim(), string.IsNullOrWhiteSpace(fields[3]) ? null : fields[3].Trim().TrimStart('@'), phone, consent, optedOut, DateTimeOffset.UtcNow));
+            var username = string.IsNullOrWhiteSpace(fields[3]) ? null : fields[3].Trim().TrimStart('@');
+            if (!hasTelegramId)
+            {
+                if (!seenPhones.Add(phone!))
+                {
+                    errors.Add($"แถว {row}: phone_number {phone} ซ้ำกับแถวอื่นในไฟล์นี้");
+                    continue;
+                }
+                phoneOnly.Add(new PhoneOnlyContact(accountId, fields[1].Trim(), fields[2].Trim(), username, phone!, consent, optedOut));
+                continue;
+            }
+            if (!seenUserIds.Add(userId))
+            {
+                errors.Add($"แถว {row}: telegram_user_id {userId} ซ้ำกับแถวอื่นในไฟล์นี้");
+                continue;
+            }
+            if (phone is not null && !seenPhones.Add(phone))
+            {
+                errors.Add($"แถว {row}: phone_number {phone} ซ้ำกับแถวอื่นในไฟล์นี้");
+                continue;
+            }
+            valid.Add(new Contact(accountId, userId, fields[1].Trim(), fields[2].Trim(), username, phone, consent, optedOut, DateTimeOffset.UtcNow));
         }
-        return new(valid, errors);
+        return new(valid, phoneOnly, errors);
     }
 
     private static string[] ParseLine(string line)

@@ -32,7 +32,7 @@ public static class ContactXlsxImporter
             }
             rows.Add(values);
         }
-        if (rows.Count == 0) return new([], [ContactCsvImporter.HeaderError]);
+        if (rows.Count == 0) return new([], [], [ContactCsvImporter.HeaderError]);
         var csv = new StringBuilder();
         for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {

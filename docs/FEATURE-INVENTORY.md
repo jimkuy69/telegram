@@ -189,6 +189,18 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | Header mismatch names the expected header | `ContactCsvImporter.HeaderError` | the required 7-column header is quoted in full, and the empty-workbook path in `ContactXlsxImporter` shares the same message instead of returning `HEADER_INVALID` |
 | The template says what it checks | `ContactImportWindow.DownloadTemplate_Click` | after saving the template the dialog states that `telegram_user_id` must be a positive integer and that the two consent columns take `true`/`false` or `1`/`0` |
 
+## Phone-only lists resolve their Telegram IDs through Telegram (v0.3.11)
+
+| Feature | Where | Notes |
+|---|---|---|
+| A row with only a phone number is no longer an error | `ContactCsvImporter.Preview` / `ContactImportResult.PhoneOnly` | v0.3.10 told the operator 5,000 rows were invalid because column A was empty, and there was nothing to fix — the file genuinely has no Telegram IDs. A blank id with a valid international number now routes to its own list, while a row carrying neither is still refused. |
+| `importContacts` in batches of 200 | `TdLibContactPhoneImportService` | `contacts.importContacts` accepts at most 200 numbers per request, so 5,000 rows go out as 25 requests; the service asserts the cap and reports progress per batch. |
+| The `client_id` base is proven, never guessed | `TdLibContactPhoneImportService.ProbeAttempts` | the reply carries no phone numbers, only the `client_id` TDLib assigned to each contact, and whether a request starts at 0 or 1 is undocumented. A single-contact request settles it; if TDLib answers nothing usable the service stops instead of mapping, because an off-by-one would attach a stranger's ID to a phone. |
+| Duplicate detection covers both kinds | same | the same phone in two rows, or a phone that also appears on a row that has an ID, is reported per row rather than imported twice. |
+| Second confirmation names the side effect | `ContactImportWindow.ResolveByPhoneAsync` | `importContacts` writes into the signed-in account's Telegram contact list and shows on every device of that account, so the dialog states that before the numbers leave the machine; double-clicking the confirm button cannot send the same numbers twice. |
+| Unresolved rows say why | `TdLibContactPhoneImportService.Describe` | Telegram refuses, the number is already in the account's contacts, and "no ID returned" (not on Telegram, or phone-search privacy off) are separate Thai messages, and a throttled or aborted run lists the rows it never got to send instead of dropping them. |
+| Resolution only runs against a live account | `ContactImportWindow` | if the selected account is not connected to TDLib the import still commits the rows that already carry IDs and states how many numbers were left waiting. |
+
 ## Screen acceptance rules
 
 1. The active account is visible before account-scoped actions.

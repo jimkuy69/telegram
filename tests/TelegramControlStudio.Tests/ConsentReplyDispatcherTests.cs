@@ -68,7 +68,7 @@ public sealed class ConsentReplyDispatcherTests
 
             var contact = await WaitForConsentAsync(path, accountId, 40, item => item.HasConsent);
             Assert.True(contact.HasConsent);
-            var granted = await new ConsentRequestRepository(path).ListAsync(accountId, ConsentRequestKinds.Granted);
+            var granted = await WaitForGrantedAsync(path, accountId);
             Assert.Single(granted);
         }
         finally { Cleanup(path); }
@@ -121,6 +121,23 @@ public sealed class ConsentReplyDispatcherTests
             await Task.Delay(25);
         }
         throw new TimeoutException("The consent reply was not processed by the pump.");
+    }
+
+    /// <summary>
+    /// The pump marks the contact first and writes the grant trail afterwards, so reading the trail once
+    /// right after the contact flips can legitimately catch it empty.
+    /// </summary>
+    private static async Task<IReadOnlyList<ConsentRequest>> WaitForGrantedAsync(string path, long accountId)
+    {
+        var repository = new ConsentRequestRepository(path);
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(5);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var granted = await repository.ListAsync(accountId, ConsentRequestKinds.Granted);
+            if (granted.Count > 0) return granted;
+            await Task.Delay(25);
+        }
+        throw new TimeoutException("The grant was not written to the trail by the pump.");
     }
 
     private static async Task<(string Path, long AccountId)> RequestedAsync(string label)

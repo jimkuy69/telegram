@@ -84,5 +84,49 @@ public sealed class ContactCsvImporterTests
         Assert.Single(result.Valid);
         Assert.Equal("Smith, Jr.", result.Valid[0].FirstName);
     }
+
+    // A marketing list is normally a list of phone numbers, and only Telegram knows which number has
+    // which id, so a blank id with a usable phone is work to do rather than a broken row.
+    [Fact]
+    public void RoutesAPhoneOnlyRowToPendingResolution()
+    {
+        var header = "telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out";
+        var result = ContactCsvImporter.Preview($"{header}\n,สมชาย,ใจดี,user,+66810000001,true,false\n42,สมหญิง,ใจดี,,+66810000002,true,false", 7);
+        Assert.Single(result.Valid);
+        var pending = Assert.Single(result.PhoneOnly);
+        Assert.Equal("+66810000001", pending.PhoneNumber);
+        Assert.Equal("สมชาย", pending.FirstName);
+        Assert.True(pending.HasConsent);
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
+    public void RejectsARowThatCarriesNeitherAnIdNorAPhone()
+    {
+        var header = "telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out";
+        var result = ContactCsvImporter.Preview($"{header}\n,สมชาย,ใจดี,user,,true,false", 7);
+        Assert.Empty(result.Valid);
+        Assert.Empty(result.PhoneOnly);
+        Assert.Contains(result.Errors, error => error.Contains("ต้องมี telegram_user_id หรือ phone_number"));
+    }
+
+    [Fact]
+    public void RejectsADuplicatePhoneAcrossIdAndPhoneOnlyRows()
+    {
+        var header = "telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out";
+        var result = ContactCsvImporter.Preview($"{header}\n42,A,B,,+66810000001,true,false\n,C,D,,+66810000001,true,false", 7);
+        Assert.Single(result.Valid);
+        Assert.Empty(result.PhoneOnly);
+        Assert.Contains(result.Errors, error => error.Contains("+66810000001 ซ้ำกับแถวอื่นในไฟล์นี้"));
+    }
+
+    [Fact]
+    public void KeepsTheConsentRulesOnPhoneOnlyRows()
+    {
+        var header = "telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out";
+        var result = ContactCsvImporter.Preview($"{header}\n,A,B,user,+66810000001,,", 7);
+        Assert.Empty(result.PhoneOnly);
+        Assert.Contains(result.Errors, error => error.Contains("has_consent"));
+    }
 }
 
