@@ -1,0 +1,125 @@
+<Window x:Class="TelegramControlStudio.App.QuickSendWindow"
+        x:Name="QuickSendRoot"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:TelegramControlStudio.App"
+        Title="ส่งเร็ว (Quick Send)" Width="1080" Height="900"
+        Background="{StaticResource WindowBg}" Foreground="{StaticResource TextPrimary}"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style TargetType="{x:Type DataGridColumnHeader}">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+            <Setter Property="Background" Value="{StaticResource CardBgAlt}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type DataGridColumnHeader}">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,1" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="{x:Type DataGridCell}">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <local:AccountSelectorControl x:Name="AccountSelector" HorizontalAlignment="Left" />
+            <TextBlock Text="ส่งเร็ว (Quick Send)" FontSize="24" FontWeight="SemiBold" Margin="0,10,0,2" />
+            <TextBlock Text="ซิงก์รายชื่อจาก Telegram → ติ๊กเลือก → พิมพ์ข้อความ → กดส่ง แล้วยืนยันยอดครั้งเดียว"
+                       Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12" Margin="0,12,0,0">
+            <TextBlock x:Name="SafetyText" TextWrapping="Wrap" Foreground="{StaticResource InfoText}" />
+        </Border>
+
+        <Grid Grid.Row="2" Margin="0,12,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <TextBox x:Name="SearchBox" Style="{StaticResource SearchTextBox}" Width="230" Tag="ค้นหาชื่อ, username, เบอร์ หรือ ID" KeyDown="Search_KeyDown" />
+                <Button Content="ค้นหา" Click="Search_Click" Width="64" Margin="8,0,0,0" />
+                <Button Content="ล้าง" Click="ClearSearch_Click" Width="54" Margin="8,0,0,0" />
+                <Button Content="ซิงก์จาก Telegram" Click="Sync_Click" Margin="14,0,0,0" Padding="12,5" ToolTip="ดึงรายชื่อผู้ติดต่อจากบัญชีที่เชื่อมต่ออยู่" />
+                <Button Content="เลือกทั้งหมด" Click="SelectAll_Click" Margin="12,0,0,0" Padding="10,5" />
+                <Button Content="ยกเลิกที่เลือก" Click="ClearSelection_Click" Margin="8,0,0,0" Padding="10,5" />
+            </StackPanel>
+            <TextBlock x:Name="SelectionText" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="12,0,0,0"
+                       Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+        </Grid>
+
+        <DataGrid x:Name="RecipientGrid" Grid.Row="3" AutoGenerateColumns="False" CanUserAddRows="False"
+                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="32"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  Background="{StaticResource CardBg}" BorderBrush="{StaticResource Border}"
+                  RowBackground="{StaticResource CardBg}" AlternatingRowBackground="{StaticResource CardBgAlt}"
+                  HorizontalGridLinesBrush="{StaticResource Border}">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="เลือก" Width="56">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="ชื่อ" Binding="{Binding Name, Mode=OneWay}" Width="*" />
+                <DataGridTextColumn Header="Username" Binding="{Binding Username, Mode=OneWay}" Width="150" />
+                <DataGridTextColumn Header="เบอร์" Binding="{Binding Phone, Mode=OneWay}" Width="150" />
+                <DataGridTextColumn Header="Telegram ID" Binding="{Binding Id, Mode=OneWay}" Width="140" />
+                <DataGridTextColumn Header="สถานะ" Binding="{Binding Consent, Mode=OneWay}" Width="140" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="4" Margin="0,12,0,0">
+            <TextBlock Text="ข้อความ" Style="{StaticResource FieldLabel}" />
+            <TextBox x:Name="MessageBoxInput" Height="100" AcceptsReturn="True" TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto" Padding="9" TextChanged="Message_TextChanged" />
+            <TextBlock x:Name="CounterText" Style="{StaticResource Caption}" HorizontalAlignment="Right" />
+            <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="ลิงก์ (ถ้ามี)" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="LinkBox" Padding="9" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                    <TextBlock Text="ช่วงห่าง (วินาที)" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="IntervalBox" Text="2" Width="90" Padding="9" ToolTip="1-120 วินาที ระบบเว้นช่วงระหว่างผู้รับแต่ละคน" />
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+
+        <Grid Grid.Row="5" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="StatusText" Foreground="{StaticResource InfoText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <Button x:Name="SendButton" Grid.Column="1" Content="ส่งเลย" Style="{StaticResource PrimaryButton}"
+                    Height="42" Padding="28,0" Click="Send_Click" />
+            <Button Grid.Column="2" Content="ปิด" Style="{StaticResource SecondaryButton}" Height="42" Padding="18,0" Margin="10,0,0,0" Click="Close_Click" />
+        </Grid>
+    </Grid>
+</Window>

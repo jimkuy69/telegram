@@ -785,6 +785,17 @@ public partial class MainWindow : Window
         new MediaLibraryWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
+    private void QuickSend_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var databasePath = _databasePath;
+        new QuickSendWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
+    }
+
     private void CampaignWizard_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
@@ -877,6 +888,9 @@ public partial class MainWindow : Window
         ["ส่งข้อความ"] = ("ส่งข้อความ",
             "วิธีใช้: เลือกผู้รับ พิมพ์ข้อความหรือเลือกเทมเพลต แล้วกดส่งเข้าคิว\n" +
             "ขอบเขต: ส่งได้เฉพาะผู้ติดต่อที่ให้ Consent • TEST MODE จำกัดตาม allowlist • KILL SWITCH หยุดได้ทันที • ติด flood-wait ระบบจะรอเอง"),
+        ["ส่งเร็ว (Quick Send)"] = ("ส่งเร็ว (Quick Send)",
+            "วิธีใช้: กดซิงก์รายชื่อจาก Telegram → ติ๊กผู้รับ → พิมพ์ข้อความ → กดส่ง แล้วยืนยันยอดครั้งเดียว\n" +
+            "ขอบเขต: การยืนยันครั้งนั้นถือเป็น consent ของชุดผู้รับที่ติ๊ก • TEST MODE/KILL SWITCH ยังทำงาน • ไม่มีข้อความสุ่มเพื่อเลี่ยงการตรวจจับ"),
         ["จัดการผู้รับ"] = ("จัดการผู้รับ",
             "วิธีใช้: ค้นหาหรือกรอง แล้วติ๊กเลือกผู้รับ หรือกดเลือกทั้งหมด (เฉพาะแถวที่เห็นอยู่)\n" +
             "ขอบเขต: เห็นเฉพาะผู้ติดต่อของบัญชีที่เลือก • สถานะ Consent เปลี่ยนได้ผ่าน flow ขอยินยอมเท่านั้น"),

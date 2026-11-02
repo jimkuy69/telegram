@@ -203,6 +203,17 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | Resolution only runs against a live account | `ContactImportWindow` | if the selected account is not connected to TDLib the import still commits the rows that already carry IDs and states how many numbers were left waiting. |
 | The preview screen is driven, not assumed | `scripts/import-preview-ui-check.ps1` | runs a renamed copy of the published app against a copy of the database, picks a fixture CSV through the real file dialog, and fails unless the window reports `ผ่าน 1 • รอ resolve จากเบอร์โทร 3 • ผิดพลาด 2` and names both refused rows. It closes the window without touching Confirm, so no number ever reaches Telegram. |
 
+## IMPLEMENTED quick send (v0.3.15)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Sync → tick → type → send in one window | `QuickSendWindow` (left nav "ส่งเร็ว (Quick Send)") | the contacts already stored for the active account load into a checkable grid with a search box (name, username, phone or Telegram ID); `ซิงก์จาก Telegram` pulls the account's contact list again with per-contact progress. Existing recipients, message editor, link field and interval sit on the same screen, so a send no longer walks through the import, campaigns, queue and confirm screens. |
+| One confirmation per batch asserts consent | `QuickSendQueueService.QueueAsync` | the dialog names the ticked count, the eligible count, how many are not yet consented, how many are opted out, whether TEST MODE narrows the list, and the per-recipient interval. Answering "ใช่" is recorded as the operator's assertion that the selected people agreed; only then are those rows marked consented in `contacts.has_consent`, before the job is created. |
+| Selection math is shown before the click | `QuickSendWindow.UpdateSelection` | header reads `เลือก N • จะส่งได้ M • ยังไม่เคยยินยอม X • opt-out Y`, where eligible excludes opted-out rows and, while TEST MODE is on, anyone outside the allowlist. |
+| Send uses the same choke point as campaigns | `TdLibCampaignJobRunner` | opted-out rows are dropped at queue time and every recipient is re-checked against the kill switch, consent and TEST MODE inside the runner, so the quick path cannot bypass the policy; flood-wait pauses the job and the kill switch stops it mid-batch. |
+| Result is summarised, not just counted | `QuickSendWindow.ShowSummaryAsync` | after the run the dialog groups skipped rows by reason (consent, allowlist, kill switch, missing contact) and failed rows by message, and reports how many consents this batch recorded. |
+| Randomized message variants were refused | design | the reference tool rotates several message variants to look less like bulk sending. That exists to evade Telegram's spam detection, so this app sends exactly the text the operator confirmed, through the consent-first gate instead. |
+
 ## Screen acceptance rules
 
 1. The active account is visible before account-scoped actions.
