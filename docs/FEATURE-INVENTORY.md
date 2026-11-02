@@ -201,6 +201,7 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | Second confirmation names the side effect | `ContactImportWindow.ResolveByPhoneAsync` | `importContacts` writes into the signed-in account's Telegram contact list and shows on every device of that account, so the dialog states that before the numbers leave the machine; double-clicking the confirm button cannot send the same numbers twice. |
 | Unresolved rows say why | `TdLibContactPhoneImportService.Describe` | Telegram refuses, the number is already in the account's contacts, and "no ID returned" (not on Telegram, or phone-search privacy off) are separate Thai messages, and a throttled or aborted run lists the rows it never got to send instead of dropping them. |
 | Resolution only runs against a live account | `ContactImportWindow` | if the selected account is not connected to TDLib the import still commits the rows that already carry IDs and states how many numbers were left waiting. |
+| The preview screen is driven, not assumed | `scripts/import-preview-ui-check.ps1` | runs a renamed copy of the published app against a copy of the database, picks a fixture CSV through the real file dialog, and fails unless the window reports `ผ่าน 1 • รอ resolve จากเบอร์โทร 3 • ผิดพลาด 2` and names both refused rows. It closes the window without touching Confirm, so no number ever reaches Telegram. |
 
 ## Screen acceptance rules
 
