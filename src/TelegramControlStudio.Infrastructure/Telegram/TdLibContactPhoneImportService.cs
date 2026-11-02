@@ -71,7 +71,16 @@ public sealed class TdLibContactPhoneImportService(string databasePath)
                 return new(resolved, unresolved, errors, batchesSent, probe);
             }
             if (outcome.UserIdsByClientId.TryGetValue(probe, out var probedUserId))
+            {
+                var mismatch = await VerifyAsync(client, row, probedUserId, cancellationToken);
+                if (mismatch is not null)
+                {
+                    errors.Add($"หยุดตั้งแต่ชุดทดสอบ เพราะตรวจแล้ว id ไม่ตรงกับเบอร์: {mismatch}");
+                    unresolved.AddRange(phoneOnly.Skip(probed - 1).Select(missing => $"{missing.PhoneNumber}: ไม่ได้บันทึก เพราะตรวจ id ของชุดทดสอบไม่ผ่าน"));
+                    return new(resolved, unresolved, errors, batchesSent, probe);
+                }
                 resolved.Add(ToContact(accountId, row, probedUserId));
+            }
             else
                 unresolved.Add(Describe(row, outcome, probe));
             break;
@@ -103,6 +112,17 @@ public sealed class TdLibContactPhoneImportService(string databasePath)
                 // with the batch itself.
                 unresolved.AddRange(phoneOnly.Skip(position - batch.Count).Select(missing => $"{missing.PhoneNumber}: ไม่ได้ส่ง เพราะหยุดตั้งแต่คำขอที่ {batchesSent}"));
                 break;
+            }
+            var mapper = Enumerable.Range(0, batch.Count).FirstOrDefault(index => outcome.UserIdsByClientId.ContainsKey(index + probe), -1);
+            if (mapper >= 0)
+            {
+                var mismatch = await VerifyAsync(client, batch[mapper], outcome.UserIdsByClientId[mapper + probe], cancellationToken);
+                if (mismatch is not null)
+                {
+                    errors.Add($"หยุดที่คำขอที่ {batchesSent} ({batch.Count} เบอร์) เพราะตรวจแล้ว id ไม่ตรงกับเบอร์: {mismatch}");
+                    unresolved.AddRange(phoneOnly.Skip(position - batch.Count).Select(missing => $"{missing.PhoneNumber}: ไม่ได้บันทึก เพราะตรวจ id ของชุดนี้ไม่ผ่าน"));
+                    break;
+                }
             }
             for (var index = 0; index < batch.Count; index++)
             {
@@ -136,6 +156,50 @@ public sealed class TdLibContactPhoneImportService(string databasePath)
             : outcome.AlreadyImportedClientIds.Contains(clientId)
                 ? $"{row.PhoneNumber}: เบอร์นี้อยู่ในรายชื่อ Telegram ของบัญชีนี้แล้ว จึงไม่คืน id ใหม่"
                 : $"{row.PhoneNumber}: Telegram ไม่คืน id (อาจไม่ได้ใช้ Telegram หรือปิด privacy ไม่ให้ค้นหาด้วยเบอร์)";
+
+    /// <summary>
+    /// The reply only ties an id to a client id, so the caller's arithmetic is the sole reason a phone and an
+    /// id end up together. Reading the user back and comparing its phone turns that arithmetic into a fact:
+    /// a batch whose ids land on other numbers is dropped instead of stored against the wrong people.
+    /// </summary>
+    private static async Task<string?> VerifyAsync(ITdLibClient client, PhoneOnlyContact row, long userId, CancellationToken cancellationToken)
+    {
+        string response;
+        try
+        {
+            response = await client.SendAsync("getUser", new Dictionary<string, object?> { ["user_id"] = userId }, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            return $"อ่าน getUser({userId}) ไม่ได้: {exception.Message}";
+        }
+        if (TdLibResponseGuard.TryGetError(response, out var error))
+            return $"getUser({userId}) ถูกปฏิเสธ: {error}";
+        string? reported = null;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(response);
+            if (document.RootElement.TryGetProperty("phone_number", out var phone) && phone.ValueKind == System.Text.Json.JsonValueKind.String)
+                reported = phone.GetString();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return $"getUser({userId}) ตอบกลับเป็น JSON ที่อ่านไม่ได้";
+        }
+        return SamePhone(reported, row.PhoneNumber)
+            ? null
+            : $"{row.PhoneNumber} ได้ id {userId} ที่ TDLib รายงานว่าเป็นเบอร์ {reported ?? "(ว่าง)"}";
+    }
+
+    private static bool SamePhone(string? left, string right) =>
+        left is not null &&
+        string.Equals(Digits(left), Digits(right), StringComparison.Ordinal);
+
+    private static string Digits(string phone) => new(phone.Where(char.IsDigit).ToArray());
 
     private static async Task<ImportedContactsResult> SendAsync(ITdLibClient client, IReadOnlyList<PhoneOnlyContact> batch, CancellationToken cancellationToken)
     {

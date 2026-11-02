@@ -117,6 +117,40 @@ public sealed class TdLibContactPhoneImportServiceTests
         Assert.Equal(202, result.Resolved.Count + result.Unresolved.Count);
     }
 
+    [Fact]
+    public async Task RefusesTheProbeIdWhenItNamesAnotherPhone()
+    {
+        var path = TempPath();
+        var accountId = await NewAccount(path);
+
+        var result = await new TdLibContactPhoneImportService(path)
+            .ImportAsync(new ScriptedClient(0, _ => "+66999999999"), accountId, Phones(1, 5).Select(Row).ToArray(), confirmed: true);
+
+        Assert.Empty(result.Resolved);
+        Assert.Empty(await new ContactRepository(path).ListAsync(accountId));
+        Assert.Contains(result.Errors, error => error.Contains("ไม่ตรง"));
+        Assert.Equal(5, result.Unresolved.Count(line => line.Contains("ชุดทดสอบ")));
+    }
+
+    [Fact]
+    public async Task DropsABatchWhoseIdsLandOnOtherNumbers()
+    {
+        var path = TempPath();
+        var accountId = await NewAccount(path);
+        var probeId = ExpectedId(Phones(1, 1)[0]);
+
+        var result = await new TdLibContactPhoneImportService(path)
+            .ImportAsync(new ScriptedClient(0, id => id == probeId ? $"+{id}" : "+66999999999"),
+                accountId, Phones(1, 5).Select(Row).ToArray(), confirmed: true);
+
+        Assert.Single(result.Resolved);
+        Assert.Equal(probeId, result.Resolved[0].TelegramUserId);
+        var stored = await new ContactRepository(path).ListAsync(accountId);
+        Assert.Equal(Phones(1, 1)[0], stored.Single().PhoneNumber);
+        Assert.Contains(result.Errors, error => error.Contains("ไม่ตรง"));
+        Assert.Equal(4, result.Unresolved.Count(line => line.Contains("ชุดนี้")));
+    }
+
     private static async Task<ContactPhoneImportResult> Resolve(int firstClientId, int count)
     {
         var path = TempPath();
@@ -149,12 +183,15 @@ public sealed class TdLibContactPhoneImportServiceTests
     }
 
     /// <summary>Answers with one imported contact per number, numbered from <paramref name="firstClientId"/>.</summary>
-    private sealed class ScriptedClient(int firstClientId) : ITdLibClient
+    private sealed class ScriptedClient(int firstClientId, Func<long, string>? reportedPhone = null) : ITdLibClient
     {
         public List<int> BatchSizes { get; } = [];
 
         public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
         {
+            if (function == "getUser")
+                return Task.FromResult(User((long)parameters["user_id"]!,
+                    reportedPhone?.Invoke((long)parameters["user_id"]!) ?? $"+{(long)parameters["user_id"]!}"));
             Assert.Equal("importContacts", function);
             var contacts = (List<Dictionary<string, object?>>)parameters["contacts"]!;
             Assert.True(contacts.Count <= 200);
@@ -178,6 +215,9 @@ public sealed class TdLibContactPhoneImportServiceTests
         return $$"""{"@type":"importedContacts","imported":[{{imported}}],"unimported_ids":[],"failed_ids":[]}""";
     }
 
+    private static string User(long userId, string phone) =>
+        $$"""{"@type":"user","id":{{userId}},"first_name":"","last_name":"","phone_number":"{{phone}}"}""";
+
     private sealed class SilentClient : ITdLibClient
     {
         public int CallCount { get; private set; }
@@ -193,12 +233,14 @@ public sealed class TdLibContactPhoneImportServiceTests
 
     private sealed class ThrottlingClient : ITdLibClient
     {
-        private int _calls;
+        private int _imports;
 
         public Task<string> SendAsync(string function, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
         {
-            _calls++;
-            if (_calls == 3)
+            if (function == "getUser")
+                return Task.FromResult(User((long)parameters["user_id"]!, $"+{(long)parameters["user_id"]!}"));
+            _imports++;
+            if (_imports == 3)
                 throw new TdLibFloodWaitException(37);
             var contacts = (List<Dictionary<string, object?>>)parameters["contacts"]!;
             return Task.FromResult(Reply(contacts.Select(contact => ((string?)contact["phone_number"])!), 0));
