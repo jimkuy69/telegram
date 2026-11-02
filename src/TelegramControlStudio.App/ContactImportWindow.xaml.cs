@@ -61,7 +61,7 @@ public partial class ContactImportWindow : Window
             "telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out\r\n" +
             "123456789,ชื่อ,นามสกุล,example,+66900000000,false,false\r\n";
         File.WriteAllText(dialog.FileName, template, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-        MessageBox.Show("บันทึก Template แล้ว\nกรอกข้อมูลตามหัวตารางและใช้ true/false หรือ 1/0 ในสองคอลัมน์ท้าย", "สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show("บันทึก Template แล้ว\nกรอกให้ครบ 7 คอลัมน์ โดย telegram_user_id ต้องเป็นเลขจำนวนเต็มบวก และห้ามเว้น has_consent / is_opted_out (ใช้ true/false หรือ 1/0)", "สำเร็จ", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private async void Confirm_Click(object sender, RoutedEventArgs e)

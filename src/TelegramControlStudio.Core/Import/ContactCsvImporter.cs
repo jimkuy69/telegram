@@ -6,6 +6,9 @@ public sealed record ContactImportResult(IReadOnlyList<Contact> Valid, IReadOnly
 
 public static class ContactCsvImporter
 {
+    private const string ExpectedHeader = "telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out";
+    internal const string HeaderError = $"หัวตารางไม่ถูกต้อง ต้องเป็น {ExpectedHeader} (เว้นว่างบางคอลัมน์ท้ายไม่ได้)";
+
     public static ContactImportResult Preview(string csv, long accountId)
     {
         ArgumentNullException.ThrowIfNull(csv);
@@ -14,30 +17,38 @@ public static class ContactCsvImporter
         var errors = new List<string>();
         var seenUserIds = new HashSet<long>();
         var lines = csv.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
-        if (lines.Length == 0 || !lines[0].Equals("telegram_user_id,first_name,last_name,username,phone_number,has_consent,is_opted_out", StringComparison.OrdinalIgnoreCase))
-            return new([], ["HEADER_INVALID"]);
+        if (lines.Length == 0 || !lines[0].Equals(ExpectedHeader, StringComparison.OrdinalIgnoreCase))
+            return new([], [HeaderError]);
         for (var index = 1; index < lines.Length; index++)
         {
+            var row = index + 1;
             var fields = ParseLine(lines[index]);
-            if (fields.Length != 7 || !long.TryParse(fields[0], out var userId) || userId <= 0)
+            // Excel leaves blank cells out of the row entirely, so a short row is its own failure: the
+            // operator has to be told which columns are missing rather than shown a generic code.
+            if (fields.Length != 7)
             {
-                errors.Add($"ROW_{index + 1}_INVALID");
+                errors.Add($"แถว {row}: อ่านได้ {fields.Length} คอลัมน์ ต้องมี 7 ตามหัวตาราง (ห้ามเว้น has_consent และ is_opted_out)");
+                continue;
+            }
+            if (!long.TryParse(fields[0].Trim(), out var userId) || userId <= 0)
+            {
+                errors.Add($"แถว {row}: telegram_user_id ต้องเป็นเลขจำนวนเต็มบวก (อ่านได้ \"{fields[0].Trim()}\")");
                 continue;
             }
             if (!seenUserIds.Add(userId))
             {
-                errors.Add($"ROW_{index + 1}_DUPLICATE");
+                errors.Add($"แถว {row}: telegram_user_id {userId} ซ้ำกับแถวอื่นในไฟล์นี้");
                 continue;
             }
             if (!TryParseBoolean(fields[5], out var consent) || !TryParseBoolean(fields[6], out var optedOut))
             {
-                errors.Add($"ROW_{index + 1}_BOOLEAN_INVALID");
+                errors.Add($"แถว {row}: has_consent และ is_opted_out ต้องเป็น true/false หรือ 1/0 (อ่านได้ \"{fields[5].Trim()}\" และ \"{fields[6].Trim()}\")");
                 continue;
             }
             var phone = string.IsNullOrWhiteSpace(fields[4]) ? null : fields[4].Trim();
             if (!ContactFieldPolicy.IsValidPhone(phone))
             {
-                errors.Add($"ROW_{index + 1}_PHONE_INVALID");
+                errors.Add($"แถว {row}: phone_number ไม่ถูกต้อง ให้เว้นว่างหรือใส่รูปแบบสากลเช่น +66900000000 (อ่านได้ \"{fields[4].Trim()}\")");
                 continue;
             }
             valid.Add(new Contact(accountId, userId, fields[1].Trim(), fields[2].Trim(), string.IsNullOrWhiteSpace(fields[3]) ? null : fields[3].Trim().TrimStart('@'), phone, consent, optedOut, DateTimeOffset.UtcNow));

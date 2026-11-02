@@ -179,6 +179,16 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | The harness seeds an invite link and reads the clipboard | same | it inserts one link per account through `InviteLinkRepository`, clicks `CopyInviteLinkButton` and fails the run unless the clipboard carries the seeded URL |
 | The copy button survives a narrow window | `InviteLinksWindow.xaml` | v0.3.8 put the text and the button in a StackPanel, so at the operator's window width the star-sized column gave the cell ~130px and the button was laid out outside the visible clip — present in UIA, invisible on screen. The cell is a DockPanel now with the button pinned right, the URL trimmed with an ellipsis, a `MinWidth` of 300 on the column, and the harness shrinks the window and compares the button rect against it |
 
+## IMPLEMENTED contact import errors the operator can act on (v0.3.10)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Every rejected row says why, in Thai | `ContactCsvImporter.Preview` | the window used to show `ROW_2_INVALID … ROW_15_INVALID` for a file built from its own template, which gave the operator nothing to fix. A row now names the column and quotes the offending value, e.g. `แถว 2: telegram_user_id ต้องเป็นเลขจำนวนเต็มบวก (อ่านได้ "1.23457E+11")` — the scientific notation Excel writes for a long id |
+| A short row is its own failure | same | Excel omits trailing blank cells, so a row that stops at `phone_number` arrived as the same generic code as a bad id. It now reports how many columns were read and that `has_consent` / `is_opted_out` may not be left blank |
+| Consent stays explicit | same | a blank consent column is still refused rather than defaulted to `false`, because an omitted answer must not be read as permission either way |
+| Header mismatch names the expected header | `ContactCsvImporter.HeaderError` | the required 7-column header is quoted in full, and the empty-workbook path in `ContactXlsxImporter` shares the same message instead of returning `HEADER_INVALID` |
+| The template says what it checks | `ContactImportWindow.DownloadTemplate_Click` | after saving the template the dialog states that `telegram_user_id` must be a positive integer and that the two consent columns take `true`/`false` or `1`/`0` |
+
 ## Screen acceptance rules
 
 1. The active account is visible before account-scoped actions.
