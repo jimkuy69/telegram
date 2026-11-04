@@ -52,10 +52,12 @@ public sealed class ResultReportRepository(string databasePath)
             FROM job_items
             INNER JOIN jobs ON jobs.id = job_items.job_id
             WHERE job_items.account_id = $account_id
+              AND (jobs.target_type IS NULL OR jobs.target_type <> $group_broadcast)
               AND julianday(COALESCE(job_items.sent_at, job_items.updated_at)) >= julianday($from)
               AND julianday(COALESCE(job_items.sent_at, job_items.updated_at)) <= julianday($to)
             """;
         command.Parameters.AddWithValue("$account_id", accountId);
+        command.Parameters.AddWithValue("$group_broadcast", JobTargetTypes.GroupBroadcast);
         command.Parameters.AddWithValue("$from", from.ToString("O"));
         command.Parameters.AddWithValue("$to", to.ToString("O"));
 
@@ -124,6 +126,7 @@ public sealed class ResultReportRepository(string databasePath)
         while (await reader.ReadAsync(cancellationToken))
         {
             var count = reader.GetInt32(1);
+            if (JobTargetTypes.IsGroupBroadcast(reader.GetString(0))) continue;
             if (JobTargetTypes.IsConsentRequest(reader.GetString(0))) consent += count;
             else campaign += count;
         }

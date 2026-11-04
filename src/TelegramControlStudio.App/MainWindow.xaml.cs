@@ -796,6 +796,17 @@ public partial class MainWindow : Window
         new QuickSendWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
     }
 
+    private void GroupBroadcast_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
+        {
+            MessageBox.Show("กรุณาเพิ่มหรือเลือกบัญชีก่อน", "ยังไม่มีบัญชี", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var databasePath = _databasePath;
+        new GroupBroadcastWindow(databasePath, viewModel.ActiveAccount.Id) { Owner = this }.ShowDialog();
+    }
+
     private void CampaignWizard_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || viewModel.ActiveAccount is null)
@@ -891,6 +902,9 @@ public partial class MainWindow : Window
         ["ส่งเร็ว (Quick Send)"] = ("ส่งเร็ว (Quick Send)",
             "วิธีใช้: กดซิงก์รายชื่อจาก Telegram → ติ๊กผู้รับ → พิมพ์ข้อความ → กดส่ง แล้วยืนยันยอดครั้งเดียว\n" +
             "ขอบเขต: การยืนยันครั้งนั้นถือเป็น consent ของชุดผู้รับที่ติ๊ก • TEST MODE/KILL SWITCH ยังทำงาน • ไม่มีข้อความสุ่มเพื่อเลี่ยงการตรวจจับ"),
+        ["ส่งเข้ากลุ่ม (Group Broadcast)"] = ("ส่งเข้ากลุ่ม (Group Broadcast)",
+            "วิธีใช้: กดซิงก์กลุ่มจาก Telegram → ติ๊กกลุ่ม/แชนแนล → พิมพ์ข้อความ → กดส่ง แล้วยืนยันครั้งเดียว\n" +
+            "ขอบเขต: ส่งได้เฉพาะกลุ่ม/แชนแนลของตัวเองที่ซิงก์ไว้ • ไม่ต้องขอ Consent แต่ KILL SWITCH บังคับทุกโพสต์ • Telegram อาจปฏิเสธถ้าบัญชีไม่มีสิทธิ์โพสต์"),
         ["จัดการผู้รับ"] = ("จัดการผู้รับ",
             "วิธีใช้: ค้นหาหรือกรอง แล้วติ๊กเลือกผู้รับ หรือกดเลือกทั้งหมด (เฉพาะแถวที่เห็นอยู่)\n" +
             "ขอบเขต: เห็นเฉพาะผู้ติดต่อของบัญชีที่เลือก • สถานะ Consent เปลี่ยนได้ผ่าน flow ขอยินยอมเท่านั้น"),

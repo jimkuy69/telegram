@@ -37,5 +37,31 @@ public static class TdLibMessageRequests
             }
         }, $"send-text-{chatId}");
     }
+
+    /// <summary>
+    /// A group/channel post has no consent dimension — the account is writing into its own chat —
+    /// so this variant skips the per-recipient gate and only demands the operator confirmation.
+    /// The kill switch is still enforced by the caller before transmission.
+    /// </summary>
+    public static TdLibRequest SendTextToChat(long chatId, string text, bool confirmed)
+    {
+        if (!confirmed) throw new InvalidOperationException("CONFIRMATION_REQUIRED");
+        if (chatId == 0) throw new ArgumentOutOfRangeException(nameof(chatId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        return new TdLibRequest("sendMessage", new Dictionary<string, object?>
+        {
+            ["chat_id"] = chatId,
+            ["input_message_content"] = new Dictionary<string, object?>
+            {
+                ["@type"] = "inputMessageText",
+                ["text"] = new Dictionary<string, object?>
+                {
+                    ["@type"] = "formattedText", ["text"] = text, ["entities"] = Array.Empty<object>()
+                },
+                ["clear_draft"] = true,
+                ["disable_web_page_preview"] = false
+            }
+        }, $"send-text-to-chat-{chatId}");
+    }
 }
 

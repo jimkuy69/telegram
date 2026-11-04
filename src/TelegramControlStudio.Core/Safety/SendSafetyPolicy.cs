@@ -25,7 +25,10 @@ public enum SendSafetyVerdict
 public enum SendPurpose
 {
     Campaign,
-    ConsentRequest
+    ConsentRequest,
+    // Posting to the account's own groups/channels carries no per-person consent question;
+    // the only safety gate that still applies is the kill switch.
+    GroupBroadcast
 }
 
 public sealed record SendSafetyDecision(SendSafetyVerdict Verdict, string ReasonCode)

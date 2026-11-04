@@ -47,7 +47,9 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
         }
 
         var items = await itemRepository.ListAsync(jobId, token);
-        var contacts = (await new ContactRepository(databasePath).ListAsync(accountId, token)).ToDictionary(item => item.TelegramUserId);
+        var contacts = purpose == SendPurpose.GroupBroadcast
+            ? null
+            : (await new ContactRepository(databasePath).ListAsync(accountId, token)).ToDictionary(item => item.TelegramUserId);
         await jobRepository.UpdateStatusAsync(jobId, JobStatus.Running, cancellationToken: token);
 
         try
@@ -62,7 +64,17 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
                 var liveJob = await jobRepository.GetAsync(jobId, token);
                 if (liveJob is { Status: not JobStatus.Running }) return liveJob.Status;
 
-                if (!contacts.TryGetValue(item.TargetId, out var contact))
+                Contact? contact = null;
+                if (purpose == SendPurpose.GroupBroadcast)
+                {
+                    // The target is the group/chat id itself, not a person.
+                    if (item.TargetId == 0)
+                    {
+                        await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Skipped", "CHAT_ID_INVALID", cancellationToken: token);
+                        continue;
+                    }
+                }
+                else if (contacts is null || !contacts.TryGetValue(item.TargetId, out contact))
                 {
                     await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Skipped", "CONTACT_NOT_FOUND", cancellationToken: token);
                     continue;
@@ -70,10 +82,16 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
 
                 // An opt-in request replaces the campaign gate with the request gate; both are
                 // evaluated before transmission so a blocked recipient is skipped without a network call.
+                // A group broadcast has no per-person gate — only the kill switch can stop it.
                 safety = await safetyRepository.GetAsync(token);
-                var decision = purpose == SendPurpose.ConsentRequest
-                    ? await EvaluateConsentRequestAsync(contact, safety, token)
-                    : SendSafetyPolicy.Evaluate(safety, contact.TelegramUserId, contact.HasConsent, contact.IsOptedOut);
+                var decision = purpose switch
+                {
+                    SendPurpose.ConsentRequest => await EvaluateConsentRequestAsync(contact!, safety, token),
+                    SendPurpose.GroupBroadcast => safety.KillSwitchEngaged
+                        ? new SendSafetyDecision(SendSafetyVerdict.Block, SendSafetyPolicy.KillSwitchReason)
+                        : new SendSafetyDecision(SendSafetyVerdict.Allow, SendSafetyPolicy.AllowedReason),
+                    _ => SendSafetyPolicy.Evaluate(safety, contact!.TelegramUserId, contact.HasConsent, contact.IsOptedOut),
+                };
                 if (!decision.CanSend)
                 {
                     await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Skipped", decision.ReasonCode, cancellationToken: token);
@@ -89,11 +107,15 @@ public sealed class TdLibCampaignJobRunner(string databasePath)
                 {
                     if (purpose == SendPurpose.ConsentRequest)
                     {
-                        await sender.SendConsentRequestAsync(client, contact, text, JobTargetTypes.TemplateIdOf(liveJob?.TargetType), token);
+                        await sender.SendConsentRequestAsync(client, contact!, text, JobTargetTypes.TemplateIdOf(liveJob?.TargetType), token);
+                    }
+                    else if (purpose == SendPurpose.GroupBroadcast)
+                    {
+                        await sender.SendTextToChatAsync(client, accountId, item.TargetId, text, true, token);
                     }
                     else
                     {
-                        await sender.SendTextAsync(client, contact, text, true, token);
+                        await sender.SendTextAsync(client, contact!, text, true, token);
                     }
                     await itemRepository.UpdateStatusAsync(jobId, item.TargetId, "Completed", cancellationToken: token);
                 }

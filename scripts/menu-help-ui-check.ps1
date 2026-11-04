@@ -252,7 +252,7 @@ try {
 
     $asterisks = Get-AsteriskButtons $main
     Log "ASTERISKS=$($asterisks.Count)"
-    if ($asterisks.Count -ne 16) { throw "expected 16 asterisk buttons, found $($asterisks.Count)" }
+    if ($asterisks.Count -ne 18) { throw "expected 18 asterisk buttons, found $($asterisks.Count)" }
 
     $target = Get-MenuHelpButton $main 'ขอยินยอม (Opt-in)'
     Invoke-Element $target
@@ -278,6 +278,22 @@ try {
         throw "the popover did not swap to the send-message help: $($send.Current.Name)"
     }
     Save-PopupShot $main $send 'ui-menu-help-send.png'
+
+    # The group broadcast menu is new in this release, so its own scope text is asserted.
+    Invoke-Element (Get-MenuHelpButton $main 'ส่งเข้ากลุ่ม (Group Broadcast)')
+    Start-Sleep -Seconds 2
+    $broadcast = Get-PopupText $process.Id
+    if ($null -eq $broadcast) { throw 'the group broadcast popover never appeared' }
+    Log "POPUP_BODY_BROADCAST='$($broadcast.Current.Name)'"
+    foreach ($expected in @('ซิงก์', 'ไม่ต้องขอ Consent', 'KILL SWITCH', 'ไม่มีสิทธิ์โพสต์')) {
+        if ($broadcast.Current.Name -notmatch [regex]::Escape($expected)) {
+            throw "the group broadcast help is missing '$expected': $($broadcast.Current.Name)"
+        }
+    }
+    if ($broadcast.Current.Name -match 'allowlist') {
+        throw "the group broadcast help still shows the send-message text: $($broadcast.Current.Name)"
+    }
+    Save-PopupShot $main $broadcast 'ui-menu-help-group-broadcast.png'
     Log 'RESULT=PASS'
 }
 finally {

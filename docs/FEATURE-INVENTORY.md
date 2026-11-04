@@ -95,9 +95,9 @@ Accounts, TDLib authentication, groups/channels, member observation, contacts, t
 
 | Feature | Where | Notes |
 |---|---|---|
-| Asterisk help button on every sidebar menu | `MainWindow.xaml`, `NavHelpButton` style | each of the 16 menu rows carries a small `*` button that opens a popover instead of navigating |
+| Asterisk help button on every sidebar menu | `MainWindow.xaml`, `NavHelpButton` style | each of the 18 menu rows carries a small `*` button that opens a popover instead of navigating |
 | Usage and scope text per menu | `MainWindow.xaml.cs` `MenuHelp` | two short lines per menu: what to click, then what the menu is allowed to do (consent, test-mode allowlist, kill switch, opt-in quota/cooldown, Telegram limits) |
-| Sandbox check | `scripts/menu-help-ui-check.ps1` | 16 asterisk buttons found, opt-in popover shows quota/cooldown/declined text, a second menu swaps the text, kill switch engaged first, `RESULT=PASS` |
+| Sandbox check | `scripts/menu-help-ui-check.ps1` | 18 asterisk buttons found, opt-in popover shows quota/cooldown/declined text, a second menu swaps the text, kill switch engaged first, `RESULT=PASS` |
 
 ## IMPLEMENTED web host (Phase 1)
 
@@ -213,6 +213,21 @@ Sandbox check (`TELEGRAM_CONTROL_STUDIO_DB` copy, kill switch engaged through `S
 | Send uses the same choke point as campaigns | `TdLibCampaignJobRunner` | opted-out rows are dropped at queue time and every recipient is re-checked against the kill switch, consent and TEST MODE inside the runner, so the quick path cannot bypass the policy; flood-wait pauses the job and the kill switch stops it mid-batch. |
 | Result is summarised, not just counted | `QuickSendWindow.ShowSummaryAsync` | after the run the dialog groups skipped rows by reason (consent, allowlist, kill switch, missing contact) and failed rows by message, and reports how many consents this batch recorded. |
 | Randomized message variants were refused | design | the reference tool rotates several message variants to look less like bulk sending. That exists to evade Telegram's spam detection, so this app sends exactly the text the operator confirmed, through the consent-first gate instead. |
+
+## IMPLEMENTED group broadcast (v0.3.16)
+
+| Feature | Where | Notes |
+|---|---|---|
+| Sync → tick → type → post in one window | `GroupBroadcastWindow` (left nav "ส่งเข้ากลุ่ม (Group Broadcast)") | the groups already stored for the active account load into a checkable grid (name, kind, member count, Chat ID with a copy button, post rights); `ซิงก์จาก Telegram` re-reads the account's chats through `TdLibGroupQueryService.SyncMainChatsAsync`, which is capped at the 100 most recent chats Telegram returns. |
+| No per-person consent, kill switch only | `SendSafetyPolicy` / `SendPurpose.GroupBroadcast` | posting into the operator's own group or channel is not a message to a stranger, so the gate is the emergency stop and nothing else. The verdict table for this purpose has no consent or allowlist branch, and the header states it: `โพสต์เข้ากลุ่ม/แชนแนลของตัวเอง ไม่ต้องขอ Consent • หยุดฉุกเฉินบังคับทุกโพสต์`. |
+| One confirmation per batch names the counts | `GroupBroadcastQueueService.QueueAsync` | the dialog reports how many groups were ticked, how many can actually be posted, how many will be skipped for missing post rights, that the kill switch is enforced, and the interval. A group whose `CanSendMessages` is false is excluded at queue time and the number is stated in the audit log `GroupBroadcastQueued`. |
+| Post rights are a snapshot, Telegram is the authority | design, `TelegramGroup.CanSendMessages` | the flag reflects the last sync. External TDLib behaviour is that a channel or supergroup rejects a post with `CHAT_ADMIN_REQUIRED` when the account lost admin rights, or `CHAT_WRITE_FORBIDDEN` when it is no longer a member; those replies land on the job item as an ordinary failure with Telegram's own reason, exactly like a campaign send. |
+| Selection math is shown before the click | `GroupBroadcastWindow.UpdateSelection` | header reads `เลือก N • จะส่งได้ M • ไม่มีสิทธิ์โพสต์ X`, and duplicates by Chat ID are collapsed once at queue time. |
+| Send uses the campaign pipeline | `TdLibCampaignJobRunner` / `TdLibMessageSendService.SendTextToChatAsync` | the job is created `WaitingForConfirmation`, then queued and run through `App.JobGate`, so `CampaignAutoRunner` resumes a queued broadcast after a restart, flood-wait pauses it, and the kill switch stops it between posts. |
+| Group posts stay out of recipient statistics | `ResultReportRepository` | the report counts only recipient activity, so `GroupBroadcast` jobs and their items are excluded from both the item query and the job counters; a post that Telegram refused (403) is visible in the job's own item list instead. |
+| Mass invite was refused | design | adding strangers to groups without their consent is unsolicited sending in another form, so this release stops at posting into chats the account already belongs to. |
+| Sandbox check | `scripts/group-broadcast-ui-check.ps1` | runs the published exe against a throwaway copy of the database under TEMP with the kill switch engaged: the window opens, `เลือกทั้งหมด` must satisfy `postable + excluded == ticked`, clearing the selection returns `ยังไม่ได้เลือก`, and pressing send on an unconnected account only produces the `ยังไม่พร้อมส่ง` box — the job table is counted before and after and must not change. Screenshots `ui-group-broadcast-window.png` and `ui-group-broadcast-send-refused.png`, `RESULT=PASS`. |
+| Unit proof of the group-post gate | `TdLibMessageSendServiceTests` | the kill switch throws `SendSafetyBlockedException` before any TDLib request is issued and logs `SendBlocked` without the message text; test mode and its allowlist do not apply to a group post, which still reaches `sendMessage`. |
 
 ## Screen acceptance rules
 

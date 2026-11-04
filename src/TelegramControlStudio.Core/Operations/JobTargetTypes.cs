@@ -14,6 +14,8 @@ public static class JobTargetTypes
 
     private const string Separator = ":";
 
+    public const string GroupBroadcast = "GroupBroadcast";
+
     public static string ConsentRequestTargetType(long? templateId) =>
         templateId is { } id && id > 0 ? ConsentRequest + Separator + id : ConsentRequest;
 
@@ -21,6 +23,9 @@ public static class JobTargetTypes
         targetType is not null &&
         (string.Equals(targetType, ConsentRequest, StringComparison.Ordinal) ||
          targetType.StartsWith(ConsentRequest + Separator, StringComparison.Ordinal));
+
+    public static bool IsGroupBroadcast(string? targetType) =>
+        string.Equals(targetType, GroupBroadcast, StringComparison.Ordinal);
 
     public static long? TemplateIdOf(string? targetType)
     {
@@ -32,5 +37,7 @@ public static class JobTargetTypes
     }
 
     public static SendPurpose PurposeOf(string? targetType) =>
-        IsConsentRequest(targetType) ? SendPurpose.ConsentRequest : SendPurpose.Campaign;
+        IsConsentRequest(targetType) ? SendPurpose.ConsentRequest
+        : IsGroupBroadcast(targetType) ? SendPurpose.GroupBroadcast
+        : SendPurpose.Campaign;
 }

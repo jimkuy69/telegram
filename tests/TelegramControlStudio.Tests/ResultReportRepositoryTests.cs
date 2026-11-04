@@ -9,8 +9,6 @@ namespace TelegramControlStudio.Tests;
 
 public sealed class ResultReportRepositoryTests
 {
-    private static readonly DateTimeOffset Now = DateTimeOffset.UtcNow;
-
     private static TimeZoneInfo Zone => TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
 
     [Fact]
@@ -24,24 +22,25 @@ public sealed class ResultReportRepositoryTests
             var jobs = new JobRepository(path);
             var campaign = await jobs.CreateAsync(accountId, "Campaign:consented", 3, "result-report-campaign");
             var consentJob = await jobs.CreateAsync(accountId, JobTargetTypes.ConsentRequestTargetType(7), 1, "result-report-consent");
+            var now = DateTimeOffset.UtcNow;
 
             await new JobItemRepository(path).CreateAsync(
             [
-                new JobItem(campaign, accountId, 301, "Completed", 0, "rr-301", null, Now.AddHours(-2), Now.AddHours(-1)),
-                new JobItem(campaign, accountId, 302, "Failed", 0, "rr-302", "TDLIB_MESSAGE_SEND_FAILED", Now.AddHours(-1)),
-                new JobItem(consentJob, accountId, 303, "Completed", 0, "rr-303", null, Now.AddHours(-3), Now.AddHours(-2)),
-                new JobItem(campaign, accountId, 304, "Completed", 0, "rr-304", null, Now.AddDays(-9), Now.AddDays(-8)),
-                new JobItem(campaign, accountId, 305, "WaitingForFloodWait", 0, "rr-305", "FLOOD_WAIT_120", Now.AddMinutes(-20))
+                new JobItem(campaign, accountId, 301, "Completed", 0, "rr-301", null, now.AddHours(-2), now.AddHours(-1)),
+                new JobItem(campaign, accountId, 302, "Failed", 0, "rr-302", "TDLIB_MESSAGE_SEND_FAILED", now.AddHours(-1)),
+                new JobItem(consentJob, accountId, 303, "Completed", 0, "rr-303", null, now.AddHours(-3), now.AddHours(-2)),
+                new JobItem(campaign, accountId, 304, "Completed", 0, "rr-304", null, now.AddDays(-9), now.AddDays(-8)),
+                new JobItem(campaign, accountId, 305, "WaitingForFloodWait", 0, "rr-305", "FLOOD_WAIT_120", now.AddMinutes(-20))
             ]);
 
             var consent = new ConsentRequestRepository(path);
-            await consent.AppendAsync(Event(accountId, 301, ConsentRequestKinds.Requested, "hash-a"));
-            await consent.AppendAsync(Event(accountId, 303, ConsentRequestKinds.Requested, "hash-b"));
-            await consent.AppendAsync(Granted(accountId, 301));
-            await consent.AppendAsync(Event(accountId, 399, ConsentRequestKinds.Requested, "hash-old", Now.AddDays(-9)));
+            await consent.AppendAsync(Event(accountId, 301, ConsentRequestKinds.Requested, now, "hash-a"));
+            await consent.AppendAsync(Event(accountId, 303, ConsentRequestKinds.Requested, now, "hash-b"));
+            await consent.AppendAsync(Granted(accountId, 301, now));
+            await consent.AppendAsync(Event(accountId, 399, ConsentRequestKinds.Requested, now, "hash-old", now.AddDays(-9)));
 
             var report = await new ResultReportRepository(path)
-                .LoadAsync(accountId, Now.AddDays(-1), Now, Zone);
+                .LoadAsync(accountId, now.AddDays(-1), now, Zone);
 
             Assert.Equal(4, report.TotalItems);
             Assert.Equal(2, report.Sent);
@@ -67,9 +66,45 @@ public sealed class ResultReportRepositoryTests
         }
     }
 
-    private static ConsentRequest Event(long accountId, long userId, string kind, string bodyHash, DateTimeOffset? occurredAt = null) =>
-        new(0, accountId, userId, kind, occurredAt ?? Now.AddMinutes(-30), 5001, 6001, 7, bodyHash, null, ConsentRequestSources.JobRunner);
+    [Fact]
+    public async Task GroupBroadcastJobsStayOutOfTheRecipientReport()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-result-report-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            var accountId = await new AccountRepository(path).CreateAsync("ReportGroups", "+66000000021");
+            var jobs = new JobRepository(path);
+            var campaign = await jobs.CreateAsync(accountId, "Campaign:consented", 1, "rr-gb-campaign");
+            var broadcast = await jobs.CreateAsync(accountId, JobTargetTypes.GroupBroadcast, 2, "rr-gb-broadcast");
+            var now = DateTimeOffset.UtcNow;
 
-    private static ConsentRequest Granted(long accountId, long userId) =>
-        new(0, accountId, userId, ConsentRequestKinds.Granted, Now.AddMinutes(-10), 5002, 6001, 7, null, "ok", ConsentRequestSources.TelegramMessage);
+            await new JobItemRepository(path).CreateAsync(
+            [
+                new JobItem(campaign, accountId, 301, "Completed", 0, "rr-gb-301", null, now.AddHours(-2), now.AddHours(-1)),
+                new JobItem(broadcast, accountId, -1001, "Completed", 0, "rr-gb-1001", null, now.AddHours(-1), now.AddMinutes(-30)),
+                new JobItem(broadcast, accountId, -1002, "Failed", 0, "rr-gb-1002", "TDLIB_MESSAGE_SEND_FAILED 403: CHAT_ADMIN_REQUIRED", now.AddMinutes(-40))
+            ]);
+
+            var report = await new ResultReportRepository(path)
+                .LoadAsync(accountId, now.AddDays(-1), now, Zone);
+
+            Assert.Equal(1, report.TotalItems);
+            Assert.Equal(1, report.Sent);
+            Assert.Equal(1, report.CampaignJobs);
+            Assert.Equal(0, report.ConsentJobs);
+            Assert.Empty(report.Failures);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    private static ConsentRequest Event(long accountId, long userId, string kind, DateTimeOffset now, string bodyHash, DateTimeOffset? occurredAt = null) =>
+        new(0, accountId, userId, kind, occurredAt ?? now.AddMinutes(-30), 5001, 6001, 7, bodyHash, null, ConsentRequestSources.JobRunner);
+
+    private static ConsentRequest Granted(long accountId, long userId, DateTimeOffset now) =>
+        new(0, accountId, userId, ConsentRequestKinds.Granted, now.AddMinutes(-10), 5002, 6001, 7, null, "ok", ConsentRequestSources.TelegramMessage);
 }

@@ -37,6 +37,37 @@ public sealed class TdLibMessageSendService(string databasePath)
     }
 
     /// <summary>
+    /// Posts a message into one of the account's own group/channel chats. There is no consent or
+    /// allowlist gate here — posting to your own chat is not a private message — but the kill
+    /// switch is checked at every step so an emergency stop still halts the broadcast.
+    /// </summary>
+    public async Task<string> SendTextToChatAsync(
+        ITdLibClient client,
+        long accountId,
+        long chatId,
+        string text,
+        bool confirmed,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        if (chatId == 0) throw new ArgumentOutOfRangeException(nameof(chatId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+
+        var safety = await new SendSafetyRepository(databasePath).GetAsync(cancellationToken);
+        if (safety.KillSwitchEngaged)
+        {
+            await LogAsync(accountId, "Warning", "SendBlocked", $"Group post blocked by kill switch for chat {chatId}.", cancellationToken);
+            throw new SendSafetyBlockedException(SendSafetyPolicy.KillSwitchReason, SendSafetyVerdict.Block);
+        }
+
+        var request = TdLibMessageRequests.SendTextToChat(chatId, text, confirmed);
+        var response = await client.SendAsync(request.Function, request.Parameters, cancellationToken);
+        await EnsureNoTdLibErrorAsync(response, accountId, cancellationToken);
+        await LogAsync(accountId, "Info", "GroupPostSent", $"Message posted to own group/channel chat {chatId}.", cancellationToken);
+        return response;
+    }
+
+    /// <summary>
     /// Sends the one message that is allowed to precede consent, and records it as evidence.
     /// Everything here is re-read from the database rather than taken from the caller, because an
     /// unbounded opt-in blast is the fastest way to get an account restricted.

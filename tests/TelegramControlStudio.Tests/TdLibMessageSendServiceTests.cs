@@ -163,6 +163,49 @@ public sealed class TdLibMessageSendServiceTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
     }
 
+    [Fact]
+    public async Task KillSwitchBlocksAGroupPostBeforeItReachesTdLib()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-group-post-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            await new SendSafetyRepository(path).SaveAsync(new SendSafetySettings(false, new HashSet<long>(), true, null));
+            var client = new FakeClient("{\"@type\":\"message\",\"id\":21}");
+            var accountId = await new AccountRepository(path).CreateAsync("Groups", "+66000000092");
+
+            var exception = await Assert.ThrowsAsync<SendSafetyBlockedException>(() =>
+                new TdLibMessageSendService(path).SendTextToChatAsync(client, accountId, -1001234, "ประกาศเข้ากลุ่ม", true));
+
+            Assert.Equal(SendSafetyPolicy.KillSwitchReason, exception.ReasonCode);
+            Assert.Empty(client.Calls);
+            var logs = await new ActivityLogRepository(path).ListAsync(accountId);
+            Assert.Contains(logs, item => item.EventType == "SendBlocked" && !item.Message.Contains("ประกาศเข้ากลุ่ม", StringComparison.Ordinal));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task GroupPostIgnoresTestModeBecauseItIsNotAMessageToAStranger()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tg-group-open-{Guid.NewGuid():N}.db");
+        try
+        {
+            await new SqliteDatabase(path).InitializeAsync();
+            await new SendSafetyRepository(path).SaveAsync(new SendSafetySettings(true, new HashSet<long>(), false, null));
+            var client = new FakeClient("{\"@type\":\"message\",\"id\":22}");
+            var accountId = await new AccountRepository(path).CreateAsync("GroupsOpen", "+66000000091");
+
+            await new TdLibMessageSendService(path).SendTextToChatAsync(client, accountId, -1009876, "ประกาศเข้ากลุ่ม", true);
+
+            Assert.Equal("sendMessage", client.Function);
+            Assert.Equal(-1009876L, client.Calls[0].Parameters["chat_id"]);
+            var logs = await new ActivityLogRepository(path).ListAsync(accountId);
+            Assert.Contains(logs, item => item.EventType == "GroupPostSent" && !item.Message.Contains("ประกาศเข้ากลุ่ม", StringComparison.Ordinal));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+    }
+
     private static Task DisableTestModeAsync(string path) =>
         new SendSafetyRepository(path).SaveAsync(new SendSafetySettings(false, new HashSet<long>(), false, null));
 

@@ -119,6 +119,11 @@
                                 <Button x:Name="QuickSendNavButton" Style="{StaticResource NavButton}" Tag="&#xE945;" Content="ส่งเร็ว (Quick Send)" Click="QuickSend_Click" ToolTip="ซิงก์รายชื่อจาก Telegram → ติ๊กเลือก → พิมพ์ข้อความ → ส่งทันที" />
                                 <Button Style="{StaticResource NavHelpButton}" Tag="ส่งเร็ว (Quick Send)" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
                             </Grid>
+
+                            <Grid>
+                                <Button Style="{StaticResource NavButton}" Tag="&#xE8F2;" Content="ส่งเข้ากลุ่ม (Group Broadcast)" Click="GroupBroadcast_Click" ToolTip="ซิงก์กลุ่มจาก Telegram → ติ๊กเลือก → พิมพ์ข้อความ → โพสต์ทีละกลุ่มตามช่วงห่าง" />
+                                <Button Style="{StaticResource NavHelpButton}" Tag="ส่งเข้ากลุ่ม (Group Broadcast)" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
+                            </Grid>
                             <Grid>
                                 <Button Style="{StaticResource NavButton}" Tag="&#xE716;" Content="จัดการผู้รับ" Click="FocusRecipients_Click" />
                                 <Button Style="{StaticResource NavHelpButton}" Tag="จัดการผู้รับ" Click="NavHelp_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="วิธีใช้และขอบเขตของเมนูนี้" />
